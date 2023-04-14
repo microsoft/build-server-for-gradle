@@ -1,0 +1,21 @@
+<configuration>
+    <property name="LOG_ROOT" value="${user.home}/.bsp/logs" />
+    <property name="LOG_FILE" value="application" />
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_ROOT}/${LOG_FILE}.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_ROOT}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>    
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>100MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <root level="INFO">
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>

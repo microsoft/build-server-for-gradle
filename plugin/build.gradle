@@ -1,0 +1,22 @@
+plugins {
+  id 'java-gradle-plugin'
+}
+
+configurations {
+  bundled
+}
+
+dependencies {
+  implementation project(":model")
+  bundled(project(":model")) {
+    transitive = false
+  }
+}
+
+jar {
+  from {
+    configurations.bundled.collect {
+      it.isDirectory() ? it : zipTree(it)
+    }
+  }
+}

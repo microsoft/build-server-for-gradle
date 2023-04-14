@@ -1,0 +1,13 @@
+initscript {
+    dependencies {
+        classpath files(
+            '<plugin-jar-path>'
+        )
+    }
+}
+
+allprojects {
+    afterEvaluate {
+        it.getPlugins().apply(com.microsoft.java.bs.contrib.gradle.plugin.BspGradlePlugin)
+    }
+}
