@@ -1,5 +1,6 @@
 package com.microsoft.java.bs.core.contrib;
 
+import java.net.URI;
 import java.util.List;
 
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
@@ -11,7 +12,7 @@ public interface BuildSupport {
         return true;
     }
 
-    JavaBuildTargets getSourceSetEntries();
+    JavaBuildTargets getSourceSetEntries(URI projectUri);
 
     void build(List<BuildTargetIdentifier> targets);
 }

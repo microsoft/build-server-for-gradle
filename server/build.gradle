@@ -4,7 +4,7 @@ plugins {
 }
 
 configurations {
-  bundled
+    bundled
 }
 
 repositories {
@@ -12,34 +12,42 @@ repositories {
 }
 
 dependencies {
+    implementation project(':model')
     implementation 'ch.epfl.scala:bsp4j:2.1.0-M4'
     implementation 'com.google.inject:guice:5.1.0'
-    implementation project(':model')
-    bundled(project(":model")) {
-        transitive = false
-    }
-
     implementation 'ch.qos.logback:logback-core:1.4.6'
     implementation 'ch.qos.logback:logback-classic:1.4.6'
     implementation 'org.slf4j:slf4j-api:2.0.7'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.7.2'
+    testImplementation(platform('org.junit:junit-bom:5.9.2'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+
+    bundled(project(":model")) {
+        transitive = false
+    }
 }
 
 jar {
-  from {
-    configurations.bundled.collect {
-      it.isDirectory() ? it : zipTree(it)
+    from {
+        configurations.bundled.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
     }
-  }
 }
 
 application {
-    // Define the main class for the application.
     mainClass = 'com.microsoft.java.bs.core.JavaBspLauncher'
 }
 
-tasks.named('test') {
-    // Use JUnit Platform for unit tests.
+test {
     useJUnitPlatform()
+    testLogging {
+      events "passed", "skipped", "failed"
+      exceptionFormat "full"
+    }
+}
+
+processResources {
+  dependsOn(':plugin:copyJar')
+  duplicatesStrategy = 'include'
 }

@@ -21,6 +21,7 @@ import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTarget;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
 import com.microsoft.java.bs.contrib.gradle.model.JdkPlatform;
 import com.microsoft.java.bs.contrib.gradle.model.ProjectDependency;
+import com.microsoft.java.bs.core.bsp.BuildServerStatus;
 import com.microsoft.java.bs.core.contrib.BuildSupport;
 import com.microsoft.java.bs.core.model.BuildTargetComponents;
 import com.microsoft.java.bs.core.model.JvmBuildTargetExt;
@@ -37,6 +38,9 @@ public class BuildTargetsManager {
     @Inject
     Set<BuildSupport> buildSupports;
 
+    @Inject
+    BuildServerStatus buildServerStatus;
+
     public BuildTargetsManager() {
         this.cache = new ConcurrentHashMap<>();
     }
@@ -46,7 +50,7 @@ public class BuildTargetsManager {
             if (!buildSupport.applies()) {
                 continue;
             }
-            parseSourceSetEntries(buildSupport.getSourceSetEntries());
+            parseSourceSetEntries(buildSupport.getSourceSetEntries(buildServerStatus.getRootUri()));
         }
     }
 

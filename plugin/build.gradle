@@ -20,3 +20,9 @@ jar {
     }
   }
 }
+
+task copyJar(type: Copy) {
+  dependsOn(':plugin:jar')
+  from "build/libs/plugin.jar"
+  into "../server/src/main/resources"
+}
