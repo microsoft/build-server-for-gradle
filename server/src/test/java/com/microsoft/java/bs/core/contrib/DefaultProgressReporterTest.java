@@ -1,4 +1,4 @@
-package com.microsoft.java.bs.core.contrib.gradle;
+package com.microsoft.java.bs.core.contrib;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -17,7 +17,7 @@ import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.StatusCode;
 
 @ExtendWith(MockitoExtension.class)
-public class ProgressReporterTest {
+public class DefaultProgressReporterTest {
 
     @Mock
     private BuildClient client;
@@ -31,7 +31,7 @@ public class ProgressReporterTest {
     void testTaskStarted() {
         doNothing().when(client).onBuildTaskStart(any());
 
-        ProgressReporter reporter = new ProgressReporter();
+        DefaultProgressReporter reporter = new DefaultProgressReporter();
         reporter.taskStarted("");
 
         verify(client, times(1)).onBuildTaskStart(any());
@@ -41,7 +41,7 @@ public class ProgressReporterTest {
     void testTaskInProgress() {
         doNothing().when(client).onBuildTaskProgress(any());
 
-        ProgressReporter reporter = new ProgressReporter();
+        DefaultProgressReporter reporter = new DefaultProgressReporter();
         reporter.taskInProgress("");
 
         verify(client, times(1)).onBuildTaskProgress(any());
@@ -51,7 +51,7 @@ public class ProgressReporterTest {
     void testTaskFinished() {
         doNothing().when(client).onBuildTaskFinish(any());
 
-        ProgressReporter reporter = new ProgressReporter();
+        DefaultProgressReporter reporter = new DefaultProgressReporter();
         reporter.taskFinished("", StatusCode.OK);
 
         verify(client, times(1)).onBuildTaskFinish(any());

@@ -28,6 +28,7 @@ import com.google.inject.Inject;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
 import com.microsoft.java.bs.core.JavaBspLauncher;
 import com.microsoft.java.bs.core.contrib.BuildSupport;
+import com.microsoft.java.bs.core.contrib.DefaultProgressReporter;
 import com.microsoft.java.bs.core.contrib.javac.JavacOutputParser;
 import com.microsoft.java.bs.core.log.InjectLogger;
 import com.microsoft.java.bs.core.managers.BuildTargetsManager;
@@ -64,7 +65,7 @@ public class GradleBuild implements BuildSupport {
             return null;
         }
 
-        ProgressReporter reporter = new ProgressReporter();
+        TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
         final ProjectConnection connection = GradleConnector.newConnector()
             .forProjectDirectory(new File(projectUri))
             .connect();
