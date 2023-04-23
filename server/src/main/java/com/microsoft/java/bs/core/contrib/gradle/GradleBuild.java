@@ -177,6 +177,11 @@ public class GradleBuild implements BuildSupport {
             logger.error(e.getMessage(), e);
         }
 
+        if (!pluginJarFile.exists()) {
+            logger.error("Failed to get plugin.jar");
+            return null;
+        }
+
         // copy init script to target location
         String pluginJarUnixPath = pluginJarFile.getAbsolutePath().replace("\\", "/");
         String initScriptContent = "initscript {\n" + "	dependencies {\n" + "		classpath files('"
