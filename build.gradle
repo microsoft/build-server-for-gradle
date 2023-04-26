@@ -1,5 +1,15 @@
 subprojects {
     apply plugin: 'java'
+    apply plugin: 'checkstyle'
+
+    repositories {
+        mavenCentral()
+    }
+
+    checkstyle {
+        toolVersion '10.9.3'
+        maxWarnings = 0
+    }
 
     sourceCompatibility = "11"
     targetCompatibility = "11"

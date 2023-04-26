@@ -37,113 +37,120 @@ import ch.epfl.scala.bsp4j.TestParams;
 import ch.epfl.scala.bsp4j.TestResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 
+/**
+ * The implementation of the Build Server Protocol.
+ */
 public class BspServer implements BuildServer {
 
-    @InjectLogger
-    Logger logger;
+  @InjectLogger
+  Logger logger;
 
-    @Inject
-    BuildTargetsService buildTargetsService;
+  @Inject
+  BuildTargetsService buildTargetsService;
 
-    @Inject
-    LifecycleService lifecycleService;
+  @Inject
+  LifecycleService lifecycleService;
 
-    @Inject
-    CompileService compileService;
+  @Inject
+  CompileService compileService;
 
-    @Override
-    public CompletableFuture<InitializeBuildResult> buildInitialize(InitializeBuildParams params) {
-        logger.info(">> build/initialize");
-        return CompletableFuture.completedFuture(lifecycleService.buildInitialize(params));
-    }
+  @Override
+  public CompletableFuture<InitializeBuildResult> buildInitialize(InitializeBuildParams params) {
+    logger.info(">> build/initialize");
+    return CompletableFuture.completedFuture(lifecycleService.buildInitialize(params));
+  }
 
-    @Override
-    public void onBuildInitialized() {
-        logger.info(">> build/initialized");
-        lifecycleService.initialized();
-    }
+  @Override
+  public void onBuildInitialized() {
+    logger.info(">> build/initialized");
+    lifecycleService.initialized();
+  }
 
-    @Override
-    public CompletableFuture<Object> buildShutdown() {
-        logger.info(">> build/shutdown");
-        return CompletableFuture.completedFuture(lifecycleService.buildShutdown());
-    }
+  @Override
+  public CompletableFuture<Object> buildShutdown() {
+    logger.info(">> build/shutdown");
+    return CompletableFuture.completedFuture(lifecycleService.buildShutdown());
+  }
 
-    @Override
-    public void onBuildExit() {
-        logger.info(">> build/exit");
-        lifecycleService.exit();
-    }
+  @Override
+  public void onBuildExit() {
+    logger.info(">> build/exit");
+    lifecycleService.exit();
+  }
 
-    @Override
-    public CompletableFuture<WorkspaceBuildTargetsResult> workspaceBuildTargets() {
-        logger.info(">> workspace/buildTargets");
-        return CompletableFuture.completedFuture(buildTargetsService.workspaceBuildTargets());
-    }
+  @Override
+  public CompletableFuture<WorkspaceBuildTargetsResult> workspaceBuildTargets() {
+    logger.info(">> workspace/buildTargets");
+    return CompletableFuture.completedFuture(buildTargetsService.workspaceBuildTargets());
+  }
 
-    @Override
-    public CompletableFuture<Object> workspaceReload() {
-        logger.info(">> workspace/reload");
-        return CompletableFuture.completedFuture(buildTargetsService.workspaceReload());
-    }
+  @Override
+  public CompletableFuture<Object> workspaceReload() {
+    logger.info(">> workspace/reload");
+    return CompletableFuture.completedFuture(buildTargetsService.workspaceReload());
+  }
 
-    @Override
-    public CompletableFuture<SourcesResult> buildTargetSources(SourcesParams params) {
-        logger.info(">> buildTarget/sources");
-        return CompletableFuture.completedFuture(buildTargetsService.buildTargetSources(params));
-    }
+  @Override
+  public CompletableFuture<SourcesResult> buildTargetSources(SourcesParams params) {
+    logger.info(">> buildTarget/sources");
+    return CompletableFuture.completedFuture(buildTargetsService.buildTargetSources(params));
+  }
 
-    @Override
-    public CompletableFuture<InverseSourcesResult> buildTargetInverseSources(InverseSourcesParams params) {
-        throw new UnsupportedOperationException("Unimplemented method 'buildTargetInverseSources'");
-    }
+  @Override
+  public CompletableFuture<InverseSourcesResult> buildTargetInverseSources(
+      InverseSourcesParams params) {
+    throw new UnsupportedOperationException("Unimplemented method 'buildTargetInverseSources'");
+  }
 
-    @Override
-    public CompletableFuture<DependencySourcesResult> buildTargetDependencySources(DependencySourcesParams params) {
-        throw new UnsupportedOperationException("Unimplemented method 'buildTargetDependencySources'");
-    }
+  @Override
+  public CompletableFuture<DependencySourcesResult> buildTargetDependencySources(
+      DependencySourcesParams params) {
+    throw new UnsupportedOperationException("Unimplemented method 'buildTargetDependencySources'");
+  }
 
-    @Override
-    public CompletableFuture<ResourcesResult> buildTargetResources(ResourcesParams params) {
-        logger.info(">> buildTarget/resources");
-        return CompletableFuture.completedFuture(buildTargetsService.buildTargetResources(params));
-    }
+  @Override
+  public CompletableFuture<ResourcesResult> buildTargetResources(ResourcesParams params) {
+    logger.info(">> buildTarget/resources");
+    return CompletableFuture.completedFuture(buildTargetsService.buildTargetResources(params));
+  }
 
-    @Override
-    public CompletableFuture<OutputPathsResult> buildTargetOutputPaths(OutputPathsParams params) {
-        logger.info(">> buildTarget/outputPaths");
-        return CompletableFuture.completedFuture(buildTargetsService.buildTargetOutputPaths(params));
-    }
+  @Override
+  public CompletableFuture<OutputPathsResult> buildTargetOutputPaths(OutputPathsParams params) {
+    logger.info(">> buildTarget/outputPaths");
+    return CompletableFuture.completedFuture(buildTargetsService.buildTargetOutputPaths(params));
+  }
 
-    @Override
-    public CompletableFuture<CompileResult> buildTargetCompile(CompileParams params) {
-        logger.info(">> buildTarget/compile");
-        return CompletableFuture.completedFuture(compileService.buildTargetCompile(params));
-    }
+  @Override
+  public CompletableFuture<CompileResult> buildTargetCompile(CompileParams params) {
+    logger.info(">> buildTarget/compile");
+    return CompletableFuture.completedFuture(compileService.buildTargetCompile(params));
+  }
 
-    @Override
-    public CompletableFuture<TestResult> buildTargetTest(TestParams params) {
-        throw new UnsupportedOperationException("Unimplemented method 'buildTargetTest'");
-    }
+  @Override
+  public CompletableFuture<TestResult> buildTargetTest(TestParams params) {
+    throw new UnsupportedOperationException("Unimplemented method 'buildTargetTest'");
+  }
 
-    @Override
-    public CompletableFuture<RunResult> buildTargetRun(RunParams params) {
-        throw new UnsupportedOperationException("Unimplemented method 'buildTargetRun'");
-    }
+  @Override
+  public CompletableFuture<RunResult> buildTargetRun(RunParams params) {
+    throw new UnsupportedOperationException("Unimplemented method 'buildTargetRun'");
+  }
 
-    @Override
-    public CompletableFuture<DebugSessionAddress> debugSessionStart(DebugSessionParams params) {
-        throw new UnsupportedOperationException("Unimplemented method 'debugSessionStart'");
-    }
+  @Override
+  public CompletableFuture<DebugSessionAddress> debugSessionStart(DebugSessionParams params) {
+    throw new UnsupportedOperationException("Unimplemented method 'debugSessionStart'");
+  }
 
-    @Override
-    public CompletableFuture<CleanCacheResult> buildTargetCleanCache(CleanCacheParams params) {
-        throw new UnsupportedOperationException("Unimplemented method 'buildTargetCleanCache'");
-    }
+  @Override
+  public CompletableFuture<CleanCacheResult> buildTargetCleanCache(CleanCacheParams params) {
+    throw new UnsupportedOperationException("Unimplemented method 'buildTargetCleanCache'");
+  }
 
-    @Override
-    public CompletableFuture<DependencyModulesResult> buildTargetDependencyModules(DependencyModulesParams params) {
-        logger.info(">> buildTarget/dependencyModules");
-        return CompletableFuture.completedFuture(buildTargetsService.buildTargetDependencyModules(params));
-    }
+  @Override
+  public CompletableFuture<DependencyModulesResult> buildTargetDependencyModules(
+      DependencyModulesParams params) {
+    logger.info(">> buildTarget/dependencyModules");
+    return CompletableFuture.completedFuture(
+      buildTargetsService.buildTargetDependencyModules(params));
+  }
 }
