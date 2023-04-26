@@ -14,30 +14,37 @@ import com.microsoft.java.bs.core.managers.ParentProcessWatcher;
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildServer;
 
+/**
+ * Main entry point for the BSP server.
+ */
 public class JavaBspLauncher {
 
-    private static Injector injector;
+  private static Injector injector;
 
-    public static BuildClient client;
-    public static void main(String[] args) {
-        injector = Guice.createInjector(new BspModule());
-        Launcher<BuildClient> launcher = createLauncher();
-        client = launcher.getRemoteProxy();
-        launcher.startListening();
-    }
+  public static BuildClient client;
 
-    private static Launcher<BuildClient> createLauncher() {
-        BuildServer bspServer = injector.getInstance(BspServer.class);
-        // TODO: change the thread pool
-        ExecutorService fixedThreadPool = Executors.newFixedThreadPool(1);
-        return new Launcher.Builder<BuildClient>()
-            .setOutput(System.out)
-            .setInput(System.in)
-            .setLocalService(bspServer)
-            .setRemoteInterface(BuildClient.class)
-            .setExecutorService(fixedThreadPool)
-            .wrapMessages(new ParentProcessWatcher(bspServer))
-            .setExceptionHandler(new ExceptionHandler())
-            .create();
-    }
+  /**
+   * Main entry point.
+   */
+  public static void main(String[] args) {
+    injector = Guice.createInjector(new BspModule());
+    Launcher<BuildClient> launcher = createLauncher();
+    client = launcher.getRemoteProxy();
+    launcher.startListening();
+  }
+
+  private static Launcher<BuildClient> createLauncher() {
+    BuildServer bspServer = injector.getInstance(BspServer.class);
+    // TODO: change the thread pool
+    ExecutorService fixedThreadPool = Executors.newFixedThreadPool(1);
+    return new Launcher.Builder<BuildClient>()
+      .setOutput(System.out)
+      .setInput(System.in)
+      .setLocalService(bspServer)
+      .setRemoteInterface(BuildClient.class)
+      .setExecutorService(fixedThreadPool)
+      .wrapMessages(new ParentProcessWatcher(bspServer))
+      .setExceptionHandler(new ExceptionHandler())
+      .create();
+  }
 }

@@ -14,21 +14,25 @@ import com.microsoft.java.bs.core.services.BuildTargetsService;
 import com.microsoft.java.bs.core.services.CompileService;
 import com.microsoft.java.bs.core.services.LifecycleService;
 
+/**
+ * The Guice module for the BSP server.
+ */
 public class BspModule extends AbstractModule {
 
-    @Override
-    protected void configure() {
-        bind(BuildTargetsManager.class).in(Singleton.class);
-        bind(BspServer.class).in(Singleton.class);
-        bind(BuildServerStatus.class).in(Singleton.class);
-        bindListener(Matchers.any(), new LogbackTypeListener());
+  @Override
+  protected void configure() {
+    bind(BuildTargetsManager.class).in(Singleton.class);
+    bind(BspServer.class).in(Singleton.class);
+    bind(BuildServerStatus.class).in(Singleton.class);
+    bindListener(Matchers.any(), new LogbackTypeListener());
 
-        // bind services
-        bind(BuildTargetsService.class).in(Singleton.class);
-        bind(LifecycleService.class).in(Singleton.class);
-        bind(CompileService.class).in(Singleton.class);
+    // bind services
+    bind(BuildTargetsService.class).in(Singleton.class);
+    bind(LifecycleService.class).in(Singleton.class);
+    bind(CompileService.class).in(Singleton.class);
 
-        Multibinder<BuildSupport> buildSupportBinder = Multibinder.newSetBinder(binder(), BuildSupport.class);
-        buildSupportBinder.addBinding().to(GradleBuild.class);
-    }
+    Multibinder<BuildSupport> buildSupportBinder = Multibinder.newSetBinder(binder(),
+        BuildSupport.class);
+    buildSupportBinder.addBinding().to(GradleBuild.class);
+  }
 }

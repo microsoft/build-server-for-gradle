@@ -7,10 +7,6 @@ configurations {
     bundled
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation project(':model')
     implementation 'ch.epfl.scala:bsp4j:2.1.0-M4'

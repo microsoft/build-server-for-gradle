@@ -7,22 +7,25 @@ import ch.epfl.scala.bsp4j.StatusCode;
  */
 public interface ProgressReporter {
 
-    /**
-     * Notify the client that a task has been started.
-     * @param message
-     */
-    void taskStarted(String message);
+  /**
+   * Notify the client that a task has been started.
+   *
+   * @param message the message to be displayed.
+   */
+  void taskStarted(String message);
 
-    /**
-     * Notify the progress of the task.
-     * @param message
-     */
-    void taskInProgress(String message);
+  /**
+   * Notify the progress of the task.
+   *
+   * @param message the message to be displayed.
+   */
+  void taskInProgress(String message);
 
-    /**
-     * Notify the client that a task has been finished.
-     * @param message
-     * @param statusCode
-     */
-    void taskFinished(String message, StatusCode statusCode);
+  /**
+   * Notify the client that a task has been finished.
+   *
+   * @param message the message to be displayed.
+   * @param statusCode the status code of the task.
+   */
+  void taskFinished(String message, StatusCode statusCode);
 }

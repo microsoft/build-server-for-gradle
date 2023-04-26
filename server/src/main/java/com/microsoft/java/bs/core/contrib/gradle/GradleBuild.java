@@ -43,182 +43,182 @@ import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
 import ch.epfl.scala.bsp4j.StatusCode;
 import ch.epfl.scala.bsp4j.TextDocumentIdentifier;
 
+/**
+ * Build support for Gradle projects.
+ */
 public class GradleBuild implements BuildSupport {
 
-    private static final String PLUGIN_JAR_INTERNAL_LOCATION = "/plugin.jar";
-    private static final String GRADLE_PLUGIN_JAR_TARGET_NAME = "gradle-plugin.jar";
-    private static final String INIT_GRADLE_SCRIPT = "init.gradle";
+  private static final String PLUGIN_JAR_INTERNAL_LOCATION = "/plugin.jar";
+  private static final String GRADLE_PLUGIN_JAR_TARGET_NAME = "gradle-plugin.jar";
+  private static final String INIT_GRADLE_SCRIPT = "init.gradle";
 
-    private static final String MESSAGE_DIGEST_ALGORITHM = "SHA-256";
-    private static final String USER_HOME = "user.home";
+  private static final String MESSAGE_DIGEST_ALGORITHM = "SHA-256";
+  private static final String USER_HOME = "user.home";
 
-    @InjectLogger
-    Logger logger;
+  @InjectLogger
+  Logger logger;
 
-    @Inject
-    BuildTargetsManager buildTargetsManager;
+  @Inject
+  BuildTargetsManager buildTargetsManager;
 
-    public JavaBuildTargets getSourceSetEntries(URI projectUri) {
-        File initScript = getInitScript();
-        if (initScript == null) {
-            logger.error("Failed to get init.gradle");
-            return null;
-        }
-
-        TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
-        final ProjectConnection connection = GradleConnector.newConnector()
-            .forProjectDirectory(new File(projectUri))
-            .connect();
-        try (connection) {
-            reporter.taskStarted("Connect to Gradle Daemon");
-            ModelBuilder<JavaBuildTargets> customModelBuilder = connection
-                .model(JavaBuildTargets.class)
-                .addProgressListener(
-                    reporter,
-                    OperationType.FILE_DOWNLOAD,
-                    OperationType.PROJECT_CONFIGURATION);
-            customModelBuilder.withArguments("--init-script", initScript.getAbsolutePath());
-            JavaBuildTargets model = customModelBuilder.get();
-            reporter.taskFinished("", StatusCode.OK);
-            return model;
-        } catch (GradleConnectionException | IllegalStateException e) {
-            logger.error(e.getMessage(), e);
-            reporter.taskFinished(e.getMessage(), StatusCode.ERROR);
-            return null;
-        }
+  /**
+   * {@inheritDoc}
+   */
+  public JavaBuildTargets getSourceSetEntries(URI projectUri) {
+    File initScript = getInitScript();
+    if (initScript == null) {
+      logger.error("Failed to get init.gradle");
+      return null;
     }
 
-    public void build(List<BuildTargetIdentifier> targets) {
-        ProgressListener listener = new ProgressListener() {
-            @Override
-            public void statusChanged(ProgressEvent event) {
-                // TODO: report progress to client
-            }
-        };
-        for (BuildTargetIdentifier target : targets) {
-            runGradleBuildTask(listener, target);
-        }
+    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
+    final ProjectConnection connection = GradleConnector.newConnector()
+        .forProjectDirectory(new File(projectUri))
+        .connect();
+    try (connection) {
+      reporter.taskStarted("Connect to Gradle Daemon");
+      ModelBuilder<JavaBuildTargets> customModelBuilder = connection
+          .model(JavaBuildTargets.class)
+          .addProgressListener(
+            reporter,
+            OperationType.FILE_DOWNLOAD,
+            OperationType.PROJECT_CONFIGURATION
+          );
+      customModelBuilder.withArguments("--init-script", initScript.getAbsolutePath());
+      JavaBuildTargets model = customModelBuilder.get();
+      reporter.taskFinished("", StatusCode.OK);
+      return model;
+    } catch (GradleConnectionException | IllegalStateException e) {
+      logger.error(e.getMessage(), e);
+      reporter.taskFinished(e.getMessage(), StatusCode.ERROR);
+      return null;
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public void build(List<BuildTargetIdentifier> targets) {
+    ProgressListener listener = new ProgressListener() {
+      @Override
+      public void statusChanged(ProgressEvent event) {
+        // TODO: report progress to client
+      }
+    };
+    for (BuildTargetIdentifier target : targets) {
+      runGradleBuildTask(listener, target);
+    }
+  }
+
+  private void runGradleBuildTask(ProgressListener listener, BuildTargetIdentifier id) {
+    URI projectUri = getProjectUri(id);
+    if (projectUri == null) {
+      return;
     }
 
-    private void runGradleBuildTask(ProgressListener listener, BuildTargetIdentifier id) {
-        URI projectUri = getProjectUri(id);
-        if (projectUri == null) {
-            return;
-        }
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    final ProjectConnection connection = GradleConnector.newConnector()
+        .forProjectDirectory(new File(projectUri))
+        .connect();
+    try (out; connection) {
+      connection.newBuild()
+        .addProgressListener(listener, OperationType.TASK)
+        .setStandardError(out)
+        .forTasks(getTaskName(isTestTarget(id))).run();
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+    } catch (BuildException e) {
+      // ignore.
+    }
+  }
 
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        final ProjectConnection connection = GradleConnector.newConnector()
-            .forProjectDirectory(new File(projectUri))
-            .connect();
-        try (out;connection) {
-            connection.newBuild()
-                .addProgressListener(listener, OperationType.TASK)
-                .setStandardError(out)
-                .forTasks(getTaskName(isTestTarget(id)))
-                .run();
-        } catch (IOException e) {
-            logger.error(e.getMessage(), e);
-        } catch (BuildException e) {
-            JavacOutputParser parser = new JavacOutputParser();
-            Map<TextDocumentIdentifier, List<Diagnostic>> diagnostics = parser.parse(out.toString());
-            // TODO: same diagnostic may be published twice, because testClasses includes classes.
-            for (Map.Entry<TextDocumentIdentifier, List<Diagnostic>> entry : diagnostics.entrySet()) {
-                PublishDiagnosticsParams params = new PublishDiagnosticsParams(
-                    entry.getKey(),
-                    id,
-                    entry.getValue(),
-                    true
-                );
-                JavaBspLauncher.client.onBuildPublishDiagnostics(params);
-            }
-        }
+  private boolean isTestTarget(BuildTargetIdentifier btId) {
+    BuildTargetComponents components = buildTargetsManager.getComponents(btId);
+    BuildTarget buildTarget = components.getBuildTarget();
+    return buildTarget.getTags().contains(BuildTargetTag.TEST);
+  }
+
+  private String getTaskName(boolean isTest) {
+    return isTest ? "testClasses" : "classes";
+  }
+
+  private URI getProjectUri(BuildTargetIdentifier btId) {
+    BuildTargetComponents components = buildTargetsManager.getComponents(btId);
+    BuildTarget buildTarget = components.getBuildTarget();
+    try {
+      if (buildTarget.getBaseDirectory() != null) {
+        return new URI(buildTarget.getBaseDirectory());
+      }
+
+      return UriUtils.uriWithoutQuery(btId.getUri());
+    } catch (URISyntaxException e) {
+      logger.error(e.getMessage(), e);
+      return null;
+    }
+  }
+
+  /**
+   * Copy/update the required files to the target location.
+   * And return the init.gradle file instance.
+   */
+  private File getInitScript() {
+    File pluginJarFile = Paths.get(System.getProperty(USER_HOME), ".bsp",
+        GRADLE_PLUGIN_JAR_TARGET_NAME).toFile();
+    // copy plugin jar to target location
+    final InputStream input = GradleBuild.class.getResourceAsStream(PLUGIN_JAR_INTERNAL_LOCATION);
+    try (input) {
+      byte[] pluginJarBytes = input.readAllBytes();
+      byte[] pluginJarDigest = getContentDigest(pluginJarBytes);
+      if (needReplaceContent(pluginJarFile, pluginJarDigest)) {
+        pluginJarFile.getParentFile().mkdirs();
+        Files.write(pluginJarFile.toPath(), pluginJarBytes);
+      }
+    } catch (IOException | NoSuchAlgorithmException e) {
+      logger.error(e.getMessage(), e);
     }
 
-    private boolean isTestTarget(BuildTargetIdentifier btId) {
-        BuildTargetComponents components = buildTargetsManager.getComponents(btId);
-        BuildTarget buildTarget = components.getBuildTarget();
-        return buildTarget.getTags().contains(BuildTargetTag.TEST);
+    if (!pluginJarFile.exists()) {
+      logger.error("Failed to get plugin.jar");
+      return null;
     }
 
-    private String getTaskName(boolean isTest) {
-        return isTest ? "testClasses" : "classes";
+    // copy init script to target location
+    String pluginJarUnixPath = pluginJarFile.getAbsolutePath().replace("\\", "/");
+    String initScriptContent = "initscript {\n" + "\tdependencies {\n" + "\t\tclasspath files('"
+        + pluginJarUnixPath + "')\n" + "\t}\n" + "}\n" + "\n" + "allprojects {\n"
+        + "\tapply plugin: com.microsoft.java.bs.contrib.gradle.plugin.BspGradlePlugin\n" + "}\n";
+    try {
+      byte[] initScriptBytes = initScriptContent.getBytes();
+      byte[] initScriptDigest = getContentDigest(initScriptBytes);
+      File initScriptFile = Paths.get(System.getProperty(USER_HOME), ".bsp",
+          INIT_GRADLE_SCRIPT).toFile();
+      if (needReplaceContent(initScriptFile, initScriptDigest)) {
+        initScriptFile.getParentFile().mkdirs();
+        Files.write(initScriptFile.toPath(), initScriptBytes);
+      }
+      return initScriptFile;
+    } catch (IOException | NoSuchAlgorithmException e) {
+      logger.error(e.getMessage(), e);
+    }
+    return null;
+  }
+
+  private boolean needReplaceContent(File file, byte[] checksum)
+      throws IOException, NoSuchAlgorithmException {
+    if (!file.exists() || file.length() == 0) {
+      return true;
     }
 
-    private URI getProjectUri(BuildTargetIdentifier btId) {
-        BuildTargetComponents components = buildTargetsManager.getComponents(btId);
-        BuildTarget buildTarget = components.getBuildTarget();
-        try {
-            if (buildTarget.getBaseDirectory() != null) {
-                return new URI(buildTarget.getBaseDirectory());
-            }
-
-            return UriUtils.uriWithoutQuery(btId.getUri());
-        } catch (URISyntaxException e) {
-            logger.error(e.getMessage(), e);
-            return null;
-        }
+    byte[] digest = getContentDigest(Files.readAllBytes(file.toPath()));
+    if (Arrays.equals(digest, checksum)) {
+      return false;
     }
+    return true;
+  }
 
-    /**
-     * Copy/update the required files to the target location.
-     * And return the init.gradle file instance.
-     * @throws Exception
-     */
-    private File getInitScript() {
-        File pluginJarFile = Paths.get(System.getProperty(USER_HOME), ".bsp", GRADLE_PLUGIN_JAR_TARGET_NAME).toFile();
-        // copy plugin jar to target location
-        final InputStream input = GradleBuild.class.getResourceAsStream(PLUGIN_JAR_INTERNAL_LOCATION);
-        try (input) {
-            byte[] pluginJarBytes = input.readAllBytes();
-            byte[] pluginJarDigest = getContentDigest(pluginJarBytes );
-            if (needReplaceContent(pluginJarFile, pluginJarDigest)) {
-                pluginJarFile.getParentFile().mkdirs();
-                Files.write(pluginJarFile.toPath(), pluginJarBytes);
-            }
-        } catch (IOException | NoSuchAlgorithmException e) {
-            logger.error(e.getMessage(), e);
-        }
-
-        if (!pluginJarFile.exists()) {
-            logger.error("Failed to get plugin.jar");
-            return null;
-        }
-
-        // copy init script to target location
-        String pluginJarUnixPath = pluginJarFile.getAbsolutePath().replace("\\", "/");
-        String initScriptContent = "initscript {\n" + "	dependencies {\n" + "		classpath files('"
-                + pluginJarUnixPath + "')\n" + "	}\n" + "}\n" + "\n" + "allprojects {\n"
-                + "	apply plugin: com.microsoft.java.bs.contrib.gradle.plugin.BspGradlePlugin\n" + "}\n";
-        try {
-            byte[] initScriptBytes = initScriptContent.getBytes();
-            byte[] initScriptDigest = getContentDigest(initScriptBytes);
-            File initScriptFile = Paths.get(System.getProperty(USER_HOME), ".bsp", INIT_GRADLE_SCRIPT).toFile();
-            if (needReplaceContent(initScriptFile, initScriptDigest)) {
-                initScriptFile.getParentFile().mkdirs();
-                Files.write(initScriptFile.toPath(), initScriptBytes);
-            }
-            return initScriptFile;
-        } catch (IOException | NoSuchAlgorithmException e) {
-            logger.error(e.getMessage(), e);
-        }
-        return null;
-    }
-
-    public boolean needReplaceContent(File file, byte[] checksum) throws IOException, NoSuchAlgorithmException {
-        if (!file.exists() || file.length() == 0) {
-            return true;
-        }
-
-        byte[] digest = getContentDigest(Files.readAllBytes(file.toPath()));
-        if (Arrays.equals(digest, checksum)) {
-            return false;
-        }
-        return true;
-    }
-
-    private byte[] getContentDigest(byte[] contentBytes) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance(MESSAGE_DIGEST_ALGORITHM);
-        md.update(contentBytes);
-        return md.digest();
-    }
+  private byte[] getContentDigest(byte[] contentBytes) throws NoSuchAlgorithmException {
+    MessageDigest md = MessageDigest.getInstance(MESSAGE_DIGEST_ALGORITHM);
+    md.update(contentBytes);
+    return md.digest();
+  }
 }

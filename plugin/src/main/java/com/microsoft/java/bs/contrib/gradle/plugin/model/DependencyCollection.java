@@ -5,21 +5,31 @@ import java.util.Set;
 import com.microsoft.java.bs.contrib.gradle.model.ModuleDependency;
 import com.microsoft.java.bs.contrib.gradle.model.ProjectDependency;
 
+/**
+ * Collection of dependencies.
+ */
 public class DependencyCollection {
-    private Set<ModuleDependency> moduleDependencies;
+  private Set<ModuleDependency> moduleDependencies;
 
-    private Set<ProjectDependency> projectDependencies;
+  private Set<ProjectDependency> projectDependencies;
 
-    public DependencyCollection(Set<ModuleDependency> moduleDependencies, Set<ProjectDependency> projectDependencies) {
-        this.moduleDependencies = moduleDependencies;
-        this.projectDependencies = projectDependencies;
-    }
+  /**
+   * Instantiates a new dependency collection.
+   *
+   * @param moduleDependencies module dependencies.
+   * @param projectDependencies project dependencies.
+   */
+  public DependencyCollection(Set<ModuleDependency> moduleDependencies,
+      Set<ProjectDependency> projectDependencies) {
+    this.moduleDependencies = moduleDependencies;
+    this.projectDependencies = projectDependencies;
+  }
 
-    public Set<ModuleDependency> getModuleDependencies() {
-        return moduleDependencies;
-    }
+  public Set<ModuleDependency> getModuleDependencies() {
+    return moduleDependencies;
+  }
 
-    public Set<ProjectDependency> getProjectDependencies() {
-        return projectDependencies;
-    }
+  public Set<ProjectDependency> getProjectDependencies() {
+    return projectDependencies;
+  }
 }

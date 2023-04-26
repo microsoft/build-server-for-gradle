@@ -16,39 +16,39 @@ import ch.epfl.scala.bsp4j.TaskStartParams;
  */
 public class DefaultProgressReporter implements ProgressReporter {
 
-    private final TaskId taskId;
-    private BuildClient client;
+  private final TaskId taskId;
+  private BuildClient client;
 
-    public DefaultProgressReporter() {
-        this.taskId = new TaskId(UUID.randomUUID().toString());
-        client = JavaBspLauncher.client;
-    }
+  public DefaultProgressReporter() {
+    this.taskId = new TaskId(UUID.randomUUID().toString());
+    client = JavaBspLauncher.client;
+  }
 
-    @Override
-    public void taskStarted(String message) {
-        TaskStartParams startParam = new TaskStartParams(taskId);
-        startParam.setMessage(message);
-        if (client != null) {
-            client.onBuildTaskStart(startParam);
-        }
+  @Override
+  public void taskStarted(String message) {
+    TaskStartParams startParam = new TaskStartParams(taskId);
+    startParam.setMessage(message);
+    if (client != null) {
+      client.onBuildTaskStart(startParam);
     }
+  }
 
-    @Override
-    public void taskInProgress(String message) {
-        TaskProgressParams progressParam = new TaskProgressParams(taskId);
-        progressParam.setMessage(message);
-        if (client != null) {
-            client.onBuildTaskProgress(progressParam);
-        }
+  @Override
+  public void taskInProgress(String message) {
+    TaskProgressParams progressParam = new TaskProgressParams(taskId);
+    progressParam.setMessage(message);
+    if (client != null) {
+      client.onBuildTaskProgress(progressParam);
     }
+  }
 
-    @Override
-    public void taskFinished(String message, StatusCode statusCode) {
-        TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
-        endParam.setMessage(message);
-        if (client != null) {
-            client.onBuildTaskFinish(endParam);
-        }
-        client = null;
+  @Override
+  public void taskFinished(String message, StatusCode statusCode) {
+    TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
+    endParam.setMessage(message);
+    if (client != null) {
+      client.onBuildTaskFinish(endParam);
     }
+    client = null;
+  }
 }

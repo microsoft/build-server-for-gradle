@@ -5,89 +5,104 @@ import java.io.Serializable;
 
 import com.microsoft.java.bs.contrib.gradle.model.JdkPlatform;
 
+/**
+ * Default implementation of {@link JdkPlatform}.
+ */
 public class DefaultJdkPlatform implements JdkPlatform, Serializable {
-    private static final long serialVersionUID = 1L;
-    
-    private File javaHome;
+  private static final long serialVersionUID = 1L;
 
-    private String javaVersion;
+  private File javaHome;
 
-    private String sourceLanguageLevel;
+  private String javaVersion;
 
-    private String targetBytecodeVersion;
+  private String sourceLanguageLevel;
 
-    public File getJavaHome() {
-        return javaHome;
+  private String targetBytecodeVersion;
+
+  public File getJavaHome() {
+    return javaHome;
+  }
+
+  public void setJavaHome(File javaHome) {
+    this.javaHome = javaHome;
+  }
+
+  public String getJavaVersion() {
+    return javaVersion;
+  }
+
+  public void setJavaVersion(String javaVersion) {
+    this.javaVersion = javaVersion;
+  }
+
+  public String getSourceLanguageLevel() {
+    return sourceLanguageLevel;
+  }
+
+  public void setSourceLanguageLevel(String sourceLanguageLevel) {
+    this.sourceLanguageLevel = sourceLanguageLevel;
+  }
+
+  public String getTargetBytecodeVersion() {
+    return targetBytecodeVersion;
+  }
+
+  public void setTargetBytecodeVersion(String targetBytecodeVersion) {
+    this.targetBytecodeVersion = targetBytecodeVersion;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((javaHome == null) ? 0 : javaHome.hashCode());
+    result = prime * result + ((javaVersion == null) ? 0 : javaVersion.hashCode());
+    result = prime * result + ((sourceLanguageLevel == null) ? 0 : sourceLanguageLevel.hashCode());
+    result = prime * result + ((targetBytecodeVersion == null)
+        ? 0 : targetBytecodeVersion.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
     }
-
-    public void setJavaHome(File javaHome) {
-        this.javaHome = javaHome;
+    if (obj == null) {
+      return false;
     }
-
-    public String getJavaVersion() {
-        return javaVersion;
+    if (getClass() != obj.getClass()) {
+      return false;
     }
-
-    public void setJavaVersion(String javaVersion) {
-        this.javaVersion = javaVersion;
+    DefaultJdkPlatform other = (DefaultJdkPlatform) obj;
+    if (javaHome == null) {
+      if (other.javaHome != null) {
+        return false;
+      }
+    } else if (!javaHome.equals(other.javaHome)) {
+      return false;
     }
-
-    public String getSourceLanguageLevel() {
-        return sourceLanguageLevel;
+    if (javaVersion == null) {
+      if (other.javaVersion != null) {
+        return false;
+      }
+    } else if (!javaVersion.equals(other.javaVersion)) {
+      return false;
     }
-
-    public void setSourceLanguageLevel(String sourceLanguageLevel) {
-        this.sourceLanguageLevel = sourceLanguageLevel;
+    if (sourceLanguageLevel == null) {
+      if (other.sourceLanguageLevel != null) {
+        return false;
+      }
+    } else if (!sourceLanguageLevel.equals(other.sourceLanguageLevel)) {
+      return false;
     }
-
-    public String getTargetBytecodeVersion() {
-        return targetBytecodeVersion;
+    if (targetBytecodeVersion == null) {
+      if (other.targetBytecodeVersion != null) {
+        return false;
+      }
+    } else if (!targetBytecodeVersion.equals(other.targetBytecodeVersion)) {
+      return false;
     }
-
-    public void setTargetBytecodeVersion(String targetBytecodeVersion) {
-        this.targetBytecodeVersion = targetBytecodeVersion;
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((javaHome == null) ? 0 : javaHome.hashCode());
-        result = prime * result + ((javaVersion == null) ? 0 : javaVersion.hashCode());
-        result = prime * result + ((sourceLanguageLevel == null) ? 0 : sourceLanguageLevel.hashCode());
-        result = prime * result + ((targetBytecodeVersion == null) ? 0 : targetBytecodeVersion.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        DefaultJdkPlatform other = (DefaultJdkPlatform) obj;
-        if (javaHome == null) {
-            if (other.javaHome != null)
-                return false;
-        } else if (!javaHome.equals(other.javaHome))
-            return false;
-        if (javaVersion == null) {
-            if (other.javaVersion != null)
-                return false;
-        } else if (!javaVersion.equals(other.javaVersion))
-            return false;
-        if (sourceLanguageLevel == null) {
-            if (other.sourceLanguageLevel != null)
-                return false;
-        } else if (!sourceLanguageLevel.equals(other.sourceLanguageLevel))
-            return false;
-        if (targetBytecodeVersion == null) {
-            if (other.targetBytecodeVersion != null)
-                return false;
-        } else if (!targetBytecodeVersion.equals(other.targetBytecodeVersion))
-            return false;
-        return true;
-    }
+    return true;
+  }
 }

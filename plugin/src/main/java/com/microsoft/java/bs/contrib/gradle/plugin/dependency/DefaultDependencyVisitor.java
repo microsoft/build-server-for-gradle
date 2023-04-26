@@ -26,100 +26,111 @@ import com.microsoft.java.bs.contrib.gradle.plugin.model.DefaultModuleArtifact;
 import com.microsoft.java.bs.contrib.gradle.plugin.model.DefaultModuleDependency;
 import com.microsoft.java.bs.contrib.gradle.plugin.model.DefaultProjectDependency;
 
+/**
+ * Default implementation of {@link DependencyVisitor}.
+ */
 public class DefaultDependencyVisitor implements DependencyVisitor {
+  
+  private static final String UNKNOWN = "unknown";
 
-    private static final String UNKNOWN = "unknown";
+  private Project project;
+  private Set<ModuleDependency> moduleDependencies;
+  private Set<ProjectDependency> projectDependencies;
 
-    private Project project;
-    private Set<ModuleDependency> moduleDependencies;
-    private Set<ProjectDependency> projectDependencies;
+  /**
+   * Creates a new instance of {@link DefaultDependencyVisitor}.
+   *
+   * @param project Gradle project.
+   */
+  public DefaultDependencyVisitor(Project project) {
+    this.project = project;
+    moduleDependencies = new HashSet<>();
+    projectDependencies = new HashSet<>();
+  }
 
-    public DefaultDependencyVisitor(Project project) {
-        this.project = project;
-        moduleDependencies = new HashSet<>();
-        projectDependencies = new HashSet<>();
+  @Override
+  public void visit(ModuleComponentArtifactIdentifier artifactIdentifier,
+      ResolvedArtifactResult artifactResult) {
+    ArtifactResolutionResult resolutionResult = project.getDependencies()
+        .createArtifactResolutionQuery()
+        .forComponents(artifactIdentifier.getComponentIdentifier())
+        .withArtifacts(
+          JvmLibrary.class,
+          JavadocArtifact.class,
+          SourcesArtifact.class
+        )
+        .execute();
+
+    List<ModuleArtifact> artifacts = new LinkedList<>();
+    if (artifactResult.getFile() != null) {
+      artifacts.add(new DefaultModuleArtifact(artifactResult.getFile().toURI(), null));
     }
 
-    @Override
-    public void visit(ModuleComponentArtifactIdentifier artifactIdentifier, ResolvedArtifactResult artifactResult) {
-        ArtifactResolutionResult resolutionResult = project.getDependencies()
-            .createArtifactResolutionQuery()
-            .forComponents(artifactIdentifier.getComponentIdentifier())
-            .withArtifacts(
-                JvmLibrary.class,
-                JavadocArtifact.class,
-                SourcesArtifact.class
-            )
-            .execute();
+    Set<ComponentArtifactsResult> resolvedComponents = resolutionResult.getResolvedComponents();
+    File sourceJar = getArtifact(resolvedComponents, SourcesArtifact.class);
+    if (sourceJar != null) {
+      artifacts.add(new DefaultModuleArtifact(sourceJar.toURI(), "sources"));
+    }
 
-        List<ModuleArtifact> artifacts = new LinkedList<>();
-        if (artifactResult.getFile() != null) {
-            artifacts.add(new DefaultModuleArtifact(artifactResult.getFile().toURI(), null));
+    File javaDocJar = getArtifact(resolvedComponents, JavadocArtifact.class);
+    if (javaDocJar != null) {
+      artifacts.add(new DefaultModuleArtifact(javaDocJar.toURI(), "javadoc"));
+    }
+
+    moduleDependencies.add(new DefaultModuleDependency(
+        artifactIdentifier.getComponentIdentifier().getGroup(),
+        artifactIdentifier.getComponentIdentifier().getModule(),
+        artifactIdentifier.getComponentIdentifier().getVersion(),
+        artifacts
+    ));
+  }
+
+  @Override
+  public void visit(ProjectComponentIdentifier projectIdentifier) {
+    if (!Objects.equals(projectIdentifier.getProjectPath(), project.getPath())) {
+      projectDependencies.add(new DefaultProjectDependency(
+          projectIdentifier.getProjectName()
+      ));
+    }
+  }
+
+  @Override
+  public void visit(OpaqueComponentArtifactIdentifier artifactIdentifier,
+      ResolvedArtifactResult artifactResult) {
+    List<ModuleArtifact> artifacts = new LinkedList<>();
+    if (artifactResult.getFile() != null) {
+      artifacts.add(new DefaultModuleArtifact(artifactResult.getFile().toURI(), null));
+    }
+
+    moduleDependencies.add(new DefaultModuleDependency(
+        UNKNOWN,
+        UNKNOWN,
+        UNKNOWN,
+        artifacts
+    ));
+  }
+
+  private File getArtifact(Set<ComponentArtifactsResult> resolvedComponents,
+      Class<? extends org.gradle.api.component.Artifact> artifactClass) {
+    for (ComponentArtifactsResult component : resolvedComponents) {
+      Set<ArtifactResult> artifacts = component.getArtifacts(artifactClass);
+      for (ArtifactResult artifact : artifacts) {
+        if (artifact instanceof ResolvedArtifactResult) {
+          // TODO: only return the first found result, might be wrong!
+          return ((ResolvedArtifactResult) artifact).getFile();
         }
-
-        Set<ComponentArtifactsResult> resolvedComponents = resolutionResult.getResolvedComponents();
-        File sourceJar = getArtifact(resolvedComponents, SourcesArtifact.class);
-        if (sourceJar != null) {
-            artifacts.add(new DefaultModuleArtifact(sourceJar.toURI(), "sources"));
-        }
-
-        File javaDocJar = getArtifact(resolvedComponents, JavadocArtifact.class);
-        if (javaDocJar != null) {
-            artifacts.add(new DefaultModuleArtifact(javaDocJar.toURI(), "javadoc"));
-        }
-
-        moduleDependencies.add(new DefaultModuleDependency(
-            artifactIdentifier.getComponentIdentifier().getGroup(),
-            artifactIdentifier.getComponentIdentifier().getModule(),
-            artifactIdentifier.getComponentIdentifier().getVersion(),
-            artifacts
-        ));
+      }
     }
+    return null;
+  }
 
-    @Override
-    public void visit(ProjectComponentIdentifier projectIdentifier) {
-        if (!Objects.equals(projectIdentifier.getProjectPath(), project.getPath())) {
-            projectDependencies.add(new DefaultProjectDependency(
-                projectIdentifier.getProjectName()
-            ));
-        }
-    }
+  @Override
+  public Set<ModuleDependency> getModuleDependencies() {
+    return moduleDependencies;
+  }
 
-    @Override
-    public void visit(OpaqueComponentArtifactIdentifier artifactIdentifier, ResolvedArtifactResult artifactResult) {
-        List<ModuleArtifact> artifacts = new LinkedList<>();
-        if (artifactResult.getFile() != null) {
-            artifacts.add(new DefaultModuleArtifact(artifactResult.getFile().toURI(), null));
-        }
-
-        moduleDependencies.add(new DefaultModuleDependency(
-            UNKNOWN,
-            UNKNOWN,
-            UNKNOWN,
-            artifacts
-        ));
-    }
-
-    private File getArtifact(Set<ComponentArtifactsResult> resolvedComponents, Class<? extends org.gradle.api.component.Artifact> artifactClass) {
-        for (ComponentArtifactsResult component : resolvedComponents) {
-            Set<ArtifactResult> artifacts = component.getArtifacts(artifactClass);
-            for (ArtifactResult artifact : artifacts) {
-                if (artifact instanceof ResolvedArtifactResult) {
-                    // TODO: only return the first found result, might be wrong!
-                    return ((ResolvedArtifactResult) artifact).getFile();
-                }
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public Set<ModuleDependency> getModuleDependencies() {
-        return moduleDependencies;
-    }
-
-    @Override
-    public Set<ProjectDependency> getProjectDependencies() {
-        return projectDependencies;
-    }
+  @Override
+  public Set<ProjectDependency> getProjectDependencies() {
+    return projectDependencies;
+  }
 }

@@ -16,44 +16,47 @@ import com.microsoft.java.bs.core.JavaBspLauncher;
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.StatusCode;
 
+/**
+ * Tests for {@link DefaultProgressReporter}.
+ */
 @ExtendWith(MockitoExtension.class)
 public class DefaultProgressReporterTest {
 
-    @Mock
-    private BuildClient client;
+  @Mock
+  private BuildClient client;
 
-    @BeforeEach
-    void setUp() {
-        JavaBspLauncher.client = client;
-    }
+  @BeforeEach
+  void setUp() {
+    JavaBspLauncher.client = client;
+  }
 
-    @Test
-    void testTaskStarted() {
-        doNothing().when(client).onBuildTaskStart(any());
+  @Test
+  void testTaskStarted() {
+    doNothing().when(client).onBuildTaskStart(any());
 
-        DefaultProgressReporter reporter = new DefaultProgressReporter();
-        reporter.taskStarted("");
+    DefaultProgressReporter reporter = new DefaultProgressReporter();
+    reporter.taskStarted("");
 
-        verify(client, times(1)).onBuildTaskStart(any());
-    }
+    verify(client, times(1)).onBuildTaskStart(any());
+  }
 
-    @Test
-    void testTaskInProgress() {
-        doNothing().when(client).onBuildTaskProgress(any());
+  @Test
+  void testTaskInProgress() {
+    doNothing().when(client).onBuildTaskProgress(any());
 
-        DefaultProgressReporter reporter = new DefaultProgressReporter();
-        reporter.taskInProgress("");
+    DefaultProgressReporter reporter = new DefaultProgressReporter();
+    reporter.taskInProgress("");
 
-        verify(client, times(1)).onBuildTaskProgress(any());
-    }
+    verify(client, times(1)).onBuildTaskProgress(any());
+  }
 
-    @Test
-    void testTaskFinished() {
-        doNothing().when(client).onBuildTaskFinish(any());
+  @Test
+  void testTaskFinished() {
+    doNothing().when(client).onBuildTaskFinish(any());
 
-        DefaultProgressReporter reporter = new DefaultProgressReporter();
-        reporter.taskFinished("", StatusCode.OK);
+    DefaultProgressReporter reporter = new DefaultProgressReporter();
+    reporter.taskFinished("", StatusCode.OK);
 
-        verify(client, times(1)).onBuildTaskFinish(any());
-    }
+    verify(client, times(1)).onBuildTaskFinish(any());
+  }
 }

@@ -20,45 +20,50 @@ import ch.epfl.scala.bsp4j.TaskStartParams;
  */
 public class CompileProgressReporter implements ProgressReporter {
 
-    private BuildTargetIdentifier btId;
-    private final TaskId taskId;
-    private BuildClient client;
+  private BuildTargetIdentifier btId;
+  private final TaskId taskId;
+  private BuildClient client;
 
-    public CompileProgressReporter(BuildTargetIdentifier btId) {
-        this.btId = btId;
-        this.taskId = new TaskId(UUID.randomUUID().toString());
-        client = JavaBspLauncher.client;
-    }
+  /**
+   * Instantiates a {@link CompileProgressReporter}.
+   *
+   * @param btId Build target identifier
+   */
+  public CompileProgressReporter(BuildTargetIdentifier btId) {
+    this.btId = btId;
+    this.taskId = new TaskId(UUID.randomUUID().toString());
+    client = JavaBspLauncher.client;
+  }
 
-    @Override
-    public void taskStarted(String message) {
-        TaskStartParams startParam = new TaskStartParams(taskId);
-        startParam.setMessage(message);
-        startParam.setDataKind(TaskDataKind.COMPILE_TASK);
-        startParam.setData(new CompileTask(this.btId));
-        if (client != null) {
-            client.onBuildTaskStart(startParam);
-        }
+  @Override
+  public void taskStarted(String message) {
+    TaskStartParams startParam = new TaskStartParams(taskId);
+    startParam.setMessage(message);
+    startParam.setDataKind(TaskDataKind.COMPILE_TASK);
+    startParam.setData(new CompileTask(this.btId));
+    if (client != null) {
+      client.onBuildTaskStart(startParam);
     }
+  }
 
-    @Override
-    public void taskInProgress(String message) {
-        TaskProgressParams progressParam = new TaskProgressParams(taskId);
-        progressParam.setMessage(message);
-        if (client != null) {
-            client.onBuildTaskProgress(progressParam);
-        }
+  @Override
+  public void taskInProgress(String message) {
+    TaskProgressParams progressParam = new TaskProgressParams(taskId);
+    progressParam.setMessage(message);
+    if (client != null) {
+      client.onBuildTaskProgress(progressParam);
     }
+  }
 
-    @Override
-    public void taskFinished(String message, StatusCode statusCode) {
-        TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
-        endParam.setMessage(message);
-        endParam.setDataKind(TaskDataKind.COMPILE_REPORT);
-        endParam.setData(new CompileReport(this.btId, 0, 0)); // TODO: parse the errors and warnings
-        if (client != null) {
-            client.onBuildTaskFinish(endParam);
-        }
-        client = null;
+  @Override
+  public void taskFinished(String message, StatusCode statusCode) {
+    TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
+    endParam.setMessage(message);
+    endParam.setDataKind(TaskDataKind.COMPILE_REPORT);
+    endParam.setData(new CompileReport(this.btId, 0, 0)); // TODO: parse the errors and warnings
+    if (client != null) {
+      client.onBuildTaskFinish(endParam);
     }
+    client = null;
+  }
 }

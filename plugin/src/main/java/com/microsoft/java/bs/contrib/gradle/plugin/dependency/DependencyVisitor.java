@@ -10,15 +10,20 @@ import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifi
 import com.microsoft.java.bs.contrib.gradle.model.ModuleDependency;
 import com.microsoft.java.bs.contrib.gradle.model.ProjectDependency;
 
+/**
+ * Dependency visitor.
+ */
 public interface DependencyVisitor {
 
-    void visit(ModuleComponentArtifactIdentifier artifactIdentifier, ResolvedArtifactResult artifactResult);
+  void visit(ModuleComponentArtifactIdentifier artifactIdentifier,
+        ResolvedArtifactResult artifactResult);
 
-    void visit(ProjectComponentIdentifier projectIdentifier);
+  void visit(ProjectComponentIdentifier projectIdentifier);
 
-    void visit(OpaqueComponentArtifactIdentifier artifactIdentifier, ResolvedArtifactResult artifactResult);
+  void visit(OpaqueComponentArtifactIdentifier artifactIdentifier,
+        ResolvedArtifactResult artifactResult);
 
-    Set<ModuleDependency> getModuleDependencies();
+  Set<ModuleDependency> getModuleDependencies();
 
-    Set<ProjectDependency> getProjectDependencies();
+  Set<ProjectDependency> getProjectDependencies();
 }
