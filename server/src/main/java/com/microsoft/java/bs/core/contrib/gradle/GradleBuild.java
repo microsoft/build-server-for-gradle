@@ -28,6 +28,7 @@ import com.google.inject.Inject;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
 import com.microsoft.java.bs.core.JavaBspLauncher;
 import com.microsoft.java.bs.core.contrib.BuildSupport;
+import com.microsoft.java.bs.core.contrib.DefaultProgressReporter;
 import com.microsoft.java.bs.core.contrib.javac.JavacOutputParser;
 import com.microsoft.java.bs.core.log.InjectLogger;
 import com.microsoft.java.bs.core.managers.BuildTargetsManager;
@@ -39,6 +40,7 @@ import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.BuildTargetTag;
 import ch.epfl.scala.bsp4j.Diagnostic;
 import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
+import ch.epfl.scala.bsp4j.StatusCode;
 import ch.epfl.scala.bsp4j.TextDocumentIdentifier;
 
 public class GradleBuild implements BuildSupport {
@@ -63,27 +65,27 @@ public class GradleBuild implements BuildSupport {
             return null;
         }
 
-        ProgressListener listener = new ProgressListener() {
-            @Override
-            public void statusChanged(ProgressEvent event) {
-                // TODO: report progress to client
-            }
-        };
-
+        TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
         final ProjectConnection connection = GradleConnector.newConnector()
             .forProjectDirectory(new File(projectUri))
             .connect();
         try (connection) {
+            reporter.taskStarted("Connect to Gradle Daemon");
             ModelBuilder<JavaBuildTargets> customModelBuilder = connection
-                .model(JavaBuildTargets.class).addProgressListener(listener, OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION);
+                .model(JavaBuildTargets.class)
+                .addProgressListener(
+                    reporter,
+                    OperationType.FILE_DOWNLOAD,
+                    OperationType.PROJECT_CONFIGURATION);
             customModelBuilder.withArguments("--init-script", initScript.getAbsolutePath());
             JavaBuildTargets model = customModelBuilder.get();
+            reporter.taskFinished("", StatusCode.OK);
             return model;
         } catch (GradleConnectionException | IllegalStateException e) {
             logger.error(e.getMessage(), e);
+            reporter.taskFinished(e.getMessage(), StatusCode.ERROR);
+            return null;
         }
-
-        return null;
     }
 
     public void build(List<BuildTargetIdentifier> targets) {

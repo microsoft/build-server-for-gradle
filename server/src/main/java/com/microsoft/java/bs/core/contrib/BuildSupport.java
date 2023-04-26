@@ -12,7 +12,15 @@ public interface BuildSupport {
         return true;
     }
 
+    /**
+     * Returns the source set entries for the given project uri.
+     * @param projectUri
+     */
     JavaBuildTargets getSourceSetEntries(URI projectUri);
 
+    /**
+     * Build the given targets.
+     * @param targets
+     */
     void build(List<BuildTargetIdentifier> targets);
 }
