@@ -6,6 +6,7 @@ import java.util.List;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
 
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.StatusCode;
 
 /**
  * Build Support interface.
@@ -26,6 +27,7 @@ public interface BuildSupport {
    * Build the given targets.
    *
    * @param targets the targets to build.
+   * @return the status code of the build.
    */
-  void build(List<BuildTargetIdentifier> targets);
+  StatusCode build(List<BuildTargetIdentifier> targets);
 }

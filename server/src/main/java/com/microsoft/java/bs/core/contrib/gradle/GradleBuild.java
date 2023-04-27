@@ -11,8 +11,11 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.GradleConnectionException;
@@ -20,16 +23,13 @@ import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.events.OperationType;
-import org.gradle.tooling.events.ProgressEvent;
-import org.gradle.tooling.events.ProgressListener;
 import org.slf4j.Logger;
 
 import com.google.inject.Inject;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
-import com.microsoft.java.bs.core.JavaBspLauncher;
 import com.microsoft.java.bs.core.contrib.BuildSupport;
+import com.microsoft.java.bs.core.contrib.CompileProgressReporter;
 import com.microsoft.java.bs.core.contrib.DefaultProgressReporter;
-import com.microsoft.java.bs.core.contrib.javac.JavacOutputParser;
 import com.microsoft.java.bs.core.log.InjectLogger;
 import com.microsoft.java.bs.core.managers.BuildTargetsManager;
 import com.microsoft.java.bs.core.model.BuildTargetComponents;
@@ -37,11 +37,7 @@ import com.microsoft.java.bs.core.utils.UriUtils;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
-import ch.epfl.scala.bsp4j.BuildTargetTag;
-import ch.epfl.scala.bsp4j.Diagnostic;
-import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
 import ch.epfl.scala.bsp4j.StatusCode;
-import ch.epfl.scala.bsp4j.TextDocumentIdentifier;
 
 /**
  * Build support for Gradle projects.
@@ -98,62 +94,95 @@ public class GradleBuild implements BuildSupport {
   /**
    * {@inheritDoc}
    */
-  public void build(List<BuildTargetIdentifier> targets) {
-    ProgressListener listener = new ProgressListener() {
-      @Override
-      public void statusChanged(ProgressEvent event) {
-        // TODO: report progress to client
+  public StatusCode build(List<BuildTargetIdentifier> targets) {
+    Map<URI, Set<BuildTargetIdentifier>> groupedTasks = groupBuildTargets(targets);
+    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTasks.entrySet()) {
+      Set<BuildTargetIdentifier> btIds = entry.getValue();
+      String[] tasks = btIds.stream().map(this::getTaskName).toArray(String[]::new);
+      StatusCode res = runGradleTasks(entry.getKey(), btIds, tasks);
+      if (res == StatusCode.ERROR) {
+        return StatusCode.ERROR;
       }
-    };
-    for (BuildTargetIdentifier target : targets) {
-      runGradleBuildTask(listener, target);
     }
+    return StatusCode.OK;
   }
 
-  private void runGradleBuildTask(ProgressListener listener, BuildTargetIdentifier id) {
-    URI projectUri = getProjectUri(id);
-    if (projectUri == null) {
-      return;
-    }
-
+  private StatusCode runGradleTasks(URI projectUri, Set<BuildTargetIdentifier> btIds,
+      String... tasks) {
+    // simply pick the first build target since all the build targets in the same project
+    // and so far we don't distinguish them.
+    TaskProgressReporter reporter = new TaskProgressReporter(new CompileProgressReporter(
+        btIds.iterator().next()));
+    final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     final ProjectConnection connection = GradleConnector.newConnector()
         .forProjectDirectory(new File(projectUri))
         .connect();
-    try (out; connection) {
+    try (out; errorOut; connection) {
+      reporter.taskStarted("Start to build");
       connection.newBuild()
-        .addProgressListener(listener, OperationType.TASK)
-        .setStandardError(out)
-        .forTasks(getTaskName(isTestTarget(id))).run();
+          .addProgressListener(reporter)
+          .setStandardError(errorOut)
+          .setStandardOutput(out)
+          .forTasks(tasks)
+          .run();
+      reporter.taskFinished(out.toString(), StatusCode.OK);
     } catch (IOException e) {
+      // caused by close the output stream, just simply log the error.
       logger.error(e.getMessage(), e);
     } catch (BuildException e) {
-      // ignore.
+      reporter.taskFinished(errorOut.toString(), StatusCode.ERROR);
+      return StatusCode.ERROR;
     }
+
+    return StatusCode.OK;
   }
 
-  private boolean isTestTarget(BuildTargetIdentifier btId) {
-    BuildTargetComponents components = buildTargetsManager.getComponents(btId);
-    BuildTarget buildTarget = components.getBuildTarget();
-    return buildTarget.getTags().contains(BuildTargetTag.TEST);
-  }
-
-  private String getTaskName(boolean isTest) {
-    return isTest ? "testClasses" : "classes";
+  /**
+   * Group the build targets by project uri.
+   */
+  private Map<URI, Set<BuildTargetIdentifier>> groupBuildTargets(
+      List<BuildTargetIdentifier> targets
+  ) {
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = new HashMap<>();
+    for (BuildTargetIdentifier btId : targets) {
+      URI projectUri = getProjectUri(btId);
+      if (projectUri == null) {
+        continue;
+      }
+      groupedTargets.computeIfAbsent(projectUri, k -> new HashSet<>()).add(btId);
+    }
+    return groupedTargets;
   }
 
   private URI getProjectUri(BuildTargetIdentifier btId) {
-    BuildTargetComponents components = buildTargetsManager.getComponents(btId);
-    BuildTarget buildTarget = components.getBuildTarget();
     try {
-      if (buildTarget.getBaseDirectory() != null) {
-        return new URI(buildTarget.getBaseDirectory());
+      BuildTargetComponents components = buildTargetsManager.getComponents(btId);
+      if (components != null) {
+        BuildTarget buildTarget = components.getBuildTarget();
+        if (buildTarget.getBaseDirectory() != null) {
+          return new URI(buildTarget.getBaseDirectory());
+        }
       }
 
       return UriUtils.uriWithoutQuery(btId.getUri());
     } catch (URISyntaxException e) {
       logger.error(e.getMessage(), e);
       return null;
+    }
+  }
+
+  private String getTaskName(BuildTargetIdentifier btId) {
+    String uri = btId.getUri();
+    String sourceSetName = uri.substring(uri.lastIndexOf("?sourceset=") + "?sourceset=".length());
+    switch (sourceSetName) {
+      case "main":
+        return "classes";
+      case "test":
+        return "testClasses";
+      default:
+        // https://docs.gradle.org/current/userguide/java_plugin.html#java_source_set_tasks
+        return sourceSetName + "Classes";
     }
   }
 
