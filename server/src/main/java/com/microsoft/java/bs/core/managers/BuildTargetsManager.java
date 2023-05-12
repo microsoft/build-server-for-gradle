@@ -74,20 +74,6 @@ public class BuildTargetsManager {
     return cache.get(id);
   }
 
-  /**
-   * Build the given targets.
-   *
-   * @param btIds the build target ids
-   */
-  public void build(List<BuildTargetIdentifier> btIds) {
-    for (BuildSupport buildSupport : buildSupports) {
-      if (!buildSupport.applies()) {
-        continue;
-      }
-      buildSupport.build(btIds);
-    }
-  }
-
   private void parseSourceSetEntries(JavaBuildTargets javaBuildTargets) {
     if (javaBuildTargets == null) {
       ResponseError error = new ResponseError(

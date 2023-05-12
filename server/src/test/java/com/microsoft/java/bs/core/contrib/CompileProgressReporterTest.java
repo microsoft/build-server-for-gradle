@@ -26,7 +26,7 @@ import ch.epfl.scala.bsp4j.TaskStartParams;
  * Tests for {@link CompileProgressReporter}.
  */
 @ExtendWith(MockitoExtension.class)
-public class CompileProgressReporterTest {
+class CompileProgressReporterTest {
 
   @Mock
   private BuildClient client;

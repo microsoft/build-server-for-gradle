@@ -20,12 +20,14 @@ public class CompileService {
    * Compile.
    */
   public CompileResult buildTargetCompile(CompileParams params) {
+    CompileResult result = new CompileResult(StatusCode.OK);
     for (BuildSupport buildSupport : buildSupports) {
       if (!buildSupport.applies()) {
         continue;
       }
-      buildSupport.build(params.getTargets());
+      result.setStatusCode(buildSupport.build(params.getTargets()));
     }
-    return new CompileResult(StatusCode.OK);
+    result.setOriginId(params.getOriginId());
+    return result;
   }
 }

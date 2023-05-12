@@ -20,7 +20,7 @@ import ch.epfl.scala.bsp4j.StatusCode;
  * Tests for {@link DefaultProgressReporter}.
  */
 @ExtendWith(MockitoExtension.class)
-public class DefaultProgressReporterTest {
+class DefaultProgressReporterTest {
 
   @Mock
   private BuildClient client;
