@@ -1,6 +1,5 @@
 plugins {
     id 'application'
-    id 'java-gradle-plugin'
 }
 
 configurations {
@@ -9,6 +8,7 @@ configurations {
 
 dependencies {
     implementation project(':model')
+    implementation 'org.gradle:gradle-tooling-api:8.1.1'
     implementation 'ch.epfl.scala:bsp4j:2.1.0-M4'
     implementation 'com.google.inject:guice:5.1.0'
     implementation 'ch.qos.logback:logback-core:1.4.6'
@@ -43,6 +43,11 @@ test {
       events "passed", "skipped", "failed"
       exceptionFormat "full"
     }
+}
+
+task copyRuntimeLibs(type: Copy) {
+  into "./build/runtime-libs"
+  from configurations.runtimeClasspath
 }
 
 processResources {
