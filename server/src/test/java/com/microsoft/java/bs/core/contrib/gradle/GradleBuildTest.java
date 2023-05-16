@@ -1,6 +1,8 @@
 package com.microsoft.java.bs.core.contrib.gradle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,6 +72,20 @@ class GradleBuildTest {
     } finally {
       replaceContent("return a + b", "return a + b;");
     }
+  }
+
+  @Test
+  void testClean() {
+    Injector injector = Guice.createInjector(new BspModule());
+    GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
+    BuildTargetIdentifier btId = new BuildTargetIdentifier(projectDir.toURI().toString());
+    File outputDir = projectDir.toPath().resolve("build").toFile();
+    outputDir.mkdirs();
+
+    boolean cleanCache = gradleBuild.cleanCache(Arrays.asList(btId));;
+
+    assertTrue(cleanCache);
+    assertFalse(outputDir.exists());
   }
 
   private void replaceContent(String contentToReplace, String replacement) throws IOException {
