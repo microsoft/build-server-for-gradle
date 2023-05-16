@@ -30,4 +30,11 @@ public interface BuildSupport {
    * @return the status code of the build.
    */
   StatusCode build(List<BuildTargetIdentifier> targets);
+
+  /**
+   * Clean the given targets. Corresponds to the 'buildTarget/cleanCache' request.
+   *
+   * @param targets the targets to clean.
+   */
+  boolean cleanCache(List<BuildTargetIdentifier> targets);
 }

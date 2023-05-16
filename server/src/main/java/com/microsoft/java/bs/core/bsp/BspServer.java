@@ -143,7 +143,8 @@ public class BspServer implements BuildServer {
 
   @Override
   public CompletableFuture<CleanCacheResult> buildTargetCleanCache(CleanCacheParams params) {
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetCleanCache'");
+    logger.info(">> buildTarget/cleanCache");
+    return CompletableFuture.completedFuture(compileService.buildTargetCleanCache(params));
   }
 
   @Override
