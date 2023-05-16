@@ -91,8 +91,8 @@ public class GradleBuild implements BuildSupport {
 
   @Override
   public StatusCode build(List<BuildTargetIdentifier> targets) {
-    Map<URI, Set<BuildTargetIdentifier>> groupedTargeted = groupBuildTargets(targets);
-    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargeted.entrySet()) {
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargets(targets);
+    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
       Set<BuildTargetIdentifier> btIds = entry.getValue();
       String[] tasks = btIds.stream().map(this::getTaskName).toArray(String[]::new);
       StatusCode res = runGradleTasks(entry.getKey(), btIds, tasks);
@@ -105,8 +105,8 @@ public class GradleBuild implements BuildSupport {
 
   @Override
   public boolean cleanCache(List<BuildTargetIdentifier> targets) {
-    Map<URI, Set<BuildTargetIdentifier>> groupedTargeted = groupBuildTargets(targets);
-    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargeted.entrySet()) {
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargets(targets);
+    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
       Set<BuildTargetIdentifier> btIds = entry.getValue();
       StatusCode res = runGradleTasks(entry.getKey(), btIds, "clean");
       if (res == StatusCode.ERROR) {
