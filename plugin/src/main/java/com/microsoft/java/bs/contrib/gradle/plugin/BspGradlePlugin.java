@@ -17,6 +17,7 @@ import com.microsoft.java.bs.contrib.gradle.plugin.model.DefaultJavaBuildTarget;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -148,26 +149,20 @@ public class BspGradlePlugin implements Plugin<Project> {
     }
 
     private DependencyCollection getDependencies(Project project, SourceSet sourceSet) {
-      JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
-      if (javaCompile != null) {
-        Set<File> dependencies = javaCompile.getClasspath().getFiles();
-        return getDependencyCollection(project, dependencies);
-      }
-      return null;
+      Set<String> configurationNames = new HashSet<>();
+      configurationNames.add(sourceSet.getCompileClasspathConfigurationName());
+      configurationNames.add(sourceSet.getRuntimeClasspathConfigurationName());
+      return getDependencyCollection(project, configurationNames);
     }
 
-    private DependencyCollection getDependencyCollection(Project project, Set<File> files) {
+    private DependencyCollection getDependencyCollection(Project project,
+        Set<String> configurationNames) {
       List<ResolvedArtifactResult> resolvedResult = project.getConfigurations()
           .stream()
-          .filter(configuration -> configuration.isCanBeResolved())
-          .flatMap(configuration -> {
-            return getConfigurationArtifacts(configuration).stream();
-          })
-          .filter(r -> {
-            return r.getFile() != null && files.contains(r.getFile());
-          })
+          .filter(configuration -> configurationNames.contains(configuration.getName())
+              && configuration.isCanBeResolved())
+          .flatMap(configuration -> getConfigurationArtifacts(configuration).stream())
           .collect(Collectors.toList());
-
       return resolveProjectDependency(resolvedResult, project);
     }
 

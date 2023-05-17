@@ -54,7 +54,7 @@ class GradleBuildTest {
     for (JavaBuildTarget javaBuildTarget : javaBuildTargets) {
       assertEquals(1, javaBuildTarget.getSourceDirs().size());
       if (Objects.equals(javaBuildTarget.getSourceSetName(), "test")) {
-        assertEquals(6, javaBuildTarget.getModuleDependencies().size());
+        assertEquals(8, javaBuildTarget.getModuleDependencies().size());
         assertEquals(0, javaBuildTarget.getProjectDependencies().size());
       }
     }
