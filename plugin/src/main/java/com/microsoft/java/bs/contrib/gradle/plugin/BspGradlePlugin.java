@@ -19,6 +19,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -115,7 +116,8 @@ public class BspGradlePlugin implements Plugin<Project> {
 
         javaPlugin.getSourceSets().forEach(sourceSet -> {
           javaBuildTargets.forEach(target -> {
-            if (target.getSourceSetName().equals(sourceSet.getName())) {
+            if (Objects.equals(target.getSourceSetName(), sourceSet.getName())
+                && Objects.equals(target.getProjectName(), project.getName())) {
               DependencyCollection dependency = getDependencies(project, sourceSet,
                   exclusionFromDependencies);
               ((DefaultJavaBuildTarget) target)
