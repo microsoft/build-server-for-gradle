@@ -75,6 +75,9 @@ public class BspGradlePlugin implements Plugin<Project> {
           continue;
         }
 
+        // this set is used to eliminate the source, resource and output
+        // directories from the module dependencies.
+        Set<File> exclusionFromDependencies = new HashSet<>();
         javaPlugin.getSourceSets().forEach(sourceSet -> {
           DefaultJavaBuildTarget javaBuildTarget = new DefaultJavaBuildTarget();
           javaBuildTarget.setProjectName(project.getName());
@@ -82,29 +85,45 @@ public class BspGradlePlugin implements Plugin<Project> {
 
           javaBuildTarget.setSourceSetName(sourceSet.getName());
 
-          javaBuildTarget.setSourceDirs(sourceSet.getJava().getSrcDirs());
+          Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
+          javaBuildTarget.setSourceDirs(srcDirs);
+          exclusionFromDependencies.addAll(srcDirs);
           Directory sourceOutputDir = sourceSet.getJava().getClassesDirectory().getOrNull();
           if (sourceOutputDir != null) {
             javaBuildTarget.setSourceOutputDir(sourceOutputDir.getAsFile());
+            exclusionFromDependencies.add(sourceOutputDir.getAsFile());
           }
 
-          javaBuildTarget.setResourceDirs(sourceSet.getResources().getSrcDirs());
+          Set<File> reDirs = sourceSet.getResources().getSrcDirs();
+          javaBuildTarget.setResourceDirs(reDirs);
+          exclusionFromDependencies.addAll(reDirs);
           File resourceOutputDir = sourceSet.getOutput().getResourcesDir();
           if (resourceOutputDir != null) {
             javaBuildTarget.setResourceOutputDirs(resourceOutputDir);
+            exclusionFromDependencies.add(resourceOutputDir);
           }
 
           File apGeneratedDir = getApGeneratedDir(project, sourceSet);
           javaBuildTarget.setApGeneratedDir(apGeneratedDir);
-
-          DependencyCollection dependency = getDependencies(project, sourceSet);
-          javaBuildTarget.setModuleDependencies(dependency.getModuleDependencies());
-          javaBuildTarget.setProjectDependencies(dependency.getProjectDependencies());
+          exclusionFromDependencies.add(apGeneratedDir);
 
           JdkPlatform jdkPlatform = getJdkPlatform(project, sourceSet);
           javaBuildTarget.setJdkPlatform(jdkPlatform);
 
           javaBuildTargets.add(javaBuildTarget);
+        });
+
+        javaPlugin.getSourceSets().forEach(sourceSet -> {
+          javaBuildTargets.forEach(target -> {
+            if (target.getSourceSetName().equals(sourceSet.getName())) {
+              DependencyCollection dependency = getDependencies(project, sourceSet,
+                  exclusionFromDependencies);
+              ((DefaultJavaBuildTarget) target)
+                  .setModuleDependencies(dependency.getModuleDependencies());
+              ((DefaultJavaBuildTarget) target)
+                  .setProjectDependencies(dependency.getProjectDependencies());
+            }
+          });
         });
       }
       DefaultJavaBuildTargets result = new DefaultJavaBuildTargets();
@@ -148,20 +167,22 @@ public class BspGradlePlugin implements Plugin<Project> {
       return (JavaCompile) project.getTasks().getByName(taskName);
     }
 
-    private DependencyCollection getDependencies(Project project, SourceSet sourceSet) {
+    private DependencyCollection getDependencies(Project project, SourceSet sourceSet,
+        Set<File> exclusionFromDependencies) {
       Set<String> configurationNames = new HashSet<>();
       configurationNames.add(sourceSet.getCompileClasspathConfigurationName());
       configurationNames.add(sourceSet.getRuntimeClasspathConfigurationName());
-      return getDependencyCollection(project, configurationNames);
+      return getDependencyCollection(project, configurationNames, exclusionFromDependencies);
     }
 
     private DependencyCollection getDependencyCollection(Project project,
-        Set<String> configurationNames) {
+        Set<String> configurationNames, Set<File> exclusionFromDependencies) {
       List<ResolvedArtifactResult> resolvedResult = project.getConfigurations()
           .stream()
           .filter(configuration -> configurationNames.contains(configuration.getName())
               && configuration.isCanBeResolved())
           .flatMap(configuration -> getConfigurationArtifacts(configuration).stream())
+          .filter(artifact -> !exclusionFromDependencies.contains(artifact.getFile()))
           .collect(Collectors.toList());
       return resolveProjectDependency(resolvedResult, project);
     }
