@@ -1,0 +1,8 @@
+plugins {
+	id 'java'
+	id 'java-gradle-plugin'
+}
+
+repositories {
+	mavenCentral()
+}
