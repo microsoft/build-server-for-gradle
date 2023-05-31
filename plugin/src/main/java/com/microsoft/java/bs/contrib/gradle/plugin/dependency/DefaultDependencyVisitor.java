@@ -14,6 +14,7 @@ import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
+import org.gradle.internal.component.local.model.ComponentFileArtifactIdentifier;
 import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifier;
 import org.gradle.jvm.JvmLibrary;
 import org.gradle.language.base.artifact.SourcesArtifact;
@@ -95,6 +96,22 @@ public class DefaultDependencyVisitor implements DependencyVisitor {
   }
 
   @Override
+  public void visit(ComponentFileArtifactIdentifier artifactIdentifier,
+      ResolvedArtifactResult artifactResult) {
+    List<ModuleArtifact> artifacts = new LinkedList<>();
+    if (artifactResult.getFile() != null) {
+      artifacts.add(new DefaultModuleArtifact(artifactResult.getFile().toURI(), null));
+    }
+
+    moduleDependencies.add(new DefaultModuleDependency(
+        UNKNOWN,
+        artifactIdentifier.getCapitalizedDisplayName(),
+        UNKNOWN,
+        artifacts
+    ));
+  }
+
+  @Override
   public void visit(OpaqueComponentArtifactIdentifier artifactIdentifier,
       ResolvedArtifactResult artifactResult) {
     List<ModuleArtifact> artifacts = new LinkedList<>();
@@ -104,7 +121,7 @@ public class DefaultDependencyVisitor implements DependencyVisitor {
 
     moduleDependencies.add(new DefaultModuleDependency(
         UNKNOWN,
-        UNKNOWN,
+        artifactIdentifier.getCapitalizedDisplayName(),
         UNKNOWN,
         artifacts
     ));
