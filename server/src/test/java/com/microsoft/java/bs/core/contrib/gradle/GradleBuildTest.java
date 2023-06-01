@@ -31,20 +31,20 @@ import ch.epfl.scala.bsp4j.StatusCode;
  */
 class GradleBuildTest {
 
-  private static File projectDir;
+  private static Path projectPath;
 
   @BeforeAll
   static void beforeClass() {
-    projectDir = Paths.get(
+    projectPath = Paths.get(
         System.getProperty("user.dir"),
         "..",
-        "testProjects",
-        "junit5-jupiter-starter-gradle"
-    ).toFile();
+        "testProjects"
+    );
   }
 
   @Test
   void testGetSourceSetEntries() throws Exception {
+    File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
     Injector injector = Guice.createInjector(new BspModule());
     GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
     JavaBuildTargets sourceSetEntries = gradleBuild.getSourceSetEntries(projectDir.toURI());
@@ -61,21 +61,43 @@ class GradleBuildTest {
   }
 
   @Test
+  void testResolveToolingApiDependency() {
+    File projectDir = projectPath.resolve("gradle-test-plugin").toFile();
+    Injector injector = Guice.createInjector(new BspModule());
+    GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
+    JavaBuildTargets sourceSetEntries = gradleBuild.getSourceSetEntries(projectDir.toURI());
+    List<JavaBuildTarget> javaBuildTargets = sourceSetEntries.getJavaBuildTargets();
+
+    for (JavaBuildTarget javaBuildTarget : javaBuildTargets) {
+      assertEquals(1, javaBuildTarget.getSourceDirs().size());
+      if (Objects.equals(javaBuildTarget.getSourceSetName(), "main")) {
+        assertEquals(1, javaBuildTarget.getSourceDirs().size());
+        assertTrue(javaBuildTarget.getModuleDependencies().size() > 0);
+      }
+    }
+  }
+
+  @Test
   void testCompilationFailure() throws IOException {
+    File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
+    Path filePath = projectDir.toPath()
+        .resolve("src/main/java/com/example/project/Calculator.java");
     try {
-      replaceContent("return a + b;", "return a + b");
+      replaceContent(filePath, "return a + b;", "return a + b.");
 
       Injector injector = Guice.createInjector(new BspModule());
       GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
-      BuildTargetIdentifier btId = new BuildTargetIdentifier(projectDir.toURI().toString());
+      BuildTargetIdentifier btId = new BuildTargetIdentifier(projectDir.toURI().toString()
+          + "?sourceset=main");
       assertEquals(StatusCode.ERROR, gradleBuild.build(Arrays.asList(btId)));
     } finally {
-      replaceContent("return a + b", "return a + b;");
+      replaceContent(filePath, "return a + b.", "return a + b;");
     }
   }
 
   @Test
   void testClean() {
+    File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
     Injector injector = Guice.createInjector(new BspModule());
     GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
     BuildTargetIdentifier btId = new BuildTargetIdentifier(projectDir.toURI().toString());
@@ -88,11 +110,10 @@ class GradleBuildTest {
     assertFalse(outputDir.exists());
   }
 
-  private void replaceContent(String contentToReplace, String replacement) throws IOException {
-    Path path = projectDir.toPath().resolve("src/main/java/com/example/project/Calculator.java");
-      
-    String content = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
-    content = content.replaceAll(contentToReplace, replacement);
-    Files.write(path, content.getBytes(StandardCharsets.UTF_8));
+  private void replaceContent(Path filePath, String contentToReplace,
+      String replacement) throws IOException {
+    String content = new String(Files.readAllBytes(filePath), StandardCharsets.UTF_8);
+    content = content.replace(contentToReplace, replacement);
+    Files.write(filePath, content.getBytes(StandardCharsets.UTF_8));
   }
 }

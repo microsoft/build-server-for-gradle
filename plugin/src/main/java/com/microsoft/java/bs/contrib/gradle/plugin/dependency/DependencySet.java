@@ -6,6 +6,7 @@ import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
+import org.gradle.internal.component.local.model.ComponentFileArtifactIdentifier;
 import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifier;
 
 /**
@@ -30,6 +31,8 @@ public class DependencySet {
         visitor.visit((ProjectComponentIdentifier) id.getComponentIdentifier());
       } else if (id instanceof OpaqueComponentArtifactIdentifier) {
         visitor.visit((OpaqueComponentArtifactIdentifier) id, artifactResult);
+      } else if (id instanceof ComponentFileArtifactIdentifier) {
+        visitor.visit((ComponentFileArtifactIdentifier) id, artifactResult);
       }
     }
   }
