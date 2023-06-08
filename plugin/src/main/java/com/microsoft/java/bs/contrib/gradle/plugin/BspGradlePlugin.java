@@ -31,9 +31,11 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.Directory;
+import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
@@ -70,16 +72,15 @@ public class BspGradlePlugin implements Plugin<Project> {
       Set<Project> allProject = rootProject.getAllprojects();
       List<JavaBuildTarget> javaBuildTargets = new ArrayList<>();
       for (Project project : allProject) {
-        JavaPluginExtension javaPlugin = project.getExtensions()
-            .findByType(JavaPluginExtension.class);
-        if (javaPlugin == null) {
+        SourceSetContainer sourceSets = getSourceSetContainer(project);
+        if (sourceSets == null) {
           continue;
         }
 
         // this set is used to eliminate the source, resource and output
         // directories from the module dependencies.
         Set<File> exclusionFromDependencies = new HashSet<>();
-        javaPlugin.getSourceSets().forEach(sourceSet -> {
+        sourceSets.forEach(sourceSet -> {
           DefaultJavaBuildTarget javaBuildTarget = new DefaultJavaBuildTarget();
           javaBuildTarget.setProjectName(project.getName());
           javaBuildTarget.setProjectDir(project.getProjectDir());
@@ -114,7 +115,7 @@ public class BspGradlePlugin implements Plugin<Project> {
           javaBuildTargets.add(javaBuildTarget);
         });
 
-        javaPlugin.getSourceSets().forEach(sourceSet -> {
+        sourceSets.forEach(sourceSet -> {
           javaBuildTargets.forEach(target -> {
             if (Objects.equals(target.getSourceSetName(), sourceSet.getName())
                 && Objects.equals(target.getProjectName(), project.getName())) {
@@ -137,9 +138,14 @@ public class BspGradlePlugin implements Plugin<Project> {
       JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
       if (javaCompile != null) {
         CompileOptions options = javaCompile.getOptions();
-        Directory generatedDir = options.getGeneratedSourceOutputDirectory().getOrNull();
-        if (generatedDir != null) {
-          return generatedDir.getAsFile();
+        try {
+          Directory generatedDir = options.getGeneratedSourceOutputDirectory().getOrNull();
+          if (generatedDir != null) {
+            return generatedDir.getAsFile();
+          }
+        } catch (NoSuchMethodError e) {
+          // to be compatible with Gradle < 6.3
+          return options.getAnnotationProcessorGeneratedSourcesDirectory();
         }
       }
       return null;
@@ -211,6 +217,23 @@ public class BspGradlePlugin implements Plugin<Project> {
         visitor.getProjectDependencies()
       );
     }
-  }
 
+    private SourceSetContainer getSourceSetContainer(Project project) {
+      JavaPluginExtension javaPlugin = project.getExtensions()
+          .findByType(JavaPluginExtension.class);
+      if (javaPlugin != null) {
+        try {
+          return javaPlugin.getSourceSets();
+        } catch (NoSuchMethodError e) {
+          // to be compatible with Gradle < 7.1
+          JavaPluginConvention convention = project.getConvention()
+              .getPlugin(JavaPluginConvention.class);
+          if (convention != null) {
+            return convention.getSourceSets();
+          }
+        }
+      }
+      return null;
+    }
+  }
 }
