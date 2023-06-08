@@ -10,6 +10,7 @@ import com.microsoft.java.bs.core.contrib.BuildSupport;
 import com.microsoft.java.bs.core.contrib.gradle.GradleBuild;
 import com.microsoft.java.bs.core.log.LogbackTypeListener;
 import com.microsoft.java.bs.core.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.managers.PreferencesManager;
 import com.microsoft.java.bs.core.services.BuildTargetsService;
 import com.microsoft.java.bs.core.services.CompileService;
 import com.microsoft.java.bs.core.services.LifecycleService;
@@ -22,6 +23,7 @@ public class BspModule extends AbstractModule {
   @Override
   protected void configure() {
     bind(BuildTargetsManager.class).in(Singleton.class);
+    bind(PreferencesManager.class).in(Singleton.class);
     bind(BspServer.class).in(Singleton.class);
     bind(BuildServerStatus.class).in(Singleton.class);
     bindListener(Matchers.any(), new LogbackTypeListener());
