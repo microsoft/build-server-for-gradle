@@ -27,6 +27,7 @@ public class JavaBspLauncher {
    * Main entry point.
    */
   public static void main(String[] args) {
+    checkRequiredProperties();
     injector = Guice.createInjector(new BspModule());
     Launcher<BuildClient> launcher = createLauncher();
     client = launcher.getRemoteProxy();
@@ -46,5 +47,11 @@ public class JavaBspLauncher {
       .wrapMessages(new ParentProcessWatcher(bspServer))
       .setExceptionHandler(new ExceptionHandler())
       .create();
+  }
+
+  private static void checkRequiredProperties() {
+    if (System.getProperty("buildServerStorage") == null) {
+      throw new IllegalStateException("The property 'buildServerStorage' is not set");
+    }
   }
 }
