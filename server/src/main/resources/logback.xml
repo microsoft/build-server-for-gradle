@@ -1,8 +1,7 @@
 <configuration>
-    <property name="LOG_ROOT" value="${user.home}/.bsp/logs" />
     <property name="LOG_FILE" value="application" />
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_ROOT}/${LOG_FILE}.log</file>
+        <file>${buildServerStorage}/${LOG_FILE}.log</file>
         <append>true</append>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${LOG_ROOT}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
