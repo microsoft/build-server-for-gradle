@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.google.inject.Guice;
@@ -22,6 +23,8 @@ import com.google.inject.Injector;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTarget;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
 import com.microsoft.java.bs.core.BspModule;
+import com.microsoft.java.bs.core.managers.PreferencesManager;
+import com.microsoft.java.bs.core.model.Preferences;
 
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.StatusCode;
@@ -32,6 +35,15 @@ import ch.epfl.scala.bsp4j.StatusCode;
 class GradleBuildTest {
 
   private static Path projectPath;
+
+  private Injector injector;
+
+  @BeforeEach
+  void setUp() {
+    injector = Guice.createInjector(new BspModule());
+    PreferencesManager manager = injector.getInstance(PreferencesManager.class);
+    manager.setPreferences(new Preferences());
+  }
 
   @BeforeAll
   static void beforeClass() {
@@ -45,7 +57,6 @@ class GradleBuildTest {
   @Test
   void testGetSourceSetEntries() throws Exception {
     File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
-    Injector injector = Guice.createInjector(new BspModule());
     GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
     JavaBuildTargets sourceSetEntries = gradleBuild.getSourceSetEntries(projectDir.toURI());
     List<JavaBuildTarget> javaBuildTargets = sourceSetEntries.getJavaBuildTargets();
@@ -63,7 +74,6 @@ class GradleBuildTest {
   @Test
   void testResolveToolingApiDependency() {
     File projectDir = projectPath.resolve("gradle-test-plugin").toFile();
-    Injector injector = Guice.createInjector(new BspModule());
     GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
     JavaBuildTargets sourceSetEntries = gradleBuild.getSourceSetEntries(projectDir.toURI());
     List<JavaBuildTarget> javaBuildTargets = sourceSetEntries.getJavaBuildTargets();
@@ -85,7 +95,6 @@ class GradleBuildTest {
     try {
       replaceContent(filePath, "return a + b;", "return a + b.");
 
-      Injector injector = Guice.createInjector(new BspModule());
       GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
       BuildTargetIdentifier btId = new BuildTargetIdentifier(projectDir.toURI().toString()
           + "?sourceset=main");
@@ -98,7 +107,6 @@ class GradleBuildTest {
   @Test
   void testClean() {
     File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
-    Injector injector = Guice.createInjector(new BspModule());
     GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
     BuildTargetIdentifier btId = new BuildTargetIdentifier(projectDir.toURI().toString());
     File outputDir = projectDir.toPath().resolve("build").toFile();

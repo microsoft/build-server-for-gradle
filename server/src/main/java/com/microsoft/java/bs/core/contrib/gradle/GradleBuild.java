@@ -18,8 +18,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.gradle.tooling.BuildException;
+import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnectionException;
-import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.events.OperationType;
@@ -32,6 +32,7 @@ import com.microsoft.java.bs.core.contrib.CompileProgressReporter;
 import com.microsoft.java.bs.core.contrib.DefaultProgressReporter;
 import com.microsoft.java.bs.core.log.InjectLogger;
 import com.microsoft.java.bs.core.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.managers.PreferencesManager;
 import com.microsoft.java.bs.core.model.BuildTargetComponents;
 import com.microsoft.java.bs.core.utils.UriUtils;
 
@@ -57,6 +58,9 @@ public class GradleBuild implements BuildSupport {
   @Inject
   BuildTargetsManager buildTargetsManager;
 
+  @Inject
+  PreferencesManager preferencesManager;
+
   @Override
   public JavaBuildTargets getSourceSetEntries(URI projectUri) {
     File initScript = getInitScript();
@@ -66,19 +70,23 @@ public class GradleBuild implements BuildSupport {
     }
 
     TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
-    final ProjectConnection connection = GradleConnector.newConnector()
-        .forProjectDirectory(new File(projectUri))
-        .connect();
+    final ProjectConnection connection = GradleBuildUtils.getProjectConnection(
+        new File(projectUri),
+        preferencesManager.getPreferences()
+    );
     try (connection) {
       reporter.taskStarted("Connect to Gradle Daemon");
-      ModelBuilder<JavaBuildTargets> customModelBuilder = connection
-          .model(JavaBuildTargets.class)
-          .addProgressListener(
-            reporter,
-            OperationType.FILE_DOWNLOAD,
-            OperationType.PROJECT_CONFIGURATION
-          );
-      customModelBuilder.withArguments("--init-script", initScript.getAbsolutePath());
+      ModelBuilder<JavaBuildTargets> customModelBuilder = GradleBuildUtils.getModelBuilder(
+          connection,
+          preferencesManager.getPreferences(),
+          JavaBuildTargets.class
+      );
+      customModelBuilder.addProgressListener(
+          reporter,
+          OperationType.FILE_DOWNLOAD,
+          OperationType.PROJECT_CONFIGURATION
+      );
+      customModelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
       JavaBuildTargets model = customModelBuilder.get();
       reporter.taskFinished("", StatusCode.OK);
       return model;
@@ -124,17 +132,21 @@ public class GradleBuild implements BuildSupport {
         btIds.iterator().next()));
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    final ProjectConnection connection = GradleConnector.newConnector()
-        .forProjectDirectory(new File(projectUri))
-        .connect();
+    final ProjectConnection connection = GradleBuildUtils.getProjectConnection(
+        new File(projectUri),
+        preferencesManager.getPreferences()
+    );
     try (out; errorOut; connection) {
       reporter.taskStarted("Start to build");
-      connection.newBuild()
-          .addProgressListener(reporter)
+      BuildLauncher launcher = GradleBuildUtils.getBuildLauncher(
+          connection,
+          preferencesManager.getPreferences()
+      );
+      launcher.addProgressListener(reporter)
           .setStandardError(errorOut)
           .setStandardOutput(out)
-          .forTasks(tasks)
-          .run();
+          .forTasks(tasks);
+      launcher.run();
       reporter.taskFinished(out.toString(), StatusCode.OK);
     } catch (IOException e) {
       // caused by close the output stream, just simply log the error.

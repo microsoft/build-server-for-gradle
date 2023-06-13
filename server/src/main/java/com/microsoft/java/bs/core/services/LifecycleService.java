@@ -14,6 +14,9 @@ import com.microsoft.java.bs.core.bsp.BuildServerStatus;
 import com.microsoft.java.bs.core.bsp.ServerLifetime;
 import com.microsoft.java.bs.core.log.InjectLogger;
 import com.microsoft.java.bs.core.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.managers.PreferencesManager;
+import com.microsoft.java.bs.core.model.Preferences;
+import com.microsoft.java.bs.core.utils.JsonUtils;
 
 import ch.epfl.scala.bsp4j.BuildServerCapabilities;
 import ch.epfl.scala.bsp4j.CompileProvider;
@@ -34,6 +37,9 @@ public class LifecycleService {
   @Inject
   BuildTargetsManager buildTargetsManager;
 
+  @Inject
+  PreferencesManager preferencesManager;
+
   /**
    * Initialize the build server.
    */
@@ -45,7 +51,9 @@ public class LifecycleService {
       logger.error(errorMessage, e);
       throw new ResponseErrorException(new ResponseError(
         ResponseErrorCode.InvalidParams, errorMessage, null));
-    } 
+    }
+    Preferences preferences = JsonUtils.toModel(params.getData(), Preferences.class);
+    preferencesManager.setPreferences(preferences);
     buildTargetsManager.initialize();
     BuildServerCapabilities capabilities = new BuildServerCapabilities();
     capabilities.setCanReload(true);
