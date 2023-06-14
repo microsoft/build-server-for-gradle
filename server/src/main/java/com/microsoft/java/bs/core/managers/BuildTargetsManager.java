@@ -12,10 +12,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
-import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
-import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
-
 import com.google.inject.Inject;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTarget;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
@@ -76,12 +72,7 @@ public class BuildTargetsManager {
 
   private void parseSourceSetEntries(JavaBuildTargets javaBuildTargets) {
     if (javaBuildTargets == null) {
-      ResponseError error = new ResponseError(
-          ResponseErrorCode.InternalError,
-          "Build Target is null when parsing source set entries.",
-          null
-      );
-      throw new ResponseErrorException(error);
+      throw new IllegalStateException("Build Target is null when parsing source set entries.");
     }
 
     Map<String, BuildTargetIdentifier> projectNameToBuildTargetId = new HashMap<>();
@@ -146,12 +137,12 @@ public class BuildTargetsManager {
       Map<String, BuildTargetIdentifier> projectNameToBuildTargetId,
       Map<BuildTargetIdentifier, Set<String>> projectDependencies
   ) {
-    for (BuildTargetIdentifier btId : projectDependencies.keySet()) {
-      Set<String> dependencyNames = projectDependencies.get(btId);
+    for (Map.Entry<BuildTargetIdentifier, Set<String>> entry : projectDependencies.entrySet()) {
+      Set<String> dependencyNames = entry.getValue();
       List<BuildTargetIdentifier> dependencies = dependencyNames.stream()
           .map(projectNameToBuildTargetId::get)
           .collect(Collectors.toList());
-      BuildTargetComponents components = cache.get(btId);
+      BuildTargetComponents components = cache.get(entry.getKey());
       components.getBuildTarget().setDependencies(dependencies);
     }
   }
