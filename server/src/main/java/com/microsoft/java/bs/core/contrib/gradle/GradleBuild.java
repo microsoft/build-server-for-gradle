@@ -65,8 +65,7 @@ public class GradleBuild implements BuildSupport {
   public JavaBuildTargets getSourceSetEntries(URI projectUri) {
     File initScript = getInitScript();
     if (initScript == null) {
-      logger.error("Failed to get init.gradle");
-      return null;
+      throw new IllegalStateException("Failed to get init.gradle");
     }
 
     TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
@@ -91,9 +90,8 @@ public class GradleBuild implements BuildSupport {
       reporter.taskFinished("", StatusCode.OK);
       return model;
     } catch (GradleConnectionException | IllegalStateException e) {
-      logger.error(e.getMessage(), e);
       reporter.taskFinished(e.getMessage(), StatusCode.ERROR);
-      return null;
+      throw new IllegalStateException("Failed to get the source set entries: " + e.getMessage());
     }
   }
 
@@ -260,10 +258,7 @@ public class GradleBuild implements BuildSupport {
     }
 
     byte[] digest = getContentDigest(Files.readAllBytes(file.toPath()));
-    if (Arrays.equals(digest, checksum)) {
-      return false;
-    }
-    return true;
+    return !Arrays.equals(digest, checksum);
   }
 
   private byte[] getContentDigest(byte[] contentBytes) throws NoSuchAlgorithmException {

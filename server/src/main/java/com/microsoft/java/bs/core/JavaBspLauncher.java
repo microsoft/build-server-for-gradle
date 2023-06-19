@@ -1,9 +1,13 @@
 package com.microsoft.java.bs.core;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.eclipse.lsp4j.jsonrpc.Launcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -19,6 +23,10 @@ import ch.epfl.scala.bsp4j.BuildServer;
  */
 public class JavaBspLauncher {
 
+  private static final String PROP_BUILD_SERVER_STORAGE = "buildServerStorage";
+
+  private static final Logger logger = LoggerFactory.getLogger(JavaBspLauncher.class);
+
   private static Injector injector;
 
   public static BuildClient client;
@@ -27,6 +35,7 @@ public class JavaBspLauncher {
    * Main entry point.
    */
   public static void main(String[] args) {
+    logSessionStart();
     checkRequiredProperties();
     injector = Guice.createInjector(new BspModule());
     Launcher<BuildClient> launcher = createLauncher();
@@ -49,8 +58,16 @@ public class JavaBspLauncher {
       .create();
   }
 
+  private static void logSessionStart() {
+    LocalDateTime currentTime = LocalDateTime.now();
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+    String formattedTimestamp = currentTime.format(formatter);
+    logger.info("\n\n!SESSION {} -----------------------------------------------",
+        formattedTimestamp);
+  }
+
   private static void checkRequiredProperties() {
-    if (System.getProperty("buildServerStorage") == null) {
+    if (System.getProperty(PROP_BUILD_SERVER_STORAGE) == null) {
       throw new IllegalStateException("The property 'buildServerStorage' is not set");
     }
   }
