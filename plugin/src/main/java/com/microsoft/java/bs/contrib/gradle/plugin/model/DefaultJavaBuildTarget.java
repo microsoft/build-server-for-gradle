@@ -17,7 +17,11 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
 
   private String projectName;
 
+  private String modulePath;
+
   private File projectDir;
+
+  private File rootDir;
 
   private Set<File> sourceDirs;
 
@@ -45,12 +49,28 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     this.projectName = projectName;
   }
 
+  public String getModulePath() {
+    return modulePath;
+  }
+
+  public void setModulePath(String modulePath) {
+    this.modulePath = modulePath;
+  }
+
   public File getProjectDir() {
     return projectDir;
   }
 
   public void setProjectDir(File projectDir) {
     this.projectDir = projectDir;
+  }
+
+  public File getRootDir() {
+    return rootDir;
+  }
+
+  public void setRootDir(File rootDir) {
+    this.rootDir = rootDir;
   }
 
   public Set<File> getSourceDirs() {

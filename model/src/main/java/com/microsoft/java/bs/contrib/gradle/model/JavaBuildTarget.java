@@ -9,7 +9,11 @@ import java.util.Set;
 public interface JavaBuildTarget {
   public String getProjectName();
 
+  public String getModulePath();
+
   public File getProjectDir();
+
+  public File getRootDir();
 
   public Set<File> getSourceDirs();
 

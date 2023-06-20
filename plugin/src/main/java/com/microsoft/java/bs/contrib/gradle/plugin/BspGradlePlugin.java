@@ -54,7 +54,7 @@ public class BspGradlePlugin implements Plugin<Project> {
 
   @Override
   public void apply(Project project) {
-    registry.register(new BuildTargetsModelBuilder());
+    project.afterEvaluate(p -> registry.register(new BuildTargetsModelBuilder()));
   }
 
   private static class BuildTargetsModelBuilder implements ToolingModelBuilder {
@@ -83,7 +83,9 @@ public class BspGradlePlugin implements Plugin<Project> {
         sourceSets.forEach(sourceSet -> {
           DefaultJavaBuildTarget javaBuildTarget = new DefaultJavaBuildTarget();
           javaBuildTarget.setProjectName(project.getName());
+          javaBuildTarget.setModulePath(project.getPath());
           javaBuildTarget.setProjectDir(project.getProjectDir());
+          javaBuildTarget.setRootDir(project.getRootDir());
 
           javaBuildTarget.setSourceSetName(sourceSet.getName());
 

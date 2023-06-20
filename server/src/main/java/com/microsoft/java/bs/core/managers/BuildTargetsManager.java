@@ -95,7 +95,7 @@ public class BuildTargetsManager {
             false
           )
       );
-      bt.setBaseDirectory(javaBuildTarget.getProjectDir().toURI().toString());
+      bt.setBaseDirectory(javaBuildTarget.getRootDir().toURI().toString());
       JdkPlatform jdkPlatform = javaBuildTarget.getJdkPlatform();
       if (jdkPlatform != null) {
         JvmBuildTargetExt jvmBuildTarget = new JvmBuildTargetExt(
@@ -109,6 +109,7 @@ public class BuildTargetsManager {
       }
       BuildTargetComponents components = new BuildTargetComponents();
       components.setBuildTarget(bt);
+      components.setModulePath(javaBuildTarget.getModulePath());
       components.setSourceDirs(javaBuildTarget.getSourceDirs());
       components.setSourceOutputDir(javaBuildTarget.getSourceOutputDir());
       components.setResourceDirs(javaBuildTarget.getResourceDirs());
