@@ -65,10 +65,6 @@ public class BspGradlePlugin implements Plugin<Project> {
 
     @Override
     public Object buildAll(String modelName, Project rootProject) {
-      final GradleVersion current = GradleVersion.current().getBaseVersion();
-      if (GradleVersion.version("5.2").compareTo(current) > 0) {
-        return null;
-      }
       Set<Project> allProject = rootProject.getAllprojects();
       List<JavaBuildTarget> javaBuildTargets = new ArrayList<>();
       for (Project project : allProject) {
@@ -92,10 +88,10 @@ public class BspGradlePlugin implements Plugin<Project> {
           Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
           javaBuildTarget.setSourceDirs(srcDirs);
           exclusionFromDependencies.addAll(srcDirs);
-          Directory sourceOutputDir = sourceSet.getJava().getClassesDirectory().getOrNull();
-          if (sourceOutputDir != null) {
-            javaBuildTarget.setSourceOutputDir(sourceOutputDir.getAsFile());
-            exclusionFromDependencies.add(sourceOutputDir.getAsFile());
+          File compiledOutputDir = getCompiledOutputDir(sourceSet);
+          if (compiledOutputDir != null) {
+            javaBuildTarget.setSourceOutputDir(compiledOutputDir);
+            exclusionFromDependencies.add(compiledOutputDir);
           }
 
           Set<File> reDirs = sourceSet.getResources().getSrcDirs();
@@ -221,21 +217,34 @@ public class BspGradlePlugin implements Plugin<Project> {
     }
 
     private SourceSetContainer getSourceSetContainer(Project project) {
-      JavaPluginExtension javaPlugin = project.getExtensions()
-          .findByType(JavaPluginExtension.class);
-      if (javaPlugin != null) {
-        try {
+      try {
+        JavaPluginExtension javaPlugin = project.getExtensions()
+            .findByType(JavaPluginExtension.class);
+        if (javaPlugin != null) {
           return javaPlugin.getSourceSets();
-        } catch (NoSuchMethodError e) {
-          // to be compatible with Gradle < 7.1
-          JavaPluginConvention convention = project.getConvention()
-              .getPlugin(JavaPluginConvention.class);
-          if (convention != null) {
-            return convention.getSourceSets();
-          }
+        }
+      } catch (NoClassDefFoundError | NoSuchMethodError e) {
+        // to be compatible with Gradle < 7.1
+        JavaPluginConvention convention = project.getConvention()
+            .getPlugin(JavaPluginConvention.class);
+        if (convention != null) {
+          return convention.getSourceSets();
         }
       }
       return null;
+    }
+
+    private File getCompiledOutputDir(SourceSet sourceSet) {
+      try {
+        Directory sourceOutputDir = sourceSet.getJava().getClassesDirectory().getOrNull();
+        if (sourceOutputDir != null) {
+          return sourceOutputDir.getAsFile();
+        }
+        return null;
+      } catch (NoSuchMethodError e) {
+        // to be compatible with Gradle < 6.1
+        return sourceSet.getOutput().getClassesDirs().getSingleFile();
+      }
     }
   }
 }
