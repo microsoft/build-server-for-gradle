@@ -13,6 +13,8 @@ import ch.epfl.scala.bsp4j.BuildTarget;
 public class BuildTargetComponents {
   private BuildTarget buildTarget;
 
+  private String modulePath;
+
   private Set<File> sourceDirs;
 
   private File sourceOutputDir;
@@ -31,6 +33,14 @@ public class BuildTargetComponents {
 
   public void setBuildTarget(BuildTarget buildTarget) {
     this.buildTarget = buildTarget;
+  }
+
+  public String getModulePath() {
+    return modulePath;
+  }
+
+  public void setModulePath(String modulePath) {
+    this.modulePath = modulePath;
   }
 
   public Set<File> getSourceDirs() {

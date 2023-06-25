@@ -91,7 +91,7 @@ public class GradleBuild implements BuildSupport {
       return model;
     } catch (GradleConnectionException | IllegalStateException e) {
       reporter.taskFinished(e.getMessage(), StatusCode.ERROR);
-      throw new IllegalStateException("Failed to get the source set entries: " + e.getMessage());
+      throw e;
     }
   }
 
@@ -158,7 +158,7 @@ public class GradleBuild implements BuildSupport {
   }
 
   /**
-   * Group the build targets by project uri.
+   * Group the build targets by the project base directory.
    */
   private Map<URI, Set<BuildTargetIdentifier>> groupBuildTargets(
       List<BuildTargetIdentifier> targets
@@ -174,6 +174,10 @@ public class GradleBuild implements BuildSupport {
     return groupedTargets;
   }
 
+  /**
+   * Try to get the project base directory uri. If base directory is not available,
+   * return the uri of the build target.
+   */
   private URI getProjectUri(BuildTargetIdentifier btId) {
     try {
       BuildTargetComponents components = buildTargetsManager.getComponents(btId);
@@ -194,15 +198,22 @@ public class GradleBuild implements BuildSupport {
   private String getTaskName(BuildTargetIdentifier btId) {
     String uri = btId.getUri();
     String sourceSetName = uri.substring(uri.lastIndexOf("?sourceset=") + "?sourceset=".length());
-    switch (sourceSetName) {
-      case "main":
-        return "classes";
-      case "test":
-        return "testClasses";
-      default:
-        // https://docs.gradle.org/current/userguide/java_plugin.html#java_source_set_tasks
-        return sourceSetName + "Classes";
+    String taskName = switch (sourceSetName) {
+      case "main" -> "classes";
+      case "test" -> "testClasses";
+      // https://docs.gradle.org/current/userguide/java_plugin.html#java_source_set_tasks
+      default -> sourceSetName + "Classes";
+    };
+
+    BuildTargetComponents components = buildTargetsManager.getComponents(btId);
+    if (components == null) {
+      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
     }
+    String modulePath = components.getModulePath();
+    if (modulePath == null || modulePath.equals(":")) {
+      return taskName;
+    }
+    return modulePath + ":" + taskName;
   }
 
   /**
@@ -232,9 +243,19 @@ public class GradleBuild implements BuildSupport {
 
     // copy init script to target location
     String pluginJarUnixPath = pluginJarFile.getAbsolutePath().replace("\\", "/");
-    String initScriptContent = "initscript {\n" + "\tdependencies {\n" + "\t\tclasspath files('"
-        + pluginJarUnixPath + "')\n" + "\t}\n" + "}\n" + "\n" + "allprojects {\n"
-        + "\tapply plugin: com.microsoft.java.bs.contrib.gradle.plugin.BspGradlePlugin\n" + "}\n";
+    String initScriptContent = """
+        initscript {
+          dependencies {
+            classpath files('%s')
+          }
+        }
+        allprojects {
+          afterEvaluate {
+            it.getPlugins().apply(com.microsoft.java.bs.contrib.gradle.plugin.BspGradlePlugin)
+          }
+        }
+        """;
+    initScriptContent = String.format(initScriptContent, pluginJarUnixPath);
     try {
       byte[] initScriptBytes = initScriptContent.getBytes();
       byte[] initScriptDigest = getContentDigest(initScriptBytes);

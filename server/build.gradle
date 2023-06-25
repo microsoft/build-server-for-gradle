@@ -25,6 +25,10 @@ dependencies {
     }
 }
 
+java {
+  sourceCompatibility = "17"
+}
+
 jar {
     from {
         configurations.bundled.collect {

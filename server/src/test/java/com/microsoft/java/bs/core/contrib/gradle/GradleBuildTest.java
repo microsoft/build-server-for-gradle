@@ -2,6 +2,7 @@ package com.microsoft.java.bs.core.contrib.gradle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -23,9 +24,13 @@ import com.google.inject.Injector;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTarget;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
 import com.microsoft.java.bs.core.BspModule;
+import com.microsoft.java.bs.core.bsp.BuildServerStatus;
+import com.microsoft.java.bs.core.managers.BuildTargetsManager;
 import com.microsoft.java.bs.core.managers.PreferencesManager;
+import com.microsoft.java.bs.core.model.BuildTargetComponents;
 import com.microsoft.java.bs.core.model.Preferences;
 
+import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.StatusCode;
 
@@ -95,9 +100,13 @@ class GradleBuildTest {
     try {
       replaceContent(filePath, "return a + b;", "return a + b.");
 
+      BuildTargetsManager manager = injector.getInstance(BuildTargetsManager.class);
+      BuildServerStatus buildServerStatus = injector.getInstance(BuildServerStatus.class);
+      buildServerStatus.setRootUri(projectDir.toURI());
+      manager.initialize();
+
+      BuildTargetIdentifier btId = manager.getBuildTargets().iterator().next().getId();
       GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
-      BuildTargetIdentifier btId = new BuildTargetIdentifier(projectDir.toURI().toString()
-          + "?sourceset=main");
       assertEquals(StatusCode.ERROR, gradleBuild.build(Arrays.asList(btId)));
     } finally {
       replaceContent(filePath, "return a + b.", "return a + b;");
@@ -116,6 +125,26 @@ class GradleBuildTest {
 
     assertTrue(cleanCache);
     assertFalse(outputDir.exists());
+  }
+
+  @Test
+  void testMultiSettingsGradleProject() {
+    File projectDir = projectPath.resolve("multiple-settings-gradle").toFile();
+    BuildTargetsManager manager = injector.getInstance(BuildTargetsManager.class);
+    BuildServerStatus buildServerStatus = injector.getInstance(BuildServerStatus.class);
+    buildServerStatus.setRootUri(projectDir.toURI());
+    manager.initialize();
+    BuildTargetIdentifier btId = null;
+    for (BuildTarget buildTarget : manager.getBuildTargets()) {
+      if (buildTarget.getId().getUri().contains("module/submodule/?sourceset=main")) {
+        btId = buildTarget.getId();
+        break;
+      }
+    }
+    
+    assertNotNull(btId);
+    GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
+    assertEquals(StatusCode.OK, gradleBuild.build(Arrays.asList(btId)));
   }
 
   private void replaceContent(Path filePath, String contentToReplace,

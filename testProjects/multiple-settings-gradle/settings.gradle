@@ -1,0 +1,4 @@
+rootProject.name = 'multiple-settings-gradle'
+include 'module'
+include 'module:submodule'
+
