@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.microsoft.java.bs.core.bsp.BspServer;
-import com.microsoft.java.bs.core.handlers.ExceptionHandler;
 import com.microsoft.java.bs.core.managers.ParentProcessWatcher;
 
 import ch.epfl.scala.bsp4j.BuildClient;
@@ -54,7 +53,6 @@ public class JavaBspLauncher {
       .setRemoteInterface(BuildClient.class)
       .setExecutorService(fixedThreadPool)
       .wrapMessages(new ParentProcessWatcher(bspServer))
-      .setExceptionHandler(new ExceptionHandler())
       .create();
   }
 

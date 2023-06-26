@@ -162,12 +162,13 @@ public class BspServer implements BuildServer {
     try {
       return CompletableFuture.completedFuture(supplier.get());
     } catch (Exception e) {
+      logger.error(e.getMessage(), e);
       ResponseErrorException error = null;
       if (e instanceof ResponseErrorException) {
         error = (ResponseErrorException) e;
       } else {
         error = new ResponseErrorException(new ResponseError(ResponseErrorCode.RequestFailed,
-            e.getMessage(), null));
+            e.getMessage(), e));
       }
       return CompletableFuture.failedFuture(error);
     }
