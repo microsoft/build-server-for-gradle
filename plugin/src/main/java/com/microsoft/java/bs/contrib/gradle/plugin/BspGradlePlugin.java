@@ -2,7 +2,6 @@ package com.microsoft.java.bs.contrib.gradle.plugin;
 
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry;
-import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.contrib.gradle.model.JdkPlatform;
 import com.microsoft.java.bs.contrib.gradle.model.JavaBuildTargets;
