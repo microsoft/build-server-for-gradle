@@ -21,7 +21,7 @@ public class CompileService {
   /**
    * Compile.
    */
-  public CompileResult buildTargetCompile(CompileParams params) {
+  public synchronized CompileResult buildTargetCompile(CompileParams params) {
     CompileResult result = new CompileResult(StatusCode.OK);
     for (BuildSupport buildSupport : buildSupports) {
       if (!buildSupport.applies()) {
@@ -36,7 +36,7 @@ public class CompileService {
   /**
    * Clean cache.
    */
-  public CleanCacheResult buildTargetCleanCache(CleanCacheParams params) {
+  public synchronized CleanCacheResult buildTargetCleanCache(CleanCacheParams params) {
     CleanCacheResult result = new CleanCacheResult("", true);
     for (BuildSupport buildSupport : buildSupports) {
       if (!buildSupport.applies()) {

@@ -47,27 +47,31 @@ public class BuildTargetsManager {
   /**
    * Initialize the build target manager.
    */
-  public void initialize() {
+  public synchronized void initialize() {
+    doInitialize();
+  }
+
+  public synchronized void reset() {
+    cache.clear();
+    doInitialize();
+  }
+
+  public synchronized Collection<BuildTarget> getBuildTargets() {
+    return cache.values().stream().map(BuildTargetComponents::getBuildTarget)
+      .collect(Collectors.toList());
+  }
+
+  public synchronized BuildTargetComponents getComponents(BuildTargetIdentifier id) {
+    return cache.get(id);
+  }
+
+  private void doInitialize() {
     for (BuildSupport buildSupport : buildSupports) {
       if (!buildSupport.applies()) {
         continue;
       }
       parseSourceSetEntries(buildSupport.getSourceSetEntries(buildServerStatus.getRootUri()));
     }
-  }
-
-  public void reset() {
-    cache.clear();
-    initialize();
-  }
-
-  public Collection<BuildTarget> getBuildTargets() {
-    return cache.values().stream().map(BuildTargetComponents::getBuildTarget)
-      .collect(Collectors.toList());
-  }
-
-  public BuildTargetComponents getComponents(BuildTargetIdentifier id) {
-    return cache.get(id);
   }
 
   private void parseSourceSetEntries(JavaBuildTargets javaBuildTargets) {
