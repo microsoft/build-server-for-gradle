@@ -82,6 +82,7 @@ public class GradleBuild implements BuildSupport {
       );
       customModelBuilder.addProgressListener(
           reporter,
+          OperationType.TASK,
           OperationType.FILE_DOWNLOAD,
           OperationType.PROJECT_CONFIGURATION
       );
@@ -135,17 +136,21 @@ public class GradleBuild implements BuildSupport {
         preferencesManager.getPreferences()
     );
     try (out; errorOut; connection) {
-      reporter.taskStarted("Start to build");
+      reporter.taskStarted("Start to build: " + String.join(" ", tasks));
       BuildLauncher launcher = GradleBuildUtils.getBuildLauncher(
           connection,
           preferencesManager.getPreferences()
       );
-      launcher.addProgressListener(reporter)
+      launcher.addProgressListener(reporter, OperationType.TASK)
           .setStandardError(errorOut)
           .setStandardOutput(out)
           .forTasks(tasks);
       launcher.run();
-      reporter.taskFinished(out.toString(), StatusCode.OK);
+
+      String summary = out.toString();
+      int index = summary.lastIndexOf("BUILD SUCCESSFUL");
+      summary = index > 0 ? summary.substring(index) : "BUILD SUCCESSFUL";
+      reporter.taskFinished(summary, StatusCode.OK);
     } catch (IOException e) {
       // caused by close the output stream, just simply log the error.
       logger.error(e.getMessage(), e);
