@@ -50,6 +50,7 @@ public class CompileProgressReporter implements ProgressReporter {
   public void taskInProgress(String message) {
     TaskProgressParams progressParam = new TaskProgressParams(taskId);
     progressParam.setMessage(message);
+    progressParam.setDataKind(TaskDataKind.COMPILE_TASK);
     if (client != null) {
       client.onBuildTaskProgress(progressParam);
     }
