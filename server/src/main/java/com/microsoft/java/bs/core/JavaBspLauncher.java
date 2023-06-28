@@ -44,14 +44,13 @@ public class JavaBspLauncher {
 
   private static Launcher<BuildClient> createLauncher() {
     BuildServer bspServer = injector.getInstance(BspServer.class);
-    // TODO: change the thread pool
-    ExecutorService fixedThreadPool = Executors.newFixedThreadPool(1);
+    ExecutorService cachedThreadPool = Executors.newCachedThreadPool();
     return new Launcher.Builder<BuildClient>()
       .setOutput(System.out)
       .setInput(System.in)
       .setLocalService(bspServer)
       .setRemoteInterface(BuildClient.class)
-      .setExecutorService(fixedThreadPool)
+      .setExecutorService(cachedThreadPool)
       .wrapMessages(new ParentProcessWatcher(bspServer))
       .create();
   }
