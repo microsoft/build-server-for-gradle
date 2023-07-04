@@ -15,6 +15,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import org.gradle.tooling.GradleConnector;
+import org.gradle.tooling.ProjectConnection;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,7 +29,6 @@ import com.microsoft.java.bs.core.BspModule;
 import com.microsoft.java.bs.core.bsp.BuildServerStatus;
 import com.microsoft.java.bs.core.managers.BuildTargetsManager;
 import com.microsoft.java.bs.core.managers.PreferencesManager;
-import com.microsoft.java.bs.core.model.BuildTargetComponents;
 import com.microsoft.java.bs.core.model.Preferences;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
@@ -74,6 +75,36 @@ class GradleBuildTest {
         assertEquals(0, javaBuildTarget.getProjectDependencies().size());
       }
     }
+  }
+
+  @Test
+  void testGetSourceSetEntriesAfterFileGenerated() throws Exception {
+    File projectDir = projectPath.resolve("infer-source-roots").toFile();
+    ProjectConnection connect = GradleConnector.newConnector().forProjectDirectory(projectDir)
+        .connect();
+    connect.newBuild().forTasks("clean").run();
+
+    GradleBuild gradleBuild = injector.getInstance(GradleBuild.class);
+    JavaBuildTargets sourceSetEntries = gradleBuild.getSourceSetEntries(projectDir.toURI());
+    List<JavaBuildTarget> javaBuildTargets = sourceSetEntries.getJavaBuildTargets();
+    int sourceDirCount = 0;
+    for (JavaBuildTarget javaBuildTarget : javaBuildTargets) {
+      sourceDirCount += javaBuildTarget.getSourceDirs().size();
+    }
+    assertEquals(2, sourceDirCount);
+
+    // Generate a new file
+    connect = GradleConnector.newConnector().forProjectDirectory(projectDir)
+        .connect();
+    connect.newBuild().forTasks("compileJava").run();
+
+    sourceSetEntries = gradleBuild.getSourceSetEntries(projectDir.toURI());
+    javaBuildTargets = sourceSetEntries.getJavaBuildTargets();
+    sourceDirCount = 0;
+    for (JavaBuildTarget javaBuildTarget : javaBuildTargets) {
+      sourceDirCount += javaBuildTarget.getSourceDirs().size();
+    }
+    assertEquals(4, sourceDirCount);
   }
 
   @Test

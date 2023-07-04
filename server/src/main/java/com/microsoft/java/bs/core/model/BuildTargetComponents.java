@@ -25,6 +25,8 @@ public class BuildTargetComponents {
 
   private File apGeneratedDir;
 
+  private Set<File> generatedSourceDirs;
+
   private Set<ModuleDependency> moduleDependencies;
 
   public BuildTarget getBuildTarget() {
@@ -81,6 +83,14 @@ public class BuildTargetComponents {
 
   public void setApGeneratedDir(File apGeneratedDir) {
     this.apGeneratedDir = apGeneratedDir;
+  }
+
+  public Set<File> getGeneratedSourceDirs() {
+    return generatedSourceDirs;
+  }
+
+  public void setGeneratedSourceDirs(Set<File> generatedSourceDirs) {
+    this.generatedSourceDirs = generatedSourceDirs;
   }
 
   public Set<ModuleDependency> getModuleDependencies() {

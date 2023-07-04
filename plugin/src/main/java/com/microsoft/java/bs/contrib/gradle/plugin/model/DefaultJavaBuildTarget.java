@@ -33,6 +33,8 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
 
   private File apGeneratedDir;
 
+  private Set<File> optionalSourceDirs;
+
   private Set<ModuleDependency> moduleDependencies;
 
   private Set<ProjectDependency> projectDependencies;
@@ -113,6 +115,14 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     this.apGeneratedDir = apGeneratedDir;
   }
 
+  public Set<File> getOptionalSourceDirs() {
+    return optionalSourceDirs;
+  }
+
+  public void setOptionalSourceDirs(Set<File> optionalSourceDirs) {
+    this.optionalSourceDirs = optionalSourceDirs;
+  }
+
   public Set<ModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -150,12 +160,15 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     final int prime = 31;
     int result = 1;
     result = prime * result + ((projectName == null) ? 0 : projectName.hashCode());
+    result = prime * result + ((modulePath == null) ? 0 : modulePath.hashCode());
     result = prime * result + ((projectDir == null) ? 0 : projectDir.hashCode());
+    result = prime * result + ((rootDir == null) ? 0 : rootDir.hashCode());
     result = prime * result + ((sourceDirs == null) ? 0 : sourceDirs.hashCode());
     result = prime * result + ((sourceOutputDir == null) ? 0 : sourceOutputDir.hashCode());
     result = prime * result + ((resourceDirs == null) ? 0 : resourceDirs.hashCode());
     result = prime * result + ((resourceOutputDirs == null) ? 0 : resourceOutputDirs.hashCode());
     result = prime * result + ((apGeneratedDir == null) ? 0 : apGeneratedDir.hashCode());
+    result = prime * result + ((optionalSourceDirs == null) ? 0 : optionalSourceDirs.hashCode());
     result = prime * result + ((moduleDependencies == null) ? 0 : moduleDependencies.hashCode());
     result = prime * result + ((projectDependencies == null) ? 0 : projectDependencies.hashCode());
     result = prime * result + ((jdkPlatform == null) ? 0 : jdkPlatform.hashCode());
@@ -182,11 +195,25 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     } else if (!projectName.equals(other.projectName)) {
       return false;
     }
+    if (modulePath == null) {
+      if (other.modulePath != null) {
+        return false;
+      }
+    } else if (!modulePath.equals(other.modulePath)) {
+      return false;
+    }
     if (projectDir == null) {
       if (other.projectDir != null) {
         return false;
       }
     } else if (!projectDir.equals(other.projectDir)) {
+      return false;
+    }
+    if (rootDir == null) {
+      if (other.rootDir != null) {
+        return false;
+      }
+    } else if (!rootDir.equals(other.rootDir)) {
       return false;
     }
     if (sourceDirs == null) {
@@ -224,6 +251,13 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     } else if (!apGeneratedDir.equals(other.apGeneratedDir)) {
       return false;
     }
+    if (optionalSourceDirs == null) {
+      if (other.optionalSourceDirs != null) {
+        return false;
+      }
+    } else if (!optionalSourceDirs.equals(other.optionalSourceDirs)) {
+      return false;
+    }
     if (moduleDependencies == null) {
       if (other.moduleDependencies != null) {
         return false;
@@ -254,4 +288,5 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     }
     return true;
   }
+
 }

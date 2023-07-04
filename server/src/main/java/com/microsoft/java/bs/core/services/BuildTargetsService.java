@@ -2,7 +2,9 @@ package com.microsoft.java.bs.core.services;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.inject.Inject;
@@ -145,12 +147,16 @@ public class BuildTargetsService {
       for (File sourceDir : components.getSourceDirs()) {
         sources.add(new SourceItem(sourceDir.toURI().toString(), SourceItemKind.DIRECTORY, false));
       }
-      File apGeneratedDir = components.getApGeneratedDir();
-      if (apGeneratedDir != null) {
-        boolean updated = updateGeneratedFlag(sources, apGeneratedDir);
-        if (!updated) {
-          sources.add(new SourceItem(apGeneratedDir.toURI().toString(),
-              SourceItemKind.DIRECTORY, true));
+      Set<File> generatedDirs = new HashSet<>();
+      generatedDirs.addAll(components.getGeneratedSourceDirs());
+      generatedDirs.add(components.getApGeneratedDir());
+      for (File generatedDir : generatedDirs) {
+        if (generatedDir != null) {
+          boolean updated = updateGeneratedFlag(sources, generatedDir);
+          if (!updated) {
+            sources.add(new SourceItem(generatedDir.toURI().toString(),
+                SourceItemKind.DIRECTORY, true));
+          }
         }
       }
       SourcesItem item = new SourcesItem(target, sources);
@@ -159,10 +165,10 @@ public class BuildTargetsService {
     return new SourcesResult(sourceItems);
   }
 
-  private boolean updateGeneratedFlag(List<SourceItem> sources, File apGeneratedDir) {
-    if (apGeneratedDir != null) {
+  private boolean updateGeneratedFlag(List<SourceItem> sources, File generatedDir) {
+    if (generatedDir != null) {
       for (SourceItem item : sources) {
-        if (item.getUri().equals(apGeneratedDir.toURI().toString())) {
+        if (item.getUri().equals(generatedDir.toURI().toString())) {
           item.setGenerated(true);
           return true;
         }

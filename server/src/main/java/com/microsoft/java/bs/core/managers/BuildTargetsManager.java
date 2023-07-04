@@ -119,6 +119,7 @@ public class BuildTargetsManager {
       components.setResourceDirs(javaBuildTarget.getResourceDirs());
       components.setResourceOutputDir(javaBuildTarget.getResourceOutputDirs());
       components.setApGeneratedDir(javaBuildTarget.getApGeneratedDir());
+      components.setGeneratedSourceDirs(javaBuildTarget.getOptionalSourceDirs());
       components.setModuleDependencies(javaBuildTarget.getModuleDependencies());
       cache.put(btId, components);
 

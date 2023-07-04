@@ -14,12 +14,17 @@ import com.microsoft.java.bs.contrib.gradle.plugin.model.DefaultJavaBuildTargets
 import com.microsoft.java.bs.contrib.gradle.plugin.model.DependencyCollection;
 import com.microsoft.java.bs.contrib.gradle.plugin.model.DefaultJavaBuildTarget;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -68,7 +73,7 @@ public class BspGradlePlugin implements Plugin<Project> {
       List<JavaBuildTarget> javaBuildTargets = new ArrayList<>();
       for (Project project : allProject) {
         SourceSetContainer sourceSets = getSourceSetContainer(project);
-        if (sourceSets == null) {
+        if (sourceSets == null || sourceSets.isEmpty()) {
           continue;
         }
 
@@ -106,6 +111,10 @@ public class BspGradlePlugin implements Plugin<Project> {
           javaBuildTarget.setApGeneratedDir(apGeneratedDir);
           exclusionFromDependencies.add(apGeneratedDir);
 
+          Set<File> optionalSrcDirs = getOptionalSourceDirs(project, sourceSet, apGeneratedDir);
+          javaBuildTarget.setOptionalSourceDirs(optionalSrcDirs);
+          exclusionFromDependencies.addAll(optionalSrcDirs);
+
           JdkPlatform jdkPlatform = getJdkPlatform(project, sourceSet);
           javaBuildTarget.setJdkPlatform(jdkPlatform);
 
@@ -129,6 +138,78 @@ public class BspGradlePlugin implements Plugin<Project> {
       DefaultJavaBuildTargets result = new DefaultJavaBuildTargets();
       result.setJavaBuildTargets(javaBuildTargets);
       return result;
+    }
+
+    private Set<File> getOptionalSourceDirs(Project project, SourceSet sourceSet,
+        File apGeneratedDir) {
+      Set<File> optionalSrcDirs = new HashSet<>();
+      Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
+      JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
+      if (javaCompile != null) {
+        Set<File> filesToCompile = javaCompile.getSource().getFiles();
+        for (File file : filesToCompile) {
+          if (canSkipInferSourceRoot(file, srcDirs, optionalSrcDirs, apGeneratedDir)) {
+            continue;
+          }
+
+          // the file is not in the source directories, so it must be a generated file.
+          // we need to find the source directory for the generated file.
+          File srcDir = findSourceDirForGeneratedFile(file);
+          if (srcDir != null) {
+            optionalSrcDirs.add(srcDir);
+          }
+        }
+      }
+      return optionalSrcDirs;
+    }
+
+    private boolean canSkipInferSourceRoot(File sourceFile, Set<File> srcDirs,
+        Set<File> optionalSrcDirs, File apGeneratedDir) {
+      if (!sourceFile.isFile() || !sourceFile.exists() || !sourceFile.getName().endsWith(".java")) {
+        return true;
+      }
+
+      if (apGeneratedDir != null && sourceFile.getAbsolutePath()
+          .startsWith(apGeneratedDir.getAbsolutePath())) {
+        return true;
+      }
+
+      if (srcDirs.stream().anyMatch(dir -> sourceFile.getAbsolutePath()
+          .startsWith(dir.getAbsolutePath()))) {
+        return true;
+      }
+
+      if (optionalSrcDirs.stream().anyMatch(dir -> sourceFile.getAbsolutePath()
+          .startsWith(dir.getAbsolutePath()))) {
+        return true;
+      }
+      return false;
+    }
+
+    /**
+     * read the file content and find the package declaration.
+     * Then find the source directory that contains the package declaration.
+     * If the package declaration is not found, then return <code>null</code>.
+     */
+    private File findSourceDirForGeneratedFile(File file) {
+      Pattern packagePattern = Pattern.compile("^\\s*package\\s+([\\w.]+)\\s*;\\s*$");
+      try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          Matcher matcher = packagePattern.matcher(line);
+          if (matcher.matches()) {
+            String packageName = matcher.group(1);
+            String sourceRoot = file.getAbsolutePath()
+                .replace(file.getName(), "")
+                .replace(packageName.replace(".", File.separator), "");
+            return new File(sourceRoot);
+          }
+        }
+      } catch (IOException e) {
+        return null;
+      }
+
+      return null;
     }
 
     private File getApGeneratedDir(Project project, SourceSet sourceSet) {
