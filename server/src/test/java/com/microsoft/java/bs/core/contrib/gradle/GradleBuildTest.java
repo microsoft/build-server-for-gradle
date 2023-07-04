@@ -88,10 +88,13 @@ class GradleBuildTest {
     JavaBuildTargets sourceSetEntries = gradleBuild.getSourceSetEntries(projectDir.toURI());
     List<JavaBuildTarget> javaBuildTargets = sourceSetEntries.getJavaBuildTargets();
     int sourceDirCount = 0;
+    int optionalSourceDirCount = 0;
     for (JavaBuildTarget javaBuildTarget : javaBuildTargets) {
       sourceDirCount += javaBuildTarget.getSourceDirs().size();
+      optionalSourceDirCount += javaBuildTarget.getOptionalSourceDirs().size();
     }
     assertEquals(2, sourceDirCount);
+    assertEquals(0, optionalSourceDirCount);
 
     // Generate a new file
     connect = GradleConnector.newConnector().forProjectDirectory(projectDir)
@@ -101,10 +104,13 @@ class GradleBuildTest {
     sourceSetEntries = gradleBuild.getSourceSetEntries(projectDir.toURI());
     javaBuildTargets = sourceSetEntries.getJavaBuildTargets();
     sourceDirCount = 0;
+    optionalSourceDirCount = 0;
     for (JavaBuildTarget javaBuildTarget : javaBuildTargets) {
       sourceDirCount += javaBuildTarget.getSourceDirs().size();
+      optionalSourceDirCount += javaBuildTarget.getOptionalSourceDirs().size();
     }
-    assertEquals(4, sourceDirCount);
+    assertEquals(2, sourceDirCount);
+    assertEquals(2, optionalSourceDirCount);
   }
 
   @Test
