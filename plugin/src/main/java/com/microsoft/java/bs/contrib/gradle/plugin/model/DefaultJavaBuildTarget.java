@@ -33,7 +33,7 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
 
   private File apGeneratedDir;
 
-  private Set<File> optionalSourceDirs;
+  private Set<File> generatedSourceDirs;
 
   private Set<ModuleDependency> moduleDependencies;
 
@@ -115,12 +115,12 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     this.apGeneratedDir = apGeneratedDir;
   }
 
-  public Set<File> getOptionalSourceDirs() {
-    return optionalSourceDirs;
+  public Set<File> getGeneratedSourceDirs() {
+    return generatedSourceDirs;
   }
 
-  public void setOptionalSourceDirs(Set<File> optionalSourceDirs) {
-    this.optionalSourceDirs = optionalSourceDirs;
+  public void setGeneratedSourceDirs(Set<File> generatedSourceDirs) {
+    this.generatedSourceDirs = generatedSourceDirs;
   }
 
   public Set<ModuleDependency> getModuleDependencies() {
@@ -168,7 +168,7 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     result = prime * result + ((resourceDirs == null) ? 0 : resourceDirs.hashCode());
     result = prime * result + ((resourceOutputDirs == null) ? 0 : resourceOutputDirs.hashCode());
     result = prime * result + ((apGeneratedDir == null) ? 0 : apGeneratedDir.hashCode());
-    result = prime * result + ((optionalSourceDirs == null) ? 0 : optionalSourceDirs.hashCode());
+    result = prime * result + ((generatedSourceDirs == null) ? 0 : generatedSourceDirs.hashCode());
     result = prime * result + ((moduleDependencies == null) ? 0 : moduleDependencies.hashCode());
     result = prime * result + ((projectDependencies == null) ? 0 : projectDependencies.hashCode());
     result = prime * result + ((jdkPlatform == null) ? 0 : jdkPlatform.hashCode());
@@ -251,11 +251,11 @@ public class DefaultJavaBuildTarget implements JavaBuildTarget, Serializable {
     } else if (!apGeneratedDir.equals(other.apGeneratedDir)) {
       return false;
     }
-    if (optionalSourceDirs == null) {
-      if (other.optionalSourceDirs != null) {
+    if (generatedSourceDirs == null) {
+      if (other.generatedSourceDirs != null) {
         return false;
       }
-    } else if (!optionalSourceDirs.equals(other.optionalSourceDirs)) {
+    } else if (!generatedSourceDirs.equals(other.generatedSourceDirs)) {
       return false;
     }
     if (moduleDependencies == null) {

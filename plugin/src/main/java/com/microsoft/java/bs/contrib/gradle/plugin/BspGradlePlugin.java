@@ -112,7 +112,7 @@ public class BspGradlePlugin implements Plugin<Project> {
           exclusionFromDependencies.add(apGeneratedDir);
 
           Set<File> optionalSrcDirs = getOptionalSourceDirs(project, sourceSet, apGeneratedDir);
-          javaBuildTarget.setOptionalSourceDirs(optionalSrcDirs);
+          javaBuildTarget.setGeneratedSourceDirs(optionalSrcDirs);
           exclusionFromDependencies.addAll(optionalSrcDirs);
 
           JdkPlatform jdkPlatform = getJdkPlatform(project, sourceSet);

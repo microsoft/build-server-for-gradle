@@ -25,7 +25,7 @@ public interface JavaBuildTarget {
 
   public File getApGeneratedDir();
 
-  public Set<File> getOptionalSourceDirs();
+  public Set<File> getGeneratedSourceDirs();
 
   public Set<ModuleDependency> getModuleDependencies();
 

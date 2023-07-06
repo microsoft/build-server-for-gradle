@@ -91,7 +91,7 @@ class GradleBuildTest {
     int optionalSourceDirCount = 0;
     for (JavaBuildTarget javaBuildTarget : javaBuildTargets) {
       sourceDirCount += javaBuildTarget.getSourceDirs().size();
-      optionalSourceDirCount += javaBuildTarget.getOptionalSourceDirs().size();
+      optionalSourceDirCount += javaBuildTarget.getGeneratedSourceDirs().size();
     }
     assertEquals(2, sourceDirCount);
     assertEquals(0, optionalSourceDirCount);
@@ -107,7 +107,7 @@ class GradleBuildTest {
     optionalSourceDirCount = 0;
     for (JavaBuildTarget javaBuildTarget : javaBuildTargets) {
       sourceDirCount += javaBuildTarget.getSourceDirs().size();
-      optionalSourceDirCount += javaBuildTarget.getOptionalSourceDirs().size();
+      optionalSourceDirCount += javaBuildTarget.getGeneratedSourceDirs().size();
     }
     assertEquals(2, sourceDirCount);
     assertEquals(2, optionalSourceDirCount);
