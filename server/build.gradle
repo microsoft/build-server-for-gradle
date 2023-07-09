@@ -1,0 +1,22 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    testImplementation(platform('org.junit:junit-bom:5.9.2'))
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.mockito:mockito-core:5.3.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.3.0'
+}
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_17
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+      events "passed", "skipped", "failed"
+      exceptionFormat "full"
+    }
+}

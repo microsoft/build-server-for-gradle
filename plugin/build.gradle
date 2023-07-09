@@ -1,0 +1,7 @@
+plugins {
+  id 'java-gradle-plugin'
+}
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_1_8
+}

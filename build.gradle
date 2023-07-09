@@ -1,0 +1,16 @@
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+
+    repositories {
+        mavenCentral()
+        maven {
+            url 'https://repo.gradle.org/gradle/libs-releases'
+        }
+    }
+
+    checkstyle {
+        toolVersion '10.9.3'
+        maxWarnings = 0
+    }
+}
