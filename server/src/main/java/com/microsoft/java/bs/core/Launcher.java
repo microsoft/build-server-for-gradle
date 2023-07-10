@@ -2,9 +2,15 @@ package com.microsoft.java.bs.core;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.microsoft.java.bs.core.internal.server.GradleBuildServer;
+
+import ch.epfl.scala.bsp4j.BuildClient;
+import ch.epfl.scala.bsp4j.BuildServer;
 
 /**
  * Main entry point for the BSP server.
@@ -24,6 +30,20 @@ public class Launcher {
   public static void main(String[] args) {
     checkRequiredProperties();
     logSessionStart();
+
+    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher = createLauncher();
+    launcher.startListening();
+  }
+
+  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> createLauncher() {
+    BuildServer bspServer = new GradleBuildServer();
+    return new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
+      .setOutput(System.out)
+      .setInput(System.in)
+      .setLocalService(bspServer)
+      .setRemoteInterface(BuildClient.class)
+      .setExecutorService(Executors.newCachedThreadPool())
+      .create();
   }
 
   private static void checkRequiredProperties() {
