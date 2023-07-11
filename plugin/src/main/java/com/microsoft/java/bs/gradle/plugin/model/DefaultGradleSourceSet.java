@@ -3,6 +3,8 @@ package com.microsoft.java.bs.gradle.plugin.model;
 import java.io.File;
 import java.io.Serializable;
 
+import org.gradle.api.Project;
+
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 /**
@@ -20,6 +22,16 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
   private File rootDir;
 
   private String sourceSetName;
+
+  /**
+   * Construct a default Gradle source set from a Gradle project.
+   */
+  public DefaultGradleSourceSet(Project project) {
+    this.projectName = project.getName();
+    this.projectPath = project.getPath();
+    this.projectDir = project.getProjectDir();
+    this.rootDir = project.getRootDir();
+  }
 
   public String getProjectName() {
     return projectName;

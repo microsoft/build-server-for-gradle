@@ -52,11 +52,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
         }
 
         sourceSets.forEach(sourceSet -> {
-          DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
-          gradleSourceSet.setProjectName(project.getName());
-          gradleSourceSet.setProjectPath(project.getPath());
-          gradleSourceSet.setProjectDir(project.getProjectDir());
-          gradleSourceSet.setRootDir(project.getRootDir());
+          DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
           gradleSourceSet.setSourceSetName(sourceSet.getName());
 
           gradleSourceSets.add(gradleSourceSet);
