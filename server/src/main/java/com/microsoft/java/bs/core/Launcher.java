@@ -37,8 +37,8 @@ public class Launcher {
   }
 
   private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> createLauncher() {
-    GradleBuildServer gradleBuildServer = new GradleBuildServer();
-    gradleBuildServer.setup(new LifecycleService(), new BuildTargetsManager());
+    GradleBuildServer gradleBuildServer = new GradleBuildServer(new LifecycleService(),
+        new BuildTargetsManager());
     return new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
       .setOutput(System.out)
       .setInput(System.in)

@@ -2,6 +2,7 @@ package com.microsoft.java.bs.core.internal.services;
 
 import java.net.URI;
 
+import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.gradle.GradleConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -22,9 +23,9 @@ public class LifecycleService {
     buildTargetsManager.store(sourceSets);
     BuildServerCapabilities capabilities = initializeServerCapabilities();
     return new InitializeBuildResult(
-        "gradle-build-server",
-        "0.1.0",
-        "2.1.0-M4",
+        Constants.SERVER_NAME,
+        Constants.SERVER_VERSION,
+        Constants.BSP_VERSION,
         capabilities
     );
   }

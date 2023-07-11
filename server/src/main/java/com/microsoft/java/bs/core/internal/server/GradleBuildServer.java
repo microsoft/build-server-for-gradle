@@ -61,7 +61,7 @@ public class GradleBuildServer implements BuildServer {
 
   private BuildTargetsManager buildTargetsManager;
 
-  public void setup(LifecycleService lifecycleService,
+  public GradleBuildServer(LifecycleService lifecycleService,
       BuildTargetsManager buildTargetsManager) {
     this.lifecycleService = lifecycleService;
     this.buildTargetsManager = buildTargetsManager;

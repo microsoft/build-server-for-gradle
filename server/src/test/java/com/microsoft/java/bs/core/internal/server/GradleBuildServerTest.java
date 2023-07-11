@@ -14,6 +14,7 @@ import java.util.concurrent.CompletionException;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.junit.jupiter.api.Test;
 
+import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
 
@@ -25,7 +26,6 @@ import ch.epfl.scala.bsp4j.InitializeBuildResult;
 class GradleBuildServerTest {
   @Test
   void testBuildInitialize() {
-    GradleBuildServer server = new GradleBuildServer();
     BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList("java"));
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
@@ -37,22 +37,21 @@ class GradleBuildServerTest {
 
     LifecycleService lifecycleService = mock(LifecycleService.class);
     when(lifecycleService.buildInitialize(any(), any())).thenReturn(new InitializeBuildResult(
-        "gradle-build-server",
-        "0.1.0",
-        "2.1.0-M4",
+        Constants.SERVER_NAME,
+        Constants.SERVER_VERSION,
+        Constants.BSP_VERSION,
         new BuildServerCapabilities()
     ));
-    server.setup(lifecycleService, mock(BuildTargetsManager.class));
+    GradleBuildServer server = new GradleBuildServer(lifecycleService, mock(BuildTargetsManager.class));
 
     InitializeBuildResult response = server.buildInitialize(params).join();
-    assertEquals("gradle-build-server", response.getDisplayName());
-    assertEquals("0.1.0", response.getVersion());
-    assertEquals("2.1.0-M4", response.getBspVersion());
+    assertEquals(Constants.SERVER_NAME, response.getDisplayName());
+    assertEquals(Constants.SERVER_VERSION, response.getVersion());
+    assertEquals(Constants.BSP_VERSION, response.getBspVersion());
   }
 
   @Test
   void testBuildInitializeInvalidInput() {
-    GradleBuildServer server = new GradleBuildServer();
     BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList("java"));
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
@@ -61,8 +60,8 @@ class GradleBuildServerTest {
         "!@#$%", // <-- invalid URI
         capabilities
     );
-
-    server.setup(mock(LifecycleService.class), mock(BuildTargetsManager.class));
+    GradleBuildServer server = new GradleBuildServer(mock(LifecycleService.class),
+        mock(BuildTargetsManager.class));
 
     CompletionException exception  = assertThrows(CompletionException.class, () -> {
       server.buildInitialize(params).join();
