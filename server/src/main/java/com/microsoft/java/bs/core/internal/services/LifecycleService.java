@@ -17,9 +17,9 @@ public class LifecycleService {
   /**
    * Initialize the build server.
    */
-  public InitializeBuildResult buildInitialize(URI projectUri, 
+  public InitializeBuildResult buildInitialize(URI rootUri, 
       BuildTargetsManager buildTargetsManager) {
-    GradleSourceSets sourceSets = GradleConnector.getGradleSourceSets(projectUri);
+    GradleSourceSets sourceSets = GradleConnector.getGradleSourceSets(rootUri);
     buildTargetsManager.store(sourceSets);
     BuildServerCapabilities capabilities = initializeServerCapabilities();
     return new InitializeBuildResult(

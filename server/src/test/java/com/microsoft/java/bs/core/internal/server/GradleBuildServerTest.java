@@ -42,7 +42,8 @@ class GradleBuildServerTest {
         Constants.BSP_VERSION,
         new BuildServerCapabilities()
     ));
-    GradleBuildServer server = new GradleBuildServer(lifecycleService, mock(BuildTargetsManager.class));
+    GradleBuildServer server = new GradleBuildServer(lifecycleService,
+        mock(BuildTargetsManager.class));
 
     InitializeBuildResult response = server.buildInitialize(params).join();
     assertEquals(Constants.SERVER_NAME, response.getDisplayName());
