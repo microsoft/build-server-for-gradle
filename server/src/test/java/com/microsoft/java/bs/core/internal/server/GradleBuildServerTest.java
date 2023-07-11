@@ -37,7 +37,7 @@ class GradleBuildServerTest {
 
     LifecycleService lifecycleService = mock(LifecycleService.class);
     when(lifecycleService.buildInitialize(any(), any())).thenReturn(new InitializeBuildResult(
-      "gradle-build-server",
+        "gradle-build-server",
         "0.1.0",
         "2.1.0-M4",
         new BuildServerCapabilities()
