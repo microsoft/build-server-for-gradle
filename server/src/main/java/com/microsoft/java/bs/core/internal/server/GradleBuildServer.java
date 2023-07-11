@@ -1,6 +1,22 @@
 package com.microsoft.java.bs.core.internal.server;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
+import org.eclipse.lsp4j.jsonrpc.CancelChecker;
+import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
+import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.internal.services.LifecycleService;
 
 import ch.epfl.scala.bsp4j.BuildServer;
 import ch.epfl.scala.bsp4j.CleanCacheParams;
@@ -34,10 +50,33 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
  */
 public class GradleBuildServer implements BuildServer {
 
+  private static final Logger logger = LoggerFactory.getLogger(GradleBuildServer.class);
+
+  /**
+   * The root URI of the workspace.
+   */
+  private URI rootUri;
+
+  private LifecycleService lifecycleService;
+
+  private BuildTargetsManager buildTargetsManager;
+
+  public GradleBuildServer(LifecycleService lifecycleService,
+      BuildTargetsManager buildTargetsManager) {
+    this.lifecycleService = lifecycleService;
+    this.buildTargetsManager = buildTargetsManager;
+  }
+
   @Override
   public CompletableFuture<InitializeBuildResult> buildInitialize(InitializeBuildParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildInitialize'");
+    return handleRequest("build/initialize", cc -> {
+      try {
+        rootUri = new URI(params.getRootUri());
+      } catch (URISyntaxException e) {
+        throw new IllegalArgumentException("Invalid rootUri: " + params.getRootUri(), e);
+      }
+      return lifecycleService.buildInitialize(rootUri, buildTargetsManager);
+    });
   }
 
   @Override
@@ -139,4 +178,42 @@ public class GradleBuildServer implements BuildServer {
     throw new UnsupportedOperationException("Unimplemented method 'buildTargetDependencyModules'");
   }
 
+  private <R> CompletableFuture<R> handleRequest(String methodName,
+      Function<CancelChecker, R> supplier) {
+    logger.info(">> {} starts.", methodName);
+    return runAsync(methodName, supplier);
+  }
+
+  public <T, R> CompletableFuture<R> handleRequest(String methodName,
+      BiFunction<CancelChecker, T, R> function, T arg) {
+    logger.info(">> {} starts with arguments: {}", methodName, arg);
+    return runAsync(methodName, cancelChecker -> function.apply(cancelChecker, arg));
+  }
+
+  private <T> CompletableFuture<T> runAsync(String methodName, Function<CancelChecker, T> request) {
+    return CompletableFutures.computeAsync(request)
+        .thenApply(Either::<Throwable, T>forRight)
+        .exceptionally(Either::forLeft)
+        .thenCompose(
+            either ->
+                either.isLeft()
+                    ? failure(methodName, either.getLeft())
+                    : success(methodName, either.getRight())
+        );
+  }
+
+  private <T> CompletableFuture<T> success(String methodName, T response) {
+    logger.info(">> {} finished.", methodName);
+    return CompletableFuture.completedFuture(response);
+  }
+
+  private <T> CompletableFuture<T> failure(String methodName, Throwable throwable) {
+    logger.error(">> {} failed: {}", methodName, throwable.getMessage());
+    if (throwable instanceof ResponseErrorException) {
+      return CompletableFuture.failedFuture(throwable);
+    }
+    return CompletableFuture.failedFuture(
+        new ResponseErrorException(
+            new ResponseError(ResponseErrorCode.InternalError, throwable.getMessage(), null)));
+  }
 }

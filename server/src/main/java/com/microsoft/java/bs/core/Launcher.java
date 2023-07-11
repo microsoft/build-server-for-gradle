@@ -7,10 +7,11 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
 import com.microsoft.java.bs.core.internal.server.GradleBuildServer;
+import com.microsoft.java.bs.core.internal.services.LifecycleService;
 
 import ch.epfl.scala.bsp4j.BuildClient;
-import ch.epfl.scala.bsp4j.BuildServer;
 
 /**
  * Main entry point for the BSP server.
@@ -36,11 +37,12 @@ public class Launcher {
   }
 
   private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> createLauncher() {
-    BuildServer bspServer = new GradleBuildServer();
+    GradleBuildServer gradleBuildServer = new GradleBuildServer(new LifecycleService(),
+        new BuildTargetsManager());
     return new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
       .setOutput(System.out)
       .setInput(System.in)
-      .setLocalService(bspServer)
+      .setLocalService(gradleBuildServer)
       .setRemoteInterface(BuildClient.class)
       .setExecutorService(Executors.newCachedThreadPool())
       .create();
