@@ -14,11 +14,17 @@ import ch.epfl.scala.bsp4j.InitializeBuildResult;
  * Lifecycle service.
  */
 public class LifecycleService {
+
+  private BuildTargetsManager buildTargetsManager;
+
+  public LifecycleService(BuildTargetsManager buildTargetsManager) {
+    this.buildTargetsManager = buildTargetsManager;
+  }
+
   /**
    * Initialize the build server.
    */
-  public InitializeBuildResult buildInitialize(URI rootUri, 
-      BuildTargetsManager buildTargetsManager) {
+  public InitializeBuildResult buildInitialize(URI rootUri) {
     GradleApiConnector gradleConnector = new GradleApiConnector();
     GradleSourceSets sourceSets = gradleConnector.getGradleSourceSets(rootUri);
     buildTargetsManager.store(sourceSets);
