@@ -3,7 +3,7 @@ package com.microsoft.java.bs.core.internal.services;
 import java.net.URI;
 
 import com.microsoft.java.bs.core.Constants;
-import com.microsoft.java.bs.core.internal.gradle.GradleConnector;
+import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -19,7 +19,8 @@ public class LifecycleService {
    */
   public InitializeBuildResult buildInitialize(URI rootUri, 
       BuildTargetsManager buildTargetsManager) {
-    GradleSourceSets sourceSets = GradleConnector.getGradleSourceSets(rootUri);
+    GradleApiConnector gradleConnector = new GradleApiConnector();
+    GradleSourceSets sourceSets = gradleConnector.getGradleSourceSets(rootUri);
     buildTargetsManager.store(sourceSets);
     BuildServerCapabilities capabilities = initializeServerCapabilities();
     return new InitializeBuildResult(
