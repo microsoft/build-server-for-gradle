@@ -2,6 +2,7 @@ package com.microsoft.java.bs.gradle.plugin.model;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -24,10 +25,7 @@ public class DefaultGradleSourceSets implements GradleSourceSets, Serializable {
 
   @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((gradleSourceSets == null) ? 0 : gradleSourceSets.hashCode());
-    return result;
+    return Objects.hash(gradleSourceSets);
   }
 
   @Override
@@ -42,13 +40,6 @@ public class DefaultGradleSourceSets implements GradleSourceSets, Serializable {
       return false;
     }
     DefaultGradleSourceSets other = (DefaultGradleSourceSets) obj;
-    if (gradleSourceSets == null) {
-      if (other.gradleSourceSets != null) {
-        return false;
-      }
-    } else if (!gradleSourceSets.equals(other.gradleSourceSets)) {
-      return false;
-    }
-    return true;
+    return Objects.equals(gradleSourceSets, other.gradleSourceSets);
   }
 }

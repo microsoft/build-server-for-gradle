@@ -41,7 +41,7 @@ public class GradleApiConnector {
   private static final String MESSAGE_DIGEST_ALGORITHM = "SHA-256";
 
   /**
-   * Ge the source sets of the Gradle project.
+   * Get the source sets of the Gradle project.
    *
    * @param projectUri uri of the project
    * @return an instance of {@link GradleSourceSets}

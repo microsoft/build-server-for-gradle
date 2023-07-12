@@ -2,6 +2,7 @@ package com.microsoft.java.bs.gradle.plugin.model;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.Objects;
 
 import org.gradle.api.Project;
 
@@ -75,14 +76,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((projectName == null) ? 0 : projectName.hashCode());
-    result = prime * result + ((projectPath == null) ? 0 : projectPath.hashCode());
-    result = prime * result + ((projectDir == null) ? 0 : projectDir.hashCode());
-    result = prime * result + ((rootDir == null) ? 0 : rootDir.hashCode());
-    result = prime * result + ((sourceSetName == null) ? 0 : sourceSetName.hashCode());
-    return result;
+    return Objects.hash(projectName, projectPath, projectDir, rootDir, sourceSetName);
   }
 
   @Override
@@ -97,41 +91,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
       return false;
     }
     DefaultGradleSourceSet other = (DefaultGradleSourceSet) obj;
-    if (projectName == null) {
-      if (other.projectName != null) {
-        return false;
-      }
-    } else if (!projectName.equals(other.projectName)) {
-      return false;
-    }
-    if (projectPath == null) {
-      if (other.projectPath != null) {
-        return false;
-      }
-    } else if (!projectPath.equals(other.projectPath)) {
-      return false;
-    }
-    if (projectDir == null) {
-      if (other.projectDir != null) {
-        return false;
-      }
-    } else if (!projectDir.equals(other.projectDir)) {
-      return false;
-    }
-    if (rootDir == null) {
-      if (other.rootDir != null) {
-        return false;
-      }
-    } else if (!rootDir.equals(other.rootDir)) {
-      return false;
-    }
-    if (sourceSetName == null) {
-      if (other.sourceSetName != null) {
-        return false;
-      }
-    } else if (!sourceSetName.equals(other.sourceSetName)) {
-      return false;
-    }
-    return true;
+    return Objects.equals(projectName, other.projectName)
+        && Objects.equals(projectPath, other.projectPath)
+        && Objects.equals(projectDir, other.projectDir)
+        && Objects.equals(rootDir, other.rootDir)
+        && Objects.equals(sourceSetName, other.sourceSetName);
   }
 }
