@@ -12,8 +12,6 @@ import java.util.Arrays;
 import org.gradle.tooling.GradleConnectionException;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -21,8 +19,6 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSets;
  * Connect to Gradle Daemon via Gradle Tooling API.
  */
 public class GradleApiConnector {
-
-  private static final Logger logger = LoggerFactory.getLogger(GradleApiConnector.class);
 
   /**
    * The internal location of the plugin jar.
@@ -52,9 +48,6 @@ public class GradleApiConnector {
    */
   public GradleSourceSets getGradleSourceSets(URI projectUri) {
     File initScript = getInitScript();
-    if (initScript == null) {
-      throw new IllegalStateException("Failed to get init.gradle");
-    }
     try (ProjectConnection connection = Utils.getProjectConnection(new File(projectUri))) {
       ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
           connection,
@@ -85,11 +78,7 @@ public class GradleApiConnector {
         Files.write(pluginJarFile.toPath(), pluginJarBytes);
       }
     } catch (IOException | NoSuchAlgorithmException e) {
-      logger.error(e.getMessage(), e);
-    }
-
-    if (!pluginJarFile.exists()) {
-      return null;
+      throw new IllegalStateException("Failed to get plugin jar.", e);
     }
 
     // copy init script to target location
@@ -117,9 +106,8 @@ public class GradleApiConnector {
       }
       return initScriptFile;
     } catch (IOException | NoSuchAlgorithmException e) {
-      logger.error(e.getMessage(), e);
+      throw new IllegalStateException("Failed to get init.script", e);
     }
-    return null;
   }
 
   private boolean needReplaceContent(File file, byte[] checksum)
