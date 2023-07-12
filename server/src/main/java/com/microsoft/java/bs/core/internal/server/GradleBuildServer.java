@@ -75,7 +75,7 @@ public class GradleBuildServer implements BuildServer {
       } catch (URISyntaxException e) {
         throw new IllegalArgumentException("Invalid rootUri: " + params.getRootUri(), e);
       }
-      return lifecycleService.buildInitialize(rootUri);
+      return lifecycleService.initializeServer(rootUri);
     });
   }
 
@@ -100,7 +100,7 @@ public class GradleBuildServer implements BuildServer {
   @Override
   public CompletableFuture<WorkspaceBuildTargetsResult> workspaceBuildTargets() {
     return handleRequest("workspace/buildTargets", cc ->
-        buildTargetService.workspaceBuildTargets());
+        buildTargetService.getWorkspaceBuildTargets());
   }
 
   @Override

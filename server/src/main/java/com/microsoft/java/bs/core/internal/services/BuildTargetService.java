@@ -23,7 +23,7 @@ public class BuildTargetService {
   /**
    * Get the build targets of the workspace.
    */
-  public WorkspaceBuildTargetsResult workspaceBuildTargets() {
+  public WorkspaceBuildTargetsResult getWorkspaceBuildTargets() {
     List<GradleBuildTarget> allTargets = buildTargetsManager.getAllGradleBuildTargets();
     List<BuildTarget> targets = allTargets.stream()
         .map(GradleBuildTarget::getBuildTarget)

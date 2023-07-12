@@ -4,8 +4,9 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
@@ -21,16 +22,17 @@ import ch.epfl.scala.bsp4j.BuildTargetTag;
  */
 public class BuildTargetsManager {
 
-  public BuildTargetsManager() {
-    this.cache = new ConcurrentHashMap<>();
-  }
+  private volatile Map<BuildTargetIdentifier, GradleBuildTarget> cache;
 
-  private ConcurrentHashMap<BuildTargetIdentifier, GradleBuildTarget> cache;
+  public BuildTargetsManager() {
+    this.cache = new HashMap<>();
+  }
 
   /**
    * Store the Gradle source sets.
    */
   public synchronized void store(GradleSourceSets gradleSourceSets) {
+    Map<BuildTargetIdentifier, GradleBuildTarget> newCache = new HashMap<>();
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
       String sourceSetName = sourceSet.getSourceSetName();
       URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
@@ -50,15 +52,16 @@ public class BuildTargetsManager {
       );
       bt.setBaseDirectory(sourceSet.getRootDir().toURI().toString());
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
-      cache.put(btId, buildTarget);
+      newCache.put(btId, buildTarget);
     }
+    this.cache = newCache;
   }
 
-  public synchronized GradleBuildTarget getGradleBuildTarget(BuildTargetIdentifier buildTargetId) {
+  public GradleBuildTarget getGradleBuildTarget(BuildTargetIdentifier buildTargetId) {
     return cache.get(buildTargetId);
   }
 
-  public synchronized List<GradleBuildTarget> getAllGradleBuildTargets() {
+  public List<GradleBuildTarget> getAllGradleBuildTargets() {
     return new ArrayList<>(cache.values());
   }
 

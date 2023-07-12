@@ -24,7 +24,7 @@ public class LifecycleService {
   /**
    * Initialize the build server.
    */
-  public InitializeBuildResult buildInitialize(URI rootUri) {
+  public InitializeBuildResult initializeServer(URI rootUri) {
     GradleApiConnector gradleConnector = new GradleApiConnector();
     GradleSourceSets sourceSets = gradleConnector.getGradleSourceSets(rootUri);
     buildTargetsManager.store(sourceSets);

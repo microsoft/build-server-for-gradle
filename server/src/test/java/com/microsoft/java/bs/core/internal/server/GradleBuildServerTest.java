@@ -41,7 +41,7 @@ class GradleBuildServerTest {
     );
 
     LifecycleService lifecycleService = mock(LifecycleService.class);
-    when(lifecycleService.buildInitialize(any())).thenReturn(new InitializeBuildResult(
+    when(lifecycleService.initializeServer(any())).thenReturn(new InitializeBuildResult(
         Constants.SERVER_NAME,
         Constants.SERVER_VERSION,
         Constants.BSP_VERSION,
