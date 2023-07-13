@@ -15,11 +15,11 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 
-class BuildTargetsManagerTest {
+class BuildTargetManagerTest {
 
   @Test
   void testStore() {
-    BuildTargetsManager manager = new BuildTargetsManager();
+    BuildTargetManager manager = new BuildTargetManager();
     manager.store(new TestGradleSourceSets());
 
     List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();

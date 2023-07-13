@@ -48,7 +48,7 @@ public class GradleApiConnector {
    */
   public GradleSourceSets getGradleSourceSets(URI projectUri) {
     File initScript = getInitScript();
-    try (ProjectConnection connection = Utils.getProjectConnection(new File(projectUri))) {
+    try (ProjectConnection connection = Utils.getProjectConnection(projectUri)) {
       ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
           connection,
           GradleSourceSets.class
@@ -67,6 +67,11 @@ public class GradleApiConnector {
    * And return the init.gradle file instance.
    */
   File getInitScript() {
+    File pluginJarFile = copyPluginJarFile();
+    return copyInitScript(pluginJarFile);
+  }
+
+  private File copyPluginJarFile() {
     File pluginJarFile = Utils.getCachedFile(GRADLE_PLUGIN_JAR_TARGET_NAME);
     // copy plugin jar to target location
     try (InputStream input = GradleApiConnector.class
@@ -80,8 +85,13 @@ public class GradleApiConnector {
     } catch (IOException | NoSuchAlgorithmException e) {
       throw new IllegalStateException("Failed to get plugin jar.", e);
     }
+    return pluginJarFile;
+  }
 
-    // copy init script to target location
+  /**
+   * copy init script to target location.
+   */
+  private File copyInitScript(File pluginJarFile) {
     String pluginJarUnixPath = pluginJarFile.getAbsolutePath().replace("\\", "/");
     String initScriptContent = """
         initscript {

@@ -3,7 +3,7 @@ package com.microsoft.java.bs.core.internal.services;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
@@ -14,17 +14,17 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
  */
 public class BuildTargetService {
 
-  private BuildTargetsManager buildTargetsManager;
+  private BuildTargetManager buildTargetManager;
 
-  public BuildTargetService(BuildTargetsManager buildTargetsManager) {
-    this.buildTargetsManager = buildTargetsManager;
+  public BuildTargetService(BuildTargetManager buildTargetManager) {
+    this.buildTargetManager = buildTargetManager;
   }
 
   /**
    * Get the build targets of the workspace.
    */
   public WorkspaceBuildTargetsResult getWorkspaceBuildTargets() {
-    List<GradleBuildTarget> allTargets = buildTargetsManager.getAllGradleBuildTargets();
+    List<GradleBuildTarget> allTargets = buildTargetManager.getAllGradleBuildTargets();
     List<BuildTarget> targets = allTargets.stream()
         .map(GradleBuildTarget::getBuildTarget)
         .collect(Collectors.toList());

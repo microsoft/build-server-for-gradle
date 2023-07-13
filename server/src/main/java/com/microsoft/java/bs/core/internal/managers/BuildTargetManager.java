@@ -20,18 +20,18 @@ import ch.epfl.scala.bsp4j.BuildTargetTag;
 /**
  * Build targets manager.
  */
-public class BuildTargetsManager {
+public class BuildTargetManager {
 
   private volatile Map<BuildTargetIdentifier, GradleBuildTarget> cache;
 
-  public BuildTargetsManager() {
+  public BuildTargetManager() {
     this.cache = new HashMap<>();
   }
 
   /**
    * Store the Gradle source sets.
    */
-  public synchronized void store(GradleSourceSets gradleSourceSets) {
+  public void store(GradleSourceSets gradleSourceSets) {
     Map<BuildTargetIdentifier, GradleBuildTarget> newCache = new HashMap<>();
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
       String sourceSetName = sourceSet.getSourceSetName();

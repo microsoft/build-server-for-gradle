@@ -7,7 +7,7 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.server.GradleBuildServer;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
@@ -38,9 +38,9 @@ public class Launcher {
   }
 
   private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> createLauncher() {
-    BuildTargetsManager buildTargetsManager = new BuildTargetsManager();
-    LifecycleService lifecycleService = new LifecycleService(buildTargetsManager);
-    BuildTargetService buildTargetService = new BuildTargetService(buildTargetsManager);
+    BuildTargetManager buildTargetManager = new BuildTargetManager();
+    LifecycleService lifecycleService = new LifecycleService(buildTargetManager);
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager);
     GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
         buildTargetService);
     return new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()

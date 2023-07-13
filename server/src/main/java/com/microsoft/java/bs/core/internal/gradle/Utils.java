@@ -1,6 +1,7 @@
 package com.microsoft.java.bs.core.internal.gradle;
 
 import java.io.File;
+import java.net.URI;
 import java.nio.file.Paths;
 
 import org.gradle.tooling.GradleConnector;
@@ -17,6 +18,15 @@ public class Utils {
    * The user home directory property name.
    */
   private static final String USER_HOME = "user.home";
+
+  /**
+   * Get the Daemon connection for the project.
+   *
+   * @param projectUri The project uri.
+   */ 
+  public static ProjectConnection getProjectConnection(URI projectUri) {
+    return getProjectConnection(new File(projectUri));
+  }
 
   /**
    * Get the Daemon connection for the project.

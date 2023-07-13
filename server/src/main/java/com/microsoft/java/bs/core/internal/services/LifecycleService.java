@@ -4,7 +4,7 @@ import java.net.URI;
 
 import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
-import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildServerCapabilities;
@@ -15,10 +15,10 @@ import ch.epfl.scala.bsp4j.InitializeBuildResult;
  */
 public class LifecycleService {
 
-  private BuildTargetsManager buildTargetsManager;
+  private BuildTargetManager buildTargetManager;
 
-  public LifecycleService(BuildTargetsManager buildTargetsManager) {
-    this.buildTargetsManager = buildTargetsManager;
+  public LifecycleService(BuildTargetManager buildTargetManager) {
+    this.buildTargetManager = buildTargetManager;
   }
 
   /**
@@ -27,7 +27,7 @@ public class LifecycleService {
   public InitializeBuildResult initializeServer(URI rootUri) {
     GradleApiConnector gradleConnector = new GradleApiConnector();
     GradleSourceSets sourceSets = gradleConnector.getGradleSourceSets(rootUri);
-    buildTargetsManager.store(sourceSets);
+    buildTargetManager.store(sourceSets);
     BuildServerCapabilities capabilities = initializeServerCapabilities();
     return new InitializeBuildResult(
         Constants.SERVER_NAME,

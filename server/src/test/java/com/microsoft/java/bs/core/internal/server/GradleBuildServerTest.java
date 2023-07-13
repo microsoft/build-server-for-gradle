@@ -15,7 +15,7 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Constants;
-import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
@@ -78,7 +78,7 @@ class GradleBuildServerTest {
 
   @Test
   void testWorkspaceBuildTargets() {
-    BuildTargetsManager manager = mock(BuildTargetsManager.class);
+    BuildTargetManager manager = mock(BuildTargetManager.class);
     BuildTarget target = mock(BuildTarget.class);
     when(target.getBaseDirectory()).thenReturn("foo/bar");
     GradleBuildTarget gradleBuildTarget = new GradleBuildTarget(target,
