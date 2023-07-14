@@ -66,13 +66,17 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
           gradleSourceSet.setSourceSetName(sourceSet.getName());
 
+          // source
           Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
           gradleSourceSet.setSourceDirs(srcDirs);
-
           Set<File> generatedSrcDirs = new HashSet<>();
           addAnnotationProcessingDir(project, sourceSet, generatedSrcDirs);
           addGeneratedSourceDirs(project, sourceSet, srcDirs, generatedSrcDirs);
           gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
+
+          // resource
+          Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
+          gradleSourceSet.setResourceDirs(resourceDirs);
 
           gradleSourceSets.add(gradleSourceSet);
         });

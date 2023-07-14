@@ -43,4 +43,9 @@ public interface GradleSourceSet {
    * and the ones that is inferred as generated source directories.
    */
   public Set<File> getGeneratedSourceDirs();
+
+  /**
+   * The resource directories of this source set.
+   */
+  public Set<File> getResourceDirs();
 }

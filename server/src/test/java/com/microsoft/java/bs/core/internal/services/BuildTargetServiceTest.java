@@ -19,6 +19,8 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.ResourcesParams;
+import ch.epfl.scala.bsp4j.ResourcesResult;
 import ch.epfl.scala.bsp4j.SourcesParams;
 import ch.epfl.scala.bsp4j.SourcesResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
@@ -72,6 +74,31 @@ class BuildTargetServiceTest {
         } else {
           assertTrue(sourceItem.getUri().contains("srcDir"));
         }
+      });
+    });
+  }
+
+  @Test
+  void testGetBuildTargetResources() {
+    BuildTargetManager manager = mock(BuildTargetManager.class);
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(manager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+
+    File resourceDir = new File(("resourceDir"));
+    Set<File> resourceDirs = new HashSet<>();
+    resourceDirs.add(resourceDir);
+
+    when(gradleSourceSet.getResourceDirs()).thenReturn(resourceDirs);
+
+    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    ResourcesResult buildTargetResources = buildTargetService.getBuildTargetResources(
+        new ResourcesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+    buildTargetResources.getItems().forEach(item -> {
+      item.getResources().forEach(resource -> {
+        assertTrue(resource.contains("resourceDir"));
       });
     });
   }

@@ -74,5 +74,10 @@ class BuildTargetManagerTest {
     public Set<File> getGeneratedSourceDirs() {
       return Collections.emptySet();
     }
+
+    @Override
+    public Set<File> getResourceDirs() {
+      return Collections.emptySet();
+    }
   }
 }

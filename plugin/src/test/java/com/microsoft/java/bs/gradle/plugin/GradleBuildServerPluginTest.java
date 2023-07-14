@@ -50,6 +50,7 @@ class GradleBuildServerPluginTest {
             || gradleSourceSet.getSourceSetName().equals("test"));
         assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
       }
     }
     
