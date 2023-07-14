@@ -35,19 +35,48 @@ class GradleBuildServerPluginTest {
     File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
-    ProjectConnection connect = connector.connect();
-    ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-    File initScript = PluginHelper.getInitScript();
-    modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-    GradleSourceSets gradleSourceSets = modelBuilder.get();
-    assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
-    for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-      assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
-      assertEquals(":", gradleSourceSet.getProjectPath());
-      assertEquals(projectDir, gradleSourceSet.getProjectDir());
-      assertEquals(projectDir, gradleSourceSet.getRootDir());
-      assertTrue(gradleSourceSet.getSourceSetName().equals("main")
-          || gradleSourceSet.getSourceSetName().equals("test"));
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
+        assertEquals(":", gradleSourceSet.getProjectPath());
+        assertEquals(projectDir, gradleSourceSet.getProjectDir());
+        assertEquals(projectDir, gradleSourceSet.getRootDir());
+        assertTrue(gradleSourceSet.getSourceSetName().equals("main")
+            || gradleSourceSet.getSourceSetName().equals("test"));
+        assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
+      }
+    }
+    
+  }
+
+  @Test
+  void testSourceInference() throws IOException {
+    File projectDir = projectPath.resolve("infer-source-roots").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+
+    try (ProjectConnection connect = connector.connect()) {
+      connect.newBuild().forTasks("clean", "compileJava").run();
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      int generatedSourceDirCount = 0;
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        generatedSourceDirCount += gradleSourceSet.getGeneratedSourceDirs().size();
+        assertTrue(gradleSourceSet.getGeneratedSourceDirs().stream().anyMatch(
+            dir -> dir.getAbsolutePath().replaceAll("\\\\", "/").endsWith("build/generated/sources")
+        ));
+      }
+      assertEquals(4, generatedSourceDirCount);
     }
   }
 }
