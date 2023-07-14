@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -61,6 +63,16 @@ class BuildTargetManagerTest {
     @Override
     public String getSourceSetName() {
       return "test";
+    }
+
+    @Override
+    public Set<File> getSourceDirs() {
+      return Collections.emptySet();
+    }
+
+    @Override
+    public Set<File> getGeneratedSourceDirs() {
+      return Collections.emptySet();
     }
   }
 }

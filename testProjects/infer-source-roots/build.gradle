@@ -1,0 +1,15 @@
+plugins {
+    id 'java'
+}
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+tasks.register('copySource', Copy) {
+    from layout.projectDirectory.file("src/main/resources/B.java")
+    into layout.buildDirectory.file("generated/sources/a/B.java")
+}
+
+tasks.withType(JavaCompile).configureEach {
+    dependsOn(':copySource')
+    it.source(layout.buildDirectory.file("generated/sources/a/B.java"))
+}

@@ -3,6 +3,7 @@ package com.microsoft.java.bs.gradle.plugin.model;
 import java.io.File;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.Set;
 
 import org.gradle.api.Project;
 
@@ -23,6 +24,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
   private File rootDir;
 
   private String sourceSetName;
+
+  private Set<File> sourceDirs;
+
+  private Set<File> generatedSourceDirs;
 
   /**
    * Construct a default Gradle source set from a Gradle project.
@@ -74,9 +79,26 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.sourceSetName = sourceSetName;
   }
 
+  public Set<File> getSourceDirs() {
+    return sourceDirs;
+  }
+
+  public void setSourceDirs(Set<File> sourceDirs) {
+    this.sourceDirs = sourceDirs;
+  }
+
+  public Set<File> getGeneratedSourceDirs() {
+    return generatedSourceDirs;
+  }
+
+  public void setGeneratedSourceDirs(Set<File> generatedSourceDirs) {
+    this.generatedSourceDirs = generatedSourceDirs;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(projectName, projectPath, projectDir, rootDir, sourceSetName);
+    return Objects.hash(projectName, projectPath, projectDir, rootDir,
+        sourceSetName, sourceDirs, generatedSourceDirs);
   }
 
   @Override
@@ -95,6 +117,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(projectPath, other.projectPath)
         && Objects.equals(projectDir, other.projectDir)
         && Objects.equals(rootDir, other.rootDir)
-        && Objects.equals(sourceSetName, other.sourceSetName);
+        && Objects.equals(sourceSetName, other.sourceSetName)
+        && Objects.equals(sourceDirs, other.sourceDirs)
+        && Objects.equals(generatedSourceDirs, other.generatedSourceDirs);
   }
 }

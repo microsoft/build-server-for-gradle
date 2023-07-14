@@ -1,16 +1,27 @@
 package com.microsoft.java.bs.gradle.plugin;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.inject.Inject;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.file.Directory;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.compile.CompileOptions;
+import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry;
 
@@ -55,6 +66,14 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
           gradleSourceSet.setSourceSetName(sourceSet.getName());
 
+          Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
+          gradleSourceSet.setSourceDirs(srcDirs);
+
+          Set<File> generatedSrcDirs = new HashSet<>();
+          addAnnotationProcessingDir(project, sourceSet, generatedSrcDirs);
+          addGeneratedSourceDirs(project, sourceSet, srcDirs, generatedSrcDirs);
+          gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
+
           gradleSourceSets.add(gradleSourceSet);
         });
       }
@@ -78,6 +97,89 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           return convention.getSourceSets();
         }
       }
+      return null;
+    }
+
+    private void addAnnotationProcessingDir(Project project, SourceSet sourceSet,
+        Set<File> generatedSrcDirs) {
+      JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
+      if (javaCompile != null) {
+        CompileOptions options = javaCompile.getOptions();
+        try {
+          Directory generatedDir = options.getGeneratedSourceOutputDirectory().getOrNull();
+          if (generatedDir != null) {
+            generatedSrcDirs.add(generatedDir.getAsFile());
+          }
+        } catch (NoSuchMethodError e) {
+          // to be compatible with Gradle < 6.3
+          generatedSrcDirs.add(options.getAnnotationProcessorGeneratedSourcesDirectory());
+        }
+      }
+    }
+
+    private JavaCompile getJavaCompileTask(Project project, SourceSet sourceSet) {
+      String taskName = sourceSet.getCompileJavaTaskName();
+      return (JavaCompile) project.getTasks().getByName(taskName);
+    }
+
+    private void addGeneratedSourceDirs(Project project, SourceSet sourceSet,
+        Set<File> srcDirs, Set<File> generatedSrcDirs) {
+      JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
+      if (javaCompile != null) {
+        Set<File> filesToCompile = javaCompile.getSource().getFiles();
+        for (File file : filesToCompile) {
+          if (canSkipInferSourceRoot(file, srcDirs, generatedSrcDirs)) {
+            continue;
+          }
+
+          // the file is not in the source directories, so it must be a generated file.
+          // we need to find the source directory for the generated file.
+          File srcDir = findSourceDirForGeneratedFile(file);
+          if (srcDir != null) {
+            generatedSrcDirs.add(srcDir);
+          }
+        }
+      }
+    }
+
+    private boolean canSkipInferSourceRoot(File sourceFile, Set<File> srcDirs,
+        Set<File> generatedSrcDirs) {
+      if (!sourceFile.isFile() || !sourceFile.exists() || !sourceFile.getName().endsWith(".java")) {
+        return true;
+      }
+
+      if (srcDirs.stream().anyMatch(dir -> sourceFile.getAbsolutePath()
+          .startsWith(dir.getAbsolutePath()))) {
+        return true;
+      }
+
+      return generatedSrcDirs.stream().anyMatch(dir -> sourceFile.getAbsolutePath()
+          .startsWith(dir.getAbsolutePath()));
+    }
+
+    /**
+     * read the file content and find the package declaration.
+     * Then find the source directory that contains the package declaration.
+     * If the package declaration is not found, then return <code>null</code>.
+     */
+    private File findSourceDirForGeneratedFile(File file) {
+      Pattern packagePattern = Pattern.compile("^\\s*package\\s+([\\w.]+)\\s*;\\s*$");
+      try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          Matcher matcher = packagePattern.matcher(line);
+          if (matcher.matches()) {
+            String packageName = matcher.group(1);
+            String sourceRoot = file.getAbsolutePath()
+                .replace(file.getName(), "")
+                .replace(packageName.replace(".", File.separator), "");
+            return new File(sourceRoot);
+          }
+        }
+      } catch (IOException e) {
+        return null;
+      }
+
       return null;
     }
   }
