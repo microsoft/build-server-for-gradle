@@ -15,7 +15,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
 
 import ch.epfl.scala.bsp4j.BuildServer;
@@ -59,12 +59,12 @@ public class GradleBuildServer implements BuildServer {
 
   private LifecycleService lifecycleService;
 
-  private BuildTargetsManager buildTargetsManager;
+  private BuildTargetService buildTargetService;
 
   public GradleBuildServer(LifecycleService lifecycleService,
-      BuildTargetsManager buildTargetsManager) {
+      BuildTargetService buildTargetService) {
     this.lifecycleService = lifecycleService;
-    this.buildTargetsManager = buildTargetsManager;
+    this.buildTargetService = buildTargetService;
   }
 
   @Override
@@ -75,7 +75,7 @@ public class GradleBuildServer implements BuildServer {
       } catch (URISyntaxException e) {
         throw new IllegalArgumentException("Invalid rootUri: " + params.getRootUri(), e);
       }
-      return lifecycleService.buildInitialize(rootUri, buildTargetsManager);
+      return lifecycleService.initializeServer(rootUri);
     });
   }
 
@@ -99,8 +99,8 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public CompletableFuture<WorkspaceBuildTargetsResult> workspaceBuildTargets() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'workspaceBuildTargets'");
+    return handleRequest("workspace/buildTargets", cc ->
+        buildTargetService.getWorkspaceBuildTargets());
   }
 
   @Override

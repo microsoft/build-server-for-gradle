@@ -2,6 +2,44 @@ plugins {
   id 'java-gradle-plugin'
 }
 
+configurations {
+  bundled
+}
+
+dependencies {
+  implementation project(":model")
+  bundled(project(":model")) {
+    transitive = false
+  }
+
+  testImplementation 'org.gradle:gradle-tooling-api:8.1.1'
+  testImplementation(platform('org.junit:junit-bom:5.9.2'))
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
 java {
   sourceCompatibility = JavaVersion.VERSION_1_8
+}
+
+jar {
+  from {
+    configurations.bundled.collect {
+      it.isDirectory() ? it : zipTree(it)
+    }
+  }
+}
+
+test {
+  dependsOn(':plugin:assemble')
+  useJUnitPlatform()
+  testLogging {
+      events "passed", "skipped", "failed"
+      exceptionFormat "full"
+  }
+}
+
+task copyJar(type: Copy) {
+  dependsOn(':plugin:jar')
+  from "build/libs/plugin.jar"
+  into "../server/src/main/resources"
 }

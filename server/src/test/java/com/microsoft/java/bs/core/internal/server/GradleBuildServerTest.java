@@ -15,13 +15,18 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Constants;
-import com.microsoft.java.bs.core.internal.managers.BuildTargetsManager;
+import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
+import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
+import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildClientCapabilities;
 import ch.epfl.scala.bsp4j.BuildServerCapabilities;
+import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.InitializeBuildResult;
+import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 
 class GradleBuildServerTest {
   @Test
@@ -36,14 +41,14 @@ class GradleBuildServerTest {
     );
 
     LifecycleService lifecycleService = mock(LifecycleService.class);
-    when(lifecycleService.buildInitialize(any(), any())).thenReturn(new InitializeBuildResult(
+    when(lifecycleService.initializeServer(any())).thenReturn(new InitializeBuildResult(
         Constants.SERVER_NAME,
         Constants.SERVER_VERSION,
         Constants.BSP_VERSION,
         new BuildServerCapabilities()
     ));
-    GradleBuildServer server = new GradleBuildServer(lifecycleService,
-        mock(BuildTargetsManager.class));
+    BuildTargetService buildTargetService = mock(BuildTargetService.class);
+    GradleBuildServer server = new GradleBuildServer(lifecycleService, buildTargetService);
 
     InitializeBuildResult response = server.buildInitialize(params).join();
     assertEquals(Constants.SERVER_NAME, response.getDisplayName());
@@ -62,12 +67,31 @@ class GradleBuildServerTest {
         capabilities
     );
     GradleBuildServer server = new GradleBuildServer(mock(LifecycleService.class),
-        mock(BuildTargetsManager.class));
+        mock(BuildTargetService.class));
 
     CompletionException exception  = assertThrows(CompletionException.class, () -> {
       server.buildInitialize(params).join();
     });
 
     assertTrue(exception.getCause() instanceof ResponseErrorException);
+  }
+
+  @Test
+  void testWorkspaceBuildTargets() {
+    BuildTargetManager manager = mock(BuildTargetManager.class);
+    BuildTarget target = mock(BuildTarget.class);
+    when(target.getBaseDirectory()).thenReturn("foo/bar");
+    GradleBuildTarget gradleBuildTarget = new GradleBuildTarget(target,
+        mock(GradleSourceSet.class));
+    when(manager.getAllGradleBuildTargets()).thenReturn(Arrays.asList(gradleBuildTarget));
+    
+    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    GradleBuildServer server = new GradleBuildServer(mock(LifecycleService.class),
+        buildTargetService);
+
+    WorkspaceBuildTargetsResult response = server.workspaceBuildTargets().join();
+
+    assertEquals(1, response.getTargets().size());
+    assertEquals("foo/bar", response.getTargets().get(0).getBaseDirectory());
   }
 }
