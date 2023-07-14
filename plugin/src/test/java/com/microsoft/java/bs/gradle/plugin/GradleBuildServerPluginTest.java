@@ -72,6 +72,9 @@ class GradleBuildServerPluginTest {
       int generatedSourceDirCount = 0;
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         generatedSourceDirCount += gradleSourceSet.getGeneratedSourceDirs().size();
+        assertTrue(gradleSourceSet.getGeneratedSourceDirs().stream().anyMatch(
+            dir -> dir.getAbsolutePath().replaceAll("\\\\", "/").endsWith("build/generated/sources")
+        ));
       }
       assertEquals(4, generatedSourceDirCount);
     }

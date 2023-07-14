@@ -170,10 +170,13 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           Matcher matcher = packagePattern.matcher(line);
           if (matcher.matches()) {
             String packageName = matcher.group(1);
-            String sourceRoot = file.getAbsolutePath()
-                .replace(file.getName(), "")
-                .replace(packageName.replace(".", File.separator), "");
-            return new File(sourceRoot);
+            String relativeToRoot = packageName.replace(".", File.separator)
+                .concat(File.separator).concat(file.getName());
+            String absolutePath = file.getAbsolutePath();
+            if (absolutePath.endsWith(relativeToRoot)) {
+              return new File(absolutePath.substring(
+                  0, absolutePath.length() - relativeToRoot.length()));
+            }
           }
         }
       } catch (IOException e) {
