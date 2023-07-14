@@ -173,10 +173,11 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
             String relativeToRoot = packageName.replace(".", File.separator)
                 .concat(File.separator).concat(file.getName());
             String absolutePath = file.getAbsolutePath();
-            if (absolutePath.endsWith(relativeToRoot)) {
-              return new File(absolutePath.substring(
-                  0, absolutePath.length() - relativeToRoot.length()));
+            if (!absolutePath.endsWith(relativeToRoot)) {
+              return null;
             }
+            return new File(absolutePath.substring(
+                  0, absolutePath.length() - relativeToRoot.length()));
           }
         }
       } catch (IOException e) {
