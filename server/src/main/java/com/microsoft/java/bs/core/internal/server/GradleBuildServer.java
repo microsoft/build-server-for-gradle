@@ -137,8 +137,8 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public CompletableFuture<OutputPathsResult> buildTargetOutputPaths(OutputPathsParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetOutputPaths'");
+    return handleRequest("buildTarget/outputPaths", cc ->
+        buildTargetService.getBuildTargetOutputPaths(params));
   }
 
   @Override

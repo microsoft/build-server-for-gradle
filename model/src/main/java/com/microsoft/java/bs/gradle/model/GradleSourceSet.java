@@ -48,4 +48,14 @@ public interface GradleSourceSet {
    * The resource directories of this source set.
    */
   public Set<File> getResourceDirs();
+
+  /**
+   * The output directory of this source set.
+   */
+  public File getSourceOutputDir();
+
+  /**
+   * The resource output directory of this source set.
+   */
+  public File getResourceOutputDir();
 }

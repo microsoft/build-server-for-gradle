@@ -19,6 +19,8 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.OutputPathsParams;
+import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesParams;
 import ch.epfl.scala.bsp4j.ResourcesResult;
 import ch.epfl.scala.bsp4j.SourcesParams;
@@ -101,5 +103,26 @@ class BuildTargetServiceTest {
         assertTrue(resource.contains("resourceDir"));
       });
     });
+  }
+
+  @Test
+  void testGetBuildTargetOutputPaths() {
+    BuildTargetManager manager = mock(BuildTargetManager.class);
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(manager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+
+    File sourceOutputDir = new File(("sourceOutputDir"));
+    when(gradleSourceSet.getSourceOutputDir()).thenReturn(sourceOutputDir);
+    File resourceOutputDir = new File(("resourceOutputDir"));
+    when(gradleSourceSet.getResourceOutputDir()).thenReturn(resourceOutputDir);
+
+    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    OutputPathsResult  outputPathsResult = buildTargetService.getBuildTargetOutputPaths(
+        new OutputPathsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+    assertEquals(1, outputPathsResult.getItems().size());
+    assertEquals(2, outputPathsResult.getItems().get(0).getOutputPaths().size());
   }
 }
