@@ -28,10 +28,8 @@ import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
-import com.microsoft.java.bs.gradle.model.JdkPlatform;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSets;
-import com.microsoft.java.bs.gradle.plugin.model.DefaultJdkPlatform;
 
 /**
  * The customized Gradle plugin to get the project structure information.
@@ -88,8 +86,8 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           gradleSourceSet.setResourceOutputDir(sourceSet.getOutput().getResourcesDir());
 
           // jdk
-          JdkPlatform jdkPlatform = getJdkPlatform(project, sourceSet);
-          gradleSourceSet.setJdkPlatform(jdkPlatform);
+          gradleSourceSet.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
+          gradleSourceSet.setJavaVersion(getJavaVersion(project, sourceSet));
 
           gradleSourceSets.add(gradleSourceSet);
         });
@@ -217,19 +215,13 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       }
     }
 
-    private JdkPlatform getJdkPlatform(Project project, SourceSet sourceSet) {
-      DefaultJdkPlatform platform = new DefaultJdkPlatform();
-      // See: https://github.com/gradle/gradle/blob/85ebea10e4e150ce485184adba811ed3eeaa2622/subprojects/ide/src/main/java/org/gradle/plugins/ide/internal/tooling/EclipseModelBuilder.java#L348
-      platform.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
-      platform.setJavaVersion(DefaultInstalledJdk.current().getJavaVersion().getMajorVersion());
-
+    private String getJavaVersion(Project project, SourceSet sourceSet) {
       JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
       if (javaCompile != null) {
-        platform.setSourceCompatibility(javaCompile.getSourceCompatibility());
-        platform.setTargetCompatibility(javaCompile.getTargetCompatibility());
+        return javaCompile.getTargetCompatibility();
       }
-      
-      return platform;
+
+      return "";
     }
   }
 }

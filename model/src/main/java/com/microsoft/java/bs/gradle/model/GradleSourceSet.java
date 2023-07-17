@@ -60,7 +60,12 @@ public interface GradleSourceSet {
   public File getResourceOutputDir();
 
   /**
-   * The JDK platform of this source set.
+   * JDK home file location.
    */
-  public JdkPlatform getJdkPlatform();
+  public File getJavaHome();
+
+  /**
+   * The java version this target is supposed to use.
+   */
+  public String getJavaVersion();
 }

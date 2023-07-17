@@ -13,12 +13,11 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.core.internal.model.JvmBuildTargetExt;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
-import com.microsoft.java.bs.gradle.model.JdkPlatform;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
+import ch.epfl.scala.bsp4j.JvmBuildTarget;
 
 class BuildTargetManagerTest {
 
@@ -42,10 +41,8 @@ class BuildTargetManagerTest {
     BuildTarget buildTarget = list.get(0).getBuildTarget();
 
     assertEquals("jvm", buildTarget.getDataKind());
-    JvmBuildTargetExt jvmBt = (JvmBuildTargetExt) buildTarget.getData();
+    JvmBuildTarget jvmBt = (JvmBuildTarget) buildTarget.getData();
     assertEquals("17", jvmBt.getJavaVersion());
-    assertEquals("17", jvmBt.getSourceCompatibility());
-    assertEquals("17", jvmBt.getTargetCompatibility());
   }
 
   class TestGradleSourceSets implements GradleSourceSets {
@@ -109,30 +106,12 @@ class BuildTargetManagerTest {
     }
 
     @Override
-    public JdkPlatform getJdkPlatform() {
-      return new TestJdkPlatform();
-    }
-  }
-
-  class TestJdkPlatform implements JdkPlatform {
-
-    @Override
     public File getJavaHome() {
       return new File("javaHome");
     }
 
     @Override
     public String getJavaVersion() {
-      return "17";
-    }
-
-    @Override
-    public String getSourceCompatibility() {
-      return "17";
-    }
-
-    @Override
-    public String getTargetCompatibility() {
       return "17";
     }
   }

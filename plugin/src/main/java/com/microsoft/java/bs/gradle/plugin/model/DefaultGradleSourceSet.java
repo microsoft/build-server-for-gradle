@@ -8,7 +8,6 @@ import java.util.Set;
 import org.gradle.api.Project;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
-import com.microsoft.java.bs.gradle.model.JdkPlatform;
 
 /**
  * Default implementation of {@link GradleSourceSet}.
@@ -36,7 +35,9 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   private File resourceOutputDir;
 
-  private JdkPlatform jdkPlatform;
+  private File javaHome;
+
+  private String javaVersion;
 
   /**
    * Construct a default Gradle source set from a Gradle project.
@@ -128,19 +129,27 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.resourceOutputDir = resourceOutputDir;
   }
 
-  public JdkPlatform getJdkPlatform() {
-    return jdkPlatform;
+  public File getJavaHome() {
+    return javaHome;
   }
 
-  public void setJdkPlatform(JdkPlatform jdkPlatform) {
-    this.jdkPlatform = jdkPlatform;
+  public void setJavaHome(File javaHome) {
+    this.javaHome = javaHome;
+  }
+
+  public String getJavaVersion() {
+    return javaVersion;
+  }
+
+  public void setJavaVersion(String javaVersion) {
+    this.javaVersion = javaVersion;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(projectName, projectPath, projectDir,
         rootDir, sourceSetName, sourceDirs, generatedSourceDirs,
-        sourceOutputDir, resourceDirs, resourceOutputDir, jdkPlatform);
+        sourceOutputDir, resourceDirs, resourceOutputDir, javaHome, javaVersion);
   }
 
   @Override
@@ -165,6 +174,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(sourceOutputDir, other.sourceOutputDir)
         && Objects.equals(resourceDirs, other.resourceDirs)
         && Objects.equals(resourceOutputDir, other.resourceOutputDir)
-        && Objects.equals(jdkPlatform, other.jdkPlatform);
+        && Objects.equals(javaHome, other.javaHome)
+        && Objects.equals(javaVersion, other.javaVersion);
   }
 }
