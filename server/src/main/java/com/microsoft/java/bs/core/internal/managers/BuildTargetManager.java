@@ -9,8 +9,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.core.internal.model.JvmBuildTargetExt;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.JdkPlatform;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
@@ -51,6 +53,19 @@ public class BuildTargetManager {
           )
       );
       bt.setBaseDirectory(sourceSet.getRootDir().toURI().toString());
+
+      // See: https://build-server-protocol.github.io/docs/extensions/jvm#jvmbuildtarget
+      JdkPlatform jdkPlatform = sourceSet.getJdkPlatform();
+      if (jdkPlatform != null) {
+        JvmBuildTargetExt jvmBuildTarget = new JvmBuildTargetExt(
+            jdkPlatform.getJavaHome().getAbsolutePath(),
+            jdkPlatform.getJavaVersion()
+        );
+        jvmBuildTarget.setSourceCompatibility(jdkPlatform.getSourceCompatibility());
+        jvmBuildTarget.setTargetCompatibility(jdkPlatform.getTargetCompatibility());
+        bt.setDataKind("jvm");
+        bt.setData(jvmBuildTarget);
+      }
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
       newCache.put(btId, buildTarget);
     }

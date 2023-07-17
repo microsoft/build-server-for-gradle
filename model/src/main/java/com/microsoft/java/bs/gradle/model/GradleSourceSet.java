@@ -58,4 +58,9 @@ public interface GradleSourceSet {
    * The resource output directory of this source set.
    */
   public File getResourceOutputDir();
+
+  /**
+   * The JDK platform of this source set.
+   */
+  public JdkPlatform getJdkPlatform();
 }

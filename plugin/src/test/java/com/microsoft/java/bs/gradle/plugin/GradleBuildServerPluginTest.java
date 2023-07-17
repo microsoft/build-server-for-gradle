@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.JdkPlatform;
 
 class GradleBuildServerPluginTest {
 
@@ -54,6 +55,12 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
         assertNotNull(gradleSourceSet.getSourceOutputDir());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
+
+        JdkPlatform jdkPlatform = gradleSourceSet.getJdkPlatform();
+        assertNotNull(jdkPlatform.getJavaHome());
+        assertNotNull(jdkPlatform.getJavaVersion());
+        assertNotNull(jdkPlatform.getSourceCompatibility());
+        assertNotNull(jdkPlatform.getTargetCompatibility());
       }
     }
     
