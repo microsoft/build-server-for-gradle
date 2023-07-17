@@ -76,8 +76,18 @@ class BuildTargetManagerTest {
     }
 
     @Override
+    public File getSourceOutputDir() {
+      return null;
+    }
+
+    @Override
     public Set<File> getResourceDirs() {
       return Collections.emptySet();
+    }
+
+    @Override
+    public File getResourceOutputDir() {
+      return null;
     }
   }
 }

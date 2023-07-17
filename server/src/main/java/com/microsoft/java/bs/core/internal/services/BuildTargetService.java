@@ -14,6 +14,11 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.OutputPathItem;
+import ch.epfl.scala.bsp4j.OutputPathItemKind;
+import ch.epfl.scala.bsp4j.OutputPathsItem;
+import ch.epfl.scala.bsp4j.OutputPathsParams;
+import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesItem;
 import ch.epfl.scala.bsp4j.ResourcesParams;
 import ch.epfl.scala.bsp4j.ResourcesResult;
@@ -99,5 +104,41 @@ public class BuildTargetService {
       items.add(item);
     }
     return new ResourcesResult(items);
+  }
+
+  /**
+   * Get the output paths.
+   */
+  public OutputPathsResult getBuildTargetOutputPaths(OutputPathsParams params) {
+    List<OutputPathsItem> items = new ArrayList<>();
+    for (BuildTargetIdentifier btId : params.getTargets()) {
+      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      if (target == null) {
+        logger.warn("Skip output collection for the build target: {}"
+            + "because it cannot be found in the cache.", btId.getUri());
+        continue;
+      }
+
+      GradleSourceSet sourceSet = target.getSourceSet();
+      List<OutputPathItem> outputPaths = new ArrayList<>();
+      // Due to the BSP spec does not support additional flags for each output path,
+      // we will set the first output path as the source output and the second output path
+      // as the resource output.
+      // TODO: file a BSP spec issue to support additional flags for each output path.
+
+      // the first output path is source output
+      outputPaths.add(new OutputPathItem(
+          sourceSet.getSourceOutputDir().toURI().toString(),
+          OutputPathItemKind.DIRECTORY
+      ));
+      // the second output path is resource output
+      outputPaths.add(new OutputPathItem(
+          sourceSet.getResourceOutputDir().toURI().toString(),
+          OutputPathItemKind.DIRECTORY
+      ));
+      OutputPathsItem item = new OutputPathsItem(btId, outputPaths);
+      items.add(item);
+    }
+    return new OutputPathsResult(items);
   }
 }

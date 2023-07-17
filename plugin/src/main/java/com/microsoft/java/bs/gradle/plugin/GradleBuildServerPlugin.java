@@ -74,9 +74,15 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           addGeneratedSourceDirs(project, sourceSet, srcDirs, generatedSrcDirs);
           gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
 
+          // source output dir
+          gradleSourceSet.setSourceOutputDir(getSourceOutputDir(sourceSet));
+
           // resource
           Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
           gradleSourceSet.setResourceDirs(resourceDirs);
+
+          // resource output dir
+          gradleSourceSet.setResourceOutputDir(sourceSet.getOutput().getResourcesDir());
 
           gradleSourceSets.add(gradleSourceSet);
         });
@@ -189,6 +195,19 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       }
 
       return null;
+    }
+
+    private File getSourceOutputDir(SourceSet sourceSet) {
+      try {
+        Directory sourceOutputDir = sourceSet.getJava().getClassesDirectory().getOrNull();
+        if (sourceOutputDir != null) {
+          return sourceOutputDir.getAsFile();
+        }
+        return null;
+      } catch (NoSuchMethodError e) {
+        // to be compatible with Gradle < 6.1
+        return sourceSet.getOutput().getClassesDirs().getSingleFile();
+      }
     }
   }
 }

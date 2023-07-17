@@ -1,6 +1,7 @@
 package com.microsoft.java.bs.gradle.plugin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -51,6 +52,8 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
+        assertNotNull(gradleSourceSet.getSourceOutputDir());
+        assertNotNull(gradleSourceSet.getResourceOutputDir());
       }
     }
     
