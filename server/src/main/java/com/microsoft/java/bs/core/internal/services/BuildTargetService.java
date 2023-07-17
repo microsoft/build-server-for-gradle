@@ -14,6 +14,9 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.ResourcesItem;
+import ch.epfl.scala.bsp4j.ResourcesParams;
+import ch.epfl.scala.bsp4j.ResourcesResult;
 import ch.epfl.scala.bsp4j.SourceItem;
 import ch.epfl.scala.bsp4j.SourceItemKind;
 import ch.epfl.scala.bsp4j.SourcesItem;
@@ -54,7 +57,7 @@ public class BuildTargetService {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
       if (target == null) {
         logger.warn("Skip sources collection for the build target: {}"
-            + "because it cannot find in the cache.", btId.getUri());
+            + "because it cannot be found in the cache.", btId.getUri());
         continue;
       }
 
@@ -72,5 +75,29 @@ public class BuildTargetService {
       sourceItems.add(item);
     }
     return new SourcesResult(sourceItems);
+  }
+
+  /**
+   * Get the resources.
+   */
+  public ResourcesResult getBuildTargetResources(ResourcesParams params) {
+    List<ResourcesItem> items = new ArrayList<>();
+    for (BuildTargetIdentifier btId : params.getTargets()) {
+      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      if (target == null) {
+        logger.warn("Skip resources collection for the build target: {}"
+            + "because it cannot be found in the cache.", btId.getUri());
+        continue;
+      }
+
+      GradleSourceSet sourceSet = target.getSourceSet();
+      List<String> resources = new ArrayList<>();
+      for (File resourceDir : sourceSet.getResourceDirs()) {
+        resources.add(resourceDir.toURI().toString());
+      }
+      ResourcesItem item = new ResourcesItem(btId, resources);
+      items.add(item);
+    }
+    return new ResourcesResult(items);
   }
 }

@@ -29,6 +29,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   private Set<File> generatedSourceDirs;
 
+  private Set<File> resourceDirs;
+
   /**
    * Construct a default Gradle source set from a Gradle project.
    */
@@ -95,10 +97,18 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.generatedSourceDirs = generatedSourceDirs;
   }
 
+  public Set<File> getResourceDirs() {
+    return resourceDirs;
+  }
+
+  public void setResourceDirs(Set<File> resourceDirs) {
+    this.resourceDirs = resourceDirs;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(projectName, projectPath, projectDir, rootDir,
-        sourceSetName, sourceDirs, generatedSourceDirs);
+        sourceSetName, sourceDirs, generatedSourceDirs, resourceDirs);
   }
 
   @Override
@@ -119,6 +129,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(rootDir, other.rootDir)
         && Objects.equals(sourceSetName, other.sourceSetName)
         && Objects.equals(sourceDirs, other.sourceDirs)
-        && Objects.equals(generatedSourceDirs, other.generatedSourceDirs);
+        && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
+        && Objects.equals(resourceDirs, other.resourceDirs);
   }
 }

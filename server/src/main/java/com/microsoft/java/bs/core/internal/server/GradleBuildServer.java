@@ -111,8 +111,8 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public CompletableFuture<SourcesResult> buildTargetSources(SourcesParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetSources'");
+    return handleRequest("buildTarget/sources", cc ->
+        buildTargetService.getBuildTargetSources(params));
   }
 
   @Override
@@ -131,8 +131,8 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public CompletableFuture<ResourcesResult> buildTargetResources(ResourcesParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetResources'");
+    return handleRequest("buildTarget/resources", cc ->
+        buildTargetService.getBuildTargetResources(params));
   }
 
   @Override
