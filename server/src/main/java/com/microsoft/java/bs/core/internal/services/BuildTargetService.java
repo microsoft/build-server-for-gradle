@@ -122,20 +122,26 @@ public class BuildTargetService {
       GradleSourceSet sourceSet = target.getSourceSet();
       List<OutputPathItem> outputPaths = new ArrayList<>();
       // Due to the BSP spec does not support additional flags for each output path,
-      // we will set the first output path as the source output and the second output path
-      // as the resource output.
+      // we will leverage the query of the uri to mark whether this is a source/resource
+      // output path.
       // TODO: file a BSP spec issue to support additional flags for each output path.
 
-      // the first output path is source output
-      outputPaths.add(new OutputPathItem(
-          sourceSet.getSourceOutputDir().toURI().toString(),
-          OutputPathItemKind.DIRECTORY
-      ));
-      // the second output path is resource output
-      outputPaths.add(new OutputPathItem(
-          sourceSet.getResourceOutputDir().toURI().toString(),
-          OutputPathItemKind.DIRECTORY
-      ));
+      File sourceOutputDir = sourceSet.getResourceOutputDir();
+      if (sourceOutputDir != null) {
+        outputPaths.add(new OutputPathItem(
+            sourceOutputDir.toURI().toString() + "?kind=source",
+            OutputPathItemKind.DIRECTORY
+        ));
+      }
+
+      File resourceOutputDir = sourceSet.getResourceOutputDir();
+      if (resourceOutputDir != null) {
+        outputPaths.add(new OutputPathItem(
+            resourceOutputDir.toURI().toString() + "?kind=resource",
+            OutputPathItemKind.DIRECTORY
+        ));
+      }
+
       OutputPathsItem item = new OutputPathsItem(btId, outputPaths);
       items.add(item);
     }
