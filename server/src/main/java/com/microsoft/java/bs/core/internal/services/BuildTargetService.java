@@ -126,7 +126,7 @@ public class BuildTargetService {
       // output path.
       // TODO: file a BSP spec issue to support additional flags for each output path.
 
-      File sourceOutputDir = sourceSet.getResourceOutputDir();
+      File sourceOutputDir = sourceSet.getSourceOutputDir();
       if (sourceOutputDir != null) {
         outputPaths.add(new OutputPathItem(
             sourceOutputDir.toURI().toString() + "?kind=source",
