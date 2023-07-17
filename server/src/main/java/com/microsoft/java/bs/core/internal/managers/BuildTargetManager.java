@@ -16,6 +16,7 @@ import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.BuildTargetTag;
+import ch.epfl.scala.bsp4j.JvmBuildTarget;
 
 /**
  * Build targets manager.
@@ -51,6 +52,15 @@ public class BuildTargetManager {
           )
       );
       bt.setBaseDirectory(sourceSet.getRootDir().toURI().toString());
+
+      // See: https://build-server-protocol.github.io/docs/extensions/jvm#jvmbuildtarget
+      JvmBuildTarget jvmBuildTarget = new JvmBuildTarget(
+          sourceSet.getJavaHome() == null ? "" : sourceSet.getJavaHome().toURI().toString(),
+          sourceSet.getJavaVersion() == null ? "" : sourceSet.getJavaVersion()
+      );
+      bt.setDataKind("jvm");
+      bt.setData(jvmBuildTarget);
+
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
       newCache.put(btId, buildTarget);
     }

@@ -58,4 +58,14 @@ public interface GradleSourceSet {
    * The resource output directory of this source set.
    */
   public File getResourceOutputDir();
+
+  /**
+   * JDK home file location.
+   */
+  public File getJavaHome();
+
+  /**
+   * The java version this target is supposed to use.
+   */
+  public String getJavaVersion();
 }

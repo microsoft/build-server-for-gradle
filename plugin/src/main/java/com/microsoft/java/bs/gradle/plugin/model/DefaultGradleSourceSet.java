@@ -35,6 +35,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   private File resourceOutputDir;
 
+  private File javaHome;
+
+  private String javaVersion;
+
   /**
    * Construct a default Gradle source set from a Gradle project.
    */
@@ -125,11 +129,27 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.resourceOutputDir = resourceOutputDir;
   }
 
+  public File getJavaHome() {
+    return javaHome;
+  }
+
+  public void setJavaHome(File javaHome) {
+    this.javaHome = javaHome;
+  }
+
+  public String getJavaVersion() {
+    return javaVersion;
+  }
+
+  public void setJavaVersion(String javaVersion) {
+    this.javaVersion = javaVersion;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(projectName, projectPath, projectDir, rootDir,
-        sourceSetName, sourceDirs, generatedSourceDirs,
-        sourceOutputDir, resourceDirs, resourceOutputDir);
+    return Objects.hash(projectName, projectPath, projectDir,
+        rootDir, sourceSetName, sourceDirs, generatedSourceDirs,
+        sourceOutputDir, resourceDirs, resourceOutputDir, javaHome, javaVersion);
   }
 
   @Override
@@ -153,6 +173,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
         && Objects.equals(sourceOutputDir, other.sourceOutputDir)
         && Objects.equals(resourceDirs, other.resourceDirs)
-        && Objects.equals(resourceOutputDir, other.resourceOutputDir);
+        && Objects.equals(resourceOutputDir, other.resourceOutputDir)
+        && Objects.equals(javaHome, other.javaHome)
+        && Objects.equals(javaVersion, other.javaVersion);
   }
 }

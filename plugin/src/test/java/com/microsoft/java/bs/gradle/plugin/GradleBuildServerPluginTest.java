@@ -54,6 +54,9 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
         assertNotNull(gradleSourceSet.getSourceOutputDir());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
+
+        assertNotNull(gradleSourceSet.getJavaHome());
+        assertNotNull(gradleSourceSet.getJavaVersion());
       }
     }
     

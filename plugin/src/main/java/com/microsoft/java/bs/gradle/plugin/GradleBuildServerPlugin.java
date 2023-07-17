@@ -22,6 +22,7 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry;
 
@@ -83,6 +84,10 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
 
           // resource output dir
           gradleSourceSet.setResourceOutputDir(sourceSet.getOutput().getResourcesDir());
+
+          // jdk
+          gradleSourceSet.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
+          gradleSourceSet.setJavaVersion(getJavaVersion(project, sourceSet));
 
           gradleSourceSets.add(gradleSourceSet);
         });
@@ -208,6 +213,15 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
         // to be compatible with Gradle < 6.1
         return sourceSet.getOutput().getClassesDirs().getSingleFile();
       }
+    }
+
+    private String getJavaVersion(Project project, SourceSet sourceSet) {
+      JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
+      if (javaCompile != null) {
+        return javaCompile.getTargetCompatibility();
+      }
+
+      return "";
     }
   }
 }

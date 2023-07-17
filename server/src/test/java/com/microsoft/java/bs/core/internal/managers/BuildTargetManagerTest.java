@@ -1,5 +1,6 @@
 package com.microsoft.java.bs.core.internal.managers;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -16,6 +17,7 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
+import ch.epfl.scala.bsp4j.JvmBuildTarget;
 
 class BuildTargetManagerTest {
 
@@ -28,6 +30,19 @@ class BuildTargetManagerTest {
     BuildTarget buildTarget = list.get(0).getBuildTarget();
     assertTrue(buildTarget.getTags().contains("test"));
     assertTrue(buildTarget.getId().getUri().contains("?sourceset=test"));
+  }
+
+  @Test
+  void testJvmExtension() {
+    BuildTargetManager manager = new BuildTargetManager();
+    manager.store(new TestGradleSourceSets());
+
+    List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
+    BuildTarget buildTarget = list.get(0).getBuildTarget();
+
+    assertEquals("jvm", buildTarget.getDataKind());
+    JvmBuildTarget jvmBt = (JvmBuildTarget) buildTarget.getData();
+    assertEquals("17", jvmBt.getJavaVersion());
   }
 
   class TestGradleSourceSets implements GradleSourceSets {
@@ -88,6 +103,16 @@ class BuildTargetManagerTest {
     @Override
     public File getResourceOutputDir() {
       return null;
+    }
+
+    @Override
+    public File getJavaHome() {
+      return new File("javaHome");
+    }
+
+    @Override
+    public String getJavaVersion() {
+      return "17";
     }
   }
 }
