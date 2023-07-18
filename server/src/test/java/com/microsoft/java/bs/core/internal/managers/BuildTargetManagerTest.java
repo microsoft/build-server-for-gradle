@@ -13,6 +13,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.gradle.model.ArtifactsDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -113,6 +114,11 @@ class BuildTargetManagerTest {
     @Override
     public String getJavaVersion() {
       return "17";
+    }
+
+    @Override
+    public Set<ArtifactsDependency> getArtifactsDependencies() {
+      return null;
     }
   }
 }

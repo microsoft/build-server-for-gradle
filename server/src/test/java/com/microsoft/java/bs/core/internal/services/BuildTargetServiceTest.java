@@ -7,18 +7,27 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.gradle.model.Artifact;
+import com.microsoft.java.bs.gradle.model.ArtifactsDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.DependencyModule;
+import ch.epfl.scala.bsp4j.DependencyModulesParams;
+import ch.epfl.scala.bsp4j.DependencyModulesResult;
+import ch.epfl.scala.bsp4j.MavenDependencyModule;
+import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.OutputPathsParams;
 import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesParams;
@@ -124,5 +133,67 @@ class BuildTargetServiceTest {
         new OutputPathsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
     assertEquals(1, outputPathsResult.getItems().size());
     assertEquals(2, outputPathsResult.getItems().get(0).getOutputPaths().size());
+  }
+
+  @Test
+  void testGetBuildTargetDependencyModules() {
+    BuildTargetManager manager = mock(BuildTargetManager.class);
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(manager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+
+    ArtifactsDependency artifactsDependency = new ArtifactsDependency() {
+      @Override
+      public String getGroup() {
+        return "group";
+      }
+
+      @Override
+      public String getModule() {
+        return "module";
+      }
+
+      @Override
+      public String getVersion() {
+        return "1.0.0";
+      }
+
+      @Override
+      public List<Artifact> getArtifacts() {
+        return Arrays.asList(new Artifact() {
+          @Override
+          public URI getUri() {
+            return new File("artifact").toURI();
+          }
+
+          @Override
+          public String getClassifier() {
+            return "sources";
+          }
+        });
+      }
+    };
+    Set<ArtifactsDependency> artifactsDependencies = new HashSet<>();
+    artifactsDependencies.add(artifactsDependency);
+    when(gradleSourceSet.getArtifactsDependencies()).thenReturn(artifactsDependencies);
+
+    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    DependencyModulesResult res = buildTargetService.getBuildTargetDependencyModules(
+        new DependencyModulesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+    assertEquals(1, res.getItems().size());
+
+    List<DependencyModule> modules = res.getItems().get(0).getModules();
+    assertEquals(1, modules.size());
+    
+    MavenDependencyModule module = (MavenDependencyModule) modules.get(0).getData();
+    assertEquals("group", module.getOrganization());
+    assertEquals("module", module.getName());
+    assertEquals("1.0.0", module.getVersion());
+    assertEquals(1, module.getArtifacts().size());
+
+    MavenDependencyModuleArtifact artifact = module.getArtifacts().get(0);
+    assertEquals("sources", artifact.getClassifier());
   }
 }

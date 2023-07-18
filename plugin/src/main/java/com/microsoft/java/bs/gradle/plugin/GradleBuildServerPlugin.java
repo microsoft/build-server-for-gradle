@@ -7,17 +7,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.Directory;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.CompileOptions;
@@ -28,8 +34,12 @@ import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.plugin.dependency.DefaultDependencyVisitor;
+import com.microsoft.java.bs.gradle.plugin.dependency.DependencySet;
+import com.microsoft.java.bs.gradle.plugin.dependency.DependencyVisitor;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSets;
+import com.microsoft.java.bs.gradle.plugin.model.DependencyCollection;
 
 /**
  * The customized Gradle plugin to get the project structure information.
@@ -63,6 +73,9 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           continue;
         }
 
+        // this set is used to eliminate the source, resource and output
+        // directories from the module dependencies.
+        Set<File> exclusionFromDependencies = new HashSet<>();
         sourceSets.forEach(sourceSet -> {
           DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
           gradleSourceSet.setSourceSetName(sourceSet.getName());
@@ -70,26 +83,49 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           // source
           Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
           gradleSourceSet.setSourceDirs(srcDirs);
+          exclusionFromDependencies.addAll(srcDirs);
           Set<File> generatedSrcDirs = new HashSet<>();
           addAnnotationProcessingDir(project, sourceSet, generatedSrcDirs);
           addGeneratedSourceDirs(project, sourceSet, srcDirs, generatedSrcDirs);
           gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
+          exclusionFromDependencies.addAll(generatedSrcDirs);
 
           // source output dir
-          gradleSourceSet.setSourceOutputDir(getSourceOutputDir(sourceSet));
+          File sourceOutputDir = getSourceOutputDir(sourceSet);
+          if (sourceOutputDir != null) {
+            gradleSourceSet.setSourceOutputDir(sourceOutputDir);
+            exclusionFromDependencies.add(sourceOutputDir);
+          }
 
           // resource
           Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
           gradleSourceSet.setResourceDirs(resourceDirs);
+          exclusionFromDependencies.addAll(resourceDirs);
 
           // resource output dir
-          gradleSourceSet.setResourceOutputDir(sourceSet.getOutput().getResourcesDir());
+          File resourceOutputDir = sourceSet.getOutput().getResourcesDir();
+          if (resourceOutputDir != null) {
+            gradleSourceSet.setResourceOutputDir(resourceOutputDir);
+            exclusionFromDependencies.add(resourceOutputDir);
+          }
 
           // jdk
           gradleSourceSet.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
           gradleSourceSet.setJavaVersion(getJavaVersion(project, sourceSet));
 
           gradleSourceSets.add(gradleSourceSet);
+        });
+
+        sourceSets.forEach(sourceSet -> {
+          gradleSourceSets.forEach(gradleSourceSet -> {
+            if (Objects.equals(gradleSourceSet.getSourceSetName(), sourceSet.getName())
+                && Objects.equals(gradleSourceSet.getProjectPath(), project.getPath())) {
+              DependencyCollection dependency = getDependencies(project, sourceSet,
+                  exclusionFromDependencies);
+              ((DefaultGradleSourceSet) gradleSourceSet)
+                  .setArtifactsDependencies(dependency.getArtifactsDependencies());
+            }
+          });
         });
       }
       DefaultGradleSourceSets result = new DefaultGradleSourceSets();
@@ -222,6 +258,48 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       }
 
       return "";
+    }
+
+    private DependencyCollection getDependencies(Project project, SourceSet sourceSet,
+        Set<File> exclusionFromDependencies) {
+      Set<String> configurationNames = new HashSet<>();
+      configurationNames.add(sourceSet.getCompileClasspathConfigurationName());
+      configurationNames.add(sourceSet.getRuntimeClasspathConfigurationName());
+      return getDependencyCollection(project, configurationNames, exclusionFromDependencies);
+    }
+
+    private DependencyCollection getDependencyCollection(Project project,
+        Set<String> configurationNames, Set<File> exclusionFromDependencies) {
+      List<ResolvedArtifactResult> resolvedResult = project.getConfigurations()
+          .stream()
+          .filter(configuration -> configurationNames.contains(configuration.getName())
+              && configuration.isCanBeResolved())
+          .flatMap(configuration -> getConfigurationArtifacts(configuration).stream())
+          .filter(artifact -> !exclusionFromDependencies.contains(artifact.getFile()))
+          .collect(Collectors.toList());
+      return resolveProjectDependency(resolvedResult, project);
+    }
+
+    private List<ResolvedArtifactResult> getConfigurationArtifacts(Configuration config) {
+      return config.getIncoming()
+        .artifactView(viewConfiguration -> {
+          viewConfiguration.lenient(true);
+          viewConfiguration.componentFilter(Specs.<ComponentIdentifier>satisfyAll());
+        })
+        .getArtifacts()
+        .getArtifacts()
+        .stream()
+        .collect(Collectors.toList());
+    }
+
+    private DependencyCollection resolveProjectDependency(
+          List<ResolvedArtifactResult> resolvedResults, Project project) {
+      DependencySet dependencySet = new DependencySet(resolvedResults);
+      DependencyVisitor visitor = new DefaultDependencyVisitor(project);
+      dependencySet.accept(visitor);
+      return new DependencyCollection(
+        visitor.getArtifactsDependencies()
+      );
     }
   }
 }
