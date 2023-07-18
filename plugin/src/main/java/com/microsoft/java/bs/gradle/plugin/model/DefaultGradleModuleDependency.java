@@ -4,13 +4,13 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 
-import com.microsoft.java.bs.gradle.model.ModuleDependency;
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.Artifact;
 
 /**
- * Default implementation of {@link ModuleDependency}.
+ * Default implementation of {@link GradleModuleDependency}.
  */
-public class DefaultModuleDependency implements ModuleDependency, Serializable {
+public class DefaultGradleModuleDependency implements GradleModuleDependency, Serializable {
   private static final long serialVersionUID = 1L;
 
   private String group;
@@ -29,7 +29,7 @@ public class DefaultModuleDependency implements ModuleDependency, Serializable {
    * @param version version.
    * @param artifacts list of artifacts.
    */
-  public DefaultModuleDependency(String group, String module,
+  public DefaultGradleModuleDependency(String group, String module,
       String version, List<Artifact> artifacts) {
     this.group = group;
     this.module = module;
@@ -85,7 +85,7 @@ public class DefaultModuleDependency implements ModuleDependency, Serializable {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    DefaultModuleDependency other = (DefaultModuleDependency) obj;
+    DefaultGradleModuleDependency other = (DefaultGradleModuleDependency) obj;
     return Objects.equals(group, other.group) && Objects.equals(module, other.module)
         && Objects.equals(version, other.version) && Objects.equals(artifacts, other.artifacts);
   }

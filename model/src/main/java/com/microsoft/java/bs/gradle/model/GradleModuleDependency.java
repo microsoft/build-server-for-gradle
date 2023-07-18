@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Represents a set of artifact dependency.
  */
-public interface ModuleDependency {
+public interface GradleModuleDependency {
   public String getGroup();
 
   public String getModule();

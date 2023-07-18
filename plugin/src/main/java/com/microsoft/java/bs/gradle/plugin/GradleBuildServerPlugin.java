@@ -12,19 +12,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.component.ComponentIdentifier;
-import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.Directory;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.CompileOptions;
@@ -35,12 +30,9 @@ import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
-import com.microsoft.java.bs.gradle.plugin.dependency.DefaultDependencyVisitor;
-import com.microsoft.java.bs.gradle.plugin.dependency.DependencySet;
-import com.microsoft.java.bs.gradle.plugin.dependency.DependencyVisitor;
+import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSets;
-import com.microsoft.java.bs.gradle.plugin.model.DependencyCollection;
 
 /**
  * The customized Gradle plugin to get the project structure information.
@@ -125,9 +117,10 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           if (gradleSourceSet == null) {
             return;
           }
-          DependencyCollection dependency = getDependencies(project, sourceSet,
-                  exclusionFromDependencies);
-          gradleSourceSet.setModuleDependencies(dependency.getModuleDependencies());
+          DependencyCollector collector = new DependencyCollector(project,
+              exclusionFromDependencies);
+          collector.collectByConfigurationNames(getClasspathConfigurationNames(sourceSet));
+          gradleSourceSet.setModuleDependencies(collector.getModuleDependencies());
         });
       }
       DefaultGradleSourceSets result = new DefaultGradleSourceSets();
@@ -262,46 +255,11 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       return "";
     }
 
-    private DependencyCollection getDependencies(Project project, SourceSet sourceSet,
-        Set<File> exclusionFromDependencies) {
+    private Set<String> getClasspathConfigurationNames(SourceSet sourceSet) {
       Set<String> configurationNames = new HashSet<>();
       configurationNames.add(sourceSet.getCompileClasspathConfigurationName());
       configurationNames.add(sourceSet.getRuntimeClasspathConfigurationName());
-      return getDependencyCollection(project, configurationNames, exclusionFromDependencies);
-    }
-
-    private DependencyCollection getDependencyCollection(Project project,
-        Set<String> configurationNames, Set<File> exclusionFromDependencies) {
-      List<ResolvedArtifactResult> resolvedResult = project.getConfigurations()
-          .stream()
-          .filter(configuration -> configurationNames.contains(configuration.getName())
-              && configuration.isCanBeResolved())
-          .flatMap(configuration -> getConfigurationArtifacts(configuration).stream())
-          .filter(artifact -> !exclusionFromDependencies.contains(artifact.getFile()))
-          .collect(Collectors.toList());
-      return resolveProjectDependency(resolvedResult, project);
-    }
-
-    private List<ResolvedArtifactResult> getConfigurationArtifacts(Configuration config) {
-      return config.getIncoming()
-        .artifactView(viewConfiguration -> {
-          viewConfiguration.lenient(true);
-          viewConfiguration.componentFilter(Specs.<ComponentIdentifier>satisfyAll());
-        })
-        .getArtifacts()
-        .getArtifacts()
-        .stream()
-        .collect(Collectors.toList());
-    }
-
-    private DependencyCollection resolveProjectDependency(
-          List<ResolvedArtifactResult> resolvedResults, Project project) {
-      DependencySet dependencySet = new DependencySet(resolvedResults);
-      DependencyVisitor visitor = new DefaultDependencyVisitor(project);
-      dependencySet.accept(visitor);
-      return new DependencyCollection(
-        visitor.getModuleDependencies()
-      );
+      return configurationNames;
     }
   }
 }

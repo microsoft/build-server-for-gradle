@@ -13,7 +13,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.gradle.model.ModuleDependency;
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -117,7 +117,7 @@ class BuildTargetManagerTest {
     }
 
     @Override
-    public Set<ModuleDependency> getModuleDependencies() {
+    public Set<GradleModuleDependency> getModuleDependencies() {
       return null;
     }
   }

@@ -7,7 +7,7 @@ import java.util.Set;
 
 import org.gradle.api.Project;
 
-import com.microsoft.java.bs.gradle.model.ModuleDependency;
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 /**
@@ -40,7 +40,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   private String javaVersion;
 
-  private Set<ModuleDependency> moduleDependencies;
+  private Set<GradleModuleDependency> moduleDependencies;
 
   /**
    * Construct a default Gradle source set from a Gradle project.
@@ -148,11 +148,11 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.javaVersion = javaVersion;
   }
 
-  public Set<ModuleDependency> getModuleDependencies() {
+  public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
 
-  public void setModuleDependencies(Set<ModuleDependency> moduleDependencies) {
+  public void setModuleDependencies(Set<GradleModuleDependency> moduleDependencies) {
     this.moduleDependencies = moduleDependencies;
   }
 

@@ -72,5 +72,5 @@ public interface GradleSourceSet {
   /**
    * Module dependencies.
    */
-  public Set<ModuleDependency> getModuleDependencies();
+  public Set<GradleModuleDependency> getModuleDependencies();
 }
