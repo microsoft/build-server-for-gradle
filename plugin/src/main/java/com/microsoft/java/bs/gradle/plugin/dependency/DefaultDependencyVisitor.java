@@ -19,9 +19,9 @@ import org.gradle.language.base.artifact.SourcesArtifact;
 import org.gradle.language.java.artifact.JavadocArtifact;
 
 import com.microsoft.java.bs.gradle.model.Artifact;
-import com.microsoft.java.bs.gradle.model.ArtifactsDependency;
+import com.microsoft.java.bs.gradle.model.ModuleDependency;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultArtifact;
-import com.microsoft.java.bs.gradle.plugin.model.DefaultArtifactsDependency;
+import com.microsoft.java.bs.gradle.plugin.model.DefaultModuleDependency;
 
 /**
  * Default implementation of {@link DependencyVisitor}.
@@ -30,7 +30,7 @@ public class DefaultDependencyVisitor implements DependencyVisitor {
   private static final String UNKNOWN = "unknown";
 
   private Project project;
-  private Set<ArtifactsDependency> moduleDependencies;
+  private Set<ModuleDependency> moduleDependencies;
 
   /**
    * Creates a new instance of {@link DefaultDependencyVisitor}.
@@ -70,7 +70,7 @@ public class DefaultDependencyVisitor implements DependencyVisitor {
       artifacts.add(new DefaultArtifact(javaDocJar.toURI(), "javadoc"));
     }
 
-    moduleDependencies.add(new DefaultArtifactsDependency(
+    moduleDependencies.add(new DefaultModuleDependency(
         artifactIdentifier.getComponentIdentifier().getGroup(),
         artifactIdentifier.getComponentIdentifier().getModule(),
         artifactIdentifier.getComponentIdentifier().getVersion(),
@@ -86,7 +86,7 @@ public class DefaultDependencyVisitor implements DependencyVisitor {
       artifacts.add(new DefaultArtifact(artifactResult.getFile().toURI(), null));
     }
 
-    moduleDependencies.add(new DefaultArtifactsDependency(
+    moduleDependencies.add(new DefaultModuleDependency(
         UNKNOWN,
         artifactIdentifier.getCapitalizedDisplayName(),
         UNKNOWN,
@@ -102,7 +102,7 @@ public class DefaultDependencyVisitor implements DependencyVisitor {
       artifacts.add(new DefaultArtifact(artifactResult.getFile().toURI(), null));
     }
 
-    moduleDependencies.add(new DefaultArtifactsDependency(
+    moduleDependencies.add(new DefaultModuleDependency(
         UNKNOWN,
         artifactIdentifier.getCapitalizedDisplayName(),
         UNKNOWN,
@@ -125,7 +125,7 @@ public class DefaultDependencyVisitor implements DependencyVisitor {
   }
 
   @Override
-  public Set<ArtifactsDependency> getArtifactsDependencies() {
+  public Set<ModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
 }

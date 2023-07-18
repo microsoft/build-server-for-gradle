@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.gradle.model.ArtifactsDependency;
+import com.microsoft.java.bs.gradle.model.ModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
@@ -172,7 +172,7 @@ public class BuildTargetService {
 
       GradleSourceSet sourceSet = target.getSourceSet();
       List<DependencyModule> modules = new ArrayList<>();
-      for (ArtifactsDependency dep : sourceSet.getArtifactsDependencies()) {
+      for (ModuleDependency dep : sourceSet.getModuleDependencies()) {
         DependencyModule module = new DependencyModule(dep.getModule(), dep.getVersion());
         module.setDataKind(MAVEN_DATA_KIND);
         List<MavenDependencyModuleArtifact> artifacts = dep.getArtifacts().stream().map(a -> {

@@ -7,7 +7,7 @@ import java.util.Set;
 
 import org.gradle.api.Project;
 
-import com.microsoft.java.bs.gradle.model.ArtifactsDependency;
+import com.microsoft.java.bs.gradle.model.ModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 /**
@@ -40,7 +40,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   private String javaVersion;
 
-  private Set<ArtifactsDependency> artifactsDependencies;
+  private Set<ModuleDependency> moduleDependencies;
 
   /**
    * Construct a default Gradle source set from a Gradle project.
@@ -148,12 +148,12 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.javaVersion = javaVersion;
   }
 
-  public Set<ArtifactsDependency> getArtifactsDependencies() {
-    return artifactsDependencies;
+  public Set<ModuleDependency> getModuleDependencies() {
+    return moduleDependencies;
   }
 
-  public void setArtifactsDependencies(Set<ArtifactsDependency> artifactsDependencies) {
-    this.artifactsDependencies = artifactsDependencies;
+  public void setModuleDependencies(Set<ModuleDependency> moduleDependencies) {
+    this.moduleDependencies = moduleDependencies;
   }
 
   @Override
@@ -161,7 +161,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     return Objects.hash(projectName, projectPath, projectDir,
         rootDir, sourceSetName, sourceDirs, generatedSourceDirs,
         sourceOutputDir, resourceDirs, resourceOutputDir,
-        javaHome, javaVersion, artifactsDependencies);
+        javaHome, javaVersion, moduleDependencies);
   }
 
   @Override
@@ -188,6 +188,6 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(resourceOutputDir, other.resourceOutputDir)
         && Objects.equals(javaHome, other.javaHome)
         && Objects.equals(javaVersion, other.javaVersion)
-        && Objects.equals(artifactsDependencies, other.artifactsDependencies);
+        && Objects.equals(moduleDependencies, other.moduleDependencies);
   }
 }

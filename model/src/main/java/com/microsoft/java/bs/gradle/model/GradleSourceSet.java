@@ -70,7 +70,7 @@ public interface GradleSourceSet {
   public String getJavaVersion();
 
   /**
-   * Artifacts dependencies.
+   * Module dependencies.
    */
-  public Set<ArtifactsDependency> getArtifactsDependencies();
+  public Set<ModuleDependency> getModuleDependencies();
 }

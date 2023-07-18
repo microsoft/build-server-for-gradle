@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.gradle.model.Artifact;
-import com.microsoft.java.bs.gradle.model.ArtifactsDependency;
+import com.microsoft.java.bs.gradle.model.ModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
@@ -144,7 +144,7 @@ class BuildTargetServiceTest {
     GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
 
-    ArtifactsDependency artifactsDependency = new ArtifactsDependency() {
+    ModuleDependency moduleDependency = new ModuleDependency() {
       @Override
       public String getGroup() {
         return "group";
@@ -175,9 +175,9 @@ class BuildTargetServiceTest {
         });
       }
     };
-    Set<ArtifactsDependency> artifactsDependencies = new HashSet<>();
-    artifactsDependencies.add(artifactsDependency);
-    when(gradleSourceSet.getArtifactsDependencies()).thenReturn(artifactsDependencies);
+    Set<ModuleDependency> moduleDependencies = new HashSet<>();
+    moduleDependencies.add(moduleDependency);
+    when(gradleSourceSet.getModuleDependencies()).thenReturn(moduleDependencies);
 
     BuildTargetService buildTargetService = new BuildTargetService(manager);
     DependencyModulesResult res = buildTargetService.getBuildTargetDependencyModules(

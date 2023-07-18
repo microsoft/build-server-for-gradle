@@ -7,7 +7,7 @@ import org.gradle.internal.component.external.model.ModuleComponentArtifactIdent
 import org.gradle.internal.component.local.model.ComponentFileArtifactIdentifier;
 import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifier;
 
-import com.microsoft.java.bs.gradle.model.ArtifactsDependency;
+import com.microsoft.java.bs.gradle.model.ModuleDependency;
 
 /**
  * Dependency visitor.
@@ -35,5 +35,5 @@ public interface DependencyVisitor {
   void visit(ComponentFileArtifactIdentifier artifactIdentifier,
       ResolvedArtifactResult artifactResult);
 
-  Set<ArtifactsDependency> getArtifactsDependencies();
+  Set<ModuleDependency> getModuleDependencies();
 }

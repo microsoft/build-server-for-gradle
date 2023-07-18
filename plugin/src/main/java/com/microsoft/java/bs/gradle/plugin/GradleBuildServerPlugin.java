@@ -5,9 +5,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,6 +68,8 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
     public Object buildAll(String modelName, Project rootProject) {
       Set<Project> allProject = rootProject.getAllprojects();
       List<GradleSourceSet> gradleSourceSets = new ArrayList<>();
+      // mapping Gradle source set to our customized model.
+      Map<SourceSet, DefaultGradleSourceSet> sourceSetMap = new HashMap<>();
       for (Project project : allProject) {
         SourceSetContainer sourceSets = getSourceSetContainer(project);
         if (sourceSets == null || sourceSets.isEmpty()) {
@@ -78,6 +81,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
         Set<File> exclusionFromDependencies = new HashSet<>();
         sourceSets.forEach(sourceSet -> {
           DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
+          sourceSetMap.put(sourceSet, gradleSourceSet);
           gradleSourceSet.setSourceSetName(sourceSet.getName());
 
           // source
@@ -117,15 +121,13 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
         });
 
         sourceSets.forEach(sourceSet -> {
-          gradleSourceSets.forEach(gradleSourceSet -> {
-            if (Objects.equals(gradleSourceSet.getSourceSetName(), sourceSet.getName())
-                && Objects.equals(gradleSourceSet.getProjectPath(), project.getPath())) {
-              DependencyCollection dependency = getDependencies(project, sourceSet,
+          DefaultGradleSourceSet gradleSourceSet = sourceSetMap.get(sourceSet);
+          if (gradleSourceSet == null) {
+            return;
+          }
+          DependencyCollection dependency = getDependencies(project, sourceSet,
                   exclusionFromDependencies);
-              ((DefaultGradleSourceSet) gradleSourceSet)
-                  .setArtifactsDependencies(dependency.getArtifactsDependencies());
-            }
-          });
+          gradleSourceSet.setModuleDependencies(dependency.getModuleDependencies());
         });
       }
       DefaultGradleSourceSets result = new DefaultGradleSourceSets();
@@ -298,7 +300,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       DependencyVisitor visitor = new DefaultDependencyVisitor(project);
       dependencySet.accept(visitor);
       return new DependencyCollection(
-        visitor.getArtifactsDependencies()
+        visitor.getModuleDependencies()
       );
     }
   }
