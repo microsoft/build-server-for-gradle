@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.microsoft.java.bs.core.i18n.MessageUtils;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
@@ -61,8 +62,7 @@ public class BuildTargetService {
     for (BuildTargetIdentifier btId : params.getTargets()) {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
       if (target == null) {
-        logger.warn("Skip sources collection for the build target: {}"
-            + "because it cannot be found in the cache.", btId.getUri());
+        logger.warn(MessageUtils.get("warning.skipBuildTargetSources"), btId.getUri());
         continue;
       }
 
@@ -90,8 +90,7 @@ public class BuildTargetService {
     for (BuildTargetIdentifier btId : params.getTargets()) {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
       if (target == null) {
-        logger.warn("Skip resources collection for the build target: {}"
-            + "because it cannot be found in the cache.", btId.getUri());
+        logger.warn(MessageUtils.get("warning.skipBuildTargetResources"), btId.getUri());
         continue;
       }
 
@@ -114,8 +113,7 @@ public class BuildTargetService {
     for (BuildTargetIdentifier btId : params.getTargets()) {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
       if (target == null) {
-        logger.warn("Skip output collection for the build target: {}"
-            + "because it cannot be found in the cache.", btId.getUri());
+        logger.warn(MessageUtils.get("warning.skipBuildTargetOutputPaths"), btId.getUri());
         continue;
       }
 
