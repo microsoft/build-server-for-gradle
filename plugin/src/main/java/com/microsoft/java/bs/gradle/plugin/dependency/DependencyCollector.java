@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ArtifactCollection;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
@@ -82,8 +83,8 @@ public class DependencyCollector {
           viewConfiguration.lenient(true);
           viewConfiguration.componentFilter(Specs.<ComponentIdentifier>satisfyAll());
         })
-        .getArtifacts()
-        .getArtifacts()
+        .getArtifacts() // get ArtifactCollection from ArtifactView.
+        .getArtifacts() // get a set of ResolvedArtifactResult from ArtifactCollection.
         .stream()
         .collect(Collectors.toList());
   }
