@@ -1,10 +1,10 @@
 <configuration>
     <property name="LOG_FILE" value="bs" />
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${buildServerStorage}/${LOG_FILE}.log</file>
+        <file>${server.storage}/${LOG_FILE}.log</file>
         <append>true</append>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${buildServerStorage}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${server.storage}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>    
             <maxHistory>30</maxHistory>
             <totalSizeCap>100MB</totalSizeCap>

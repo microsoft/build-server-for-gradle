@@ -15,9 +15,9 @@ public class Utils {
   private Utils() {}
 
   /**
-   * The user home directory property name.
+   * The name of the init script.
    */
-  private static final String USER_HOME = "user.home";
+  private static final String INIT_GRADLE_SCRIPT = "init.gradle";
 
   /**
    * Get the Daemon connection for the project.
@@ -52,7 +52,12 @@ public class Utils {
     return modelBuilder;
   }
 
-  public static File getCachedFile(String name) {
-    return Paths.get(System.getProperty(USER_HOME), ".gradle-bs", name).toFile();
+  public static File getPluginFile() {
+    return Paths.get(System.getProperty("plugin.location")).toFile();
+  }
+
+  public static File getInitScriptFile() {
+    File pluginFile = getPluginFile();
+    return Paths.get(pluginFile.getParent(), INIT_GRADLE_SCRIPT).toFile();
   }
 }
