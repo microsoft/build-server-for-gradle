@@ -15,7 +15,7 @@ public class Utils {
   private Utils() {}
 
   /**
-   * The name of the init script.
+   * The file name of the init script.
    */
   private static final String INIT_GRADLE_SCRIPT = "init.gradle";
 
@@ -52,12 +52,7 @@ public class Utils {
     return modelBuilder;
   }
 
-  public static File getPluginFile() {
-    return Paths.get(System.getProperty("plugin.location")).toFile();
-  }
-
   public static File getInitScriptFile() {
-    File pluginFile = getPluginFile();
-    return Paths.get(pluginFile.getParent(), INIT_GRADLE_SCRIPT).toFile();
+    return Paths.get(System.getProperty("plugin.dir"), INIT_GRADLE_SCRIPT).toFile();
   }
 }

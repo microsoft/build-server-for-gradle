@@ -25,8 +25,8 @@ class GradleApiConnectorTest {
         "testProjects"
     ).normalize();
     String pluginLocation = Paths.get(System.getProperty("user.dir"),
-        "build", "libs", "plugins", "plugin.jar").toString();
-    System.setProperty("plugin.location", pluginLocation);
+        "build", "libs", "plugins").toString();
+    System.setProperty("plugin.dir", pluginLocation);
   }
 
   @Test

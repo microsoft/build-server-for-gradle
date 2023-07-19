@@ -25,9 +25,9 @@ public class Launcher {
   static final String PROP_BUILD_SERVER_STORAGE = "server.storage";
 
   /**
-   * The property name for the customized plugin location.
+   * The property name for the directory location storing the plugin and init script.
    */
-  static final String PROP_PLUGIN_LOCATION = "plugin.location";
+  static final String PROP_PLUGIN_LOCATION = "plugin.dir";
 
   private static final Logger logger = LoggerFactory.getLogger(Launcher.class);
 
