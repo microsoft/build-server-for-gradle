@@ -1,22 +1,17 @@
-package com.microsoft.java.bs.gradle.plugin.model;
+package com.microsoft.java.bs.core.internal.model;
 
 import java.io.File;
-import java.io.Serializable;
-import java.util.Objects;
+import java.util.Collections;
 import java.util.Set;
-
-import org.gradle.api.Project;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 /**
- * Default implementation of {@link GradleSourceSet}.
+ * Test implementation of {@link GradleSourceSet}.
  */
-public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
-  private static final long serialVersionUID = 1L;
-
+public class TestGradleSourceSet implements GradleSourceSet {
   private String projectName;
 
   private String projectPath;
@@ -46,13 +41,17 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
   private Set<GradleProjectDependency> projectDependencies;
 
   /**
-   * Construct a default Gradle source set from a Gradle project.
+   * Construct a default Gradle source set for testing purpose.
    */
-  public DefaultGradleSourceSet(Project project) {
-    this.projectName = project.getName();
-    this.projectPath = project.getPath();
-    this.projectDir = project.getProjectDir();
-    this.rootDir = project.getRootDir();
+  public TestGradleSourceSet() {
+    this.projectDir = new File("test");
+    this.rootDir = new File("test");
+    this.sourceSetName = "main";
+    this.sourceDirs = Collections.emptySet();
+    this.generatedSourceDirs = Collections.emptySet();
+    this.resourceDirs = Collections.emptySet();
+    this.moduleDependencies = Collections.emptySet();
+    this.projectDependencies = Collections.emptySet();
   }
 
   public String getProjectName() {
@@ -165,42 +164,5 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   public void setProjectDependencies(Set<GradleProjectDependency> projectDependencies) {
     this.projectDependencies = projectDependencies;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(projectName, projectPath, projectDir,
-        rootDir, sourceSetName, sourceDirs, generatedSourceDirs,
-        sourceOutputDir, resourceDirs, resourceOutputDir,
-        javaHome, javaVersion, moduleDependencies, projectDependencies
-    );
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    DefaultGradleSourceSet other = (DefaultGradleSourceSet) obj;
-    return Objects.equals(projectName, other.projectName)
-        && Objects.equals(projectPath, other.projectPath)
-        && Objects.equals(projectDir, other.projectDir)
-        && Objects.equals(rootDir, other.rootDir)
-        && Objects.equals(sourceSetName, other.sourceSetName)
-        && Objects.equals(sourceDirs, other.sourceDirs)
-        && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
-        && Objects.equals(sourceOutputDir, other.sourceOutputDir)
-        && Objects.equals(resourceDirs, other.resourceDirs)
-        && Objects.equals(resourceOutputDir, other.resourceOutputDir)
-        && Objects.equals(javaHome, other.javaHome)
-        && Objects.equals(javaVersion, other.javaVersion)
-        && Objects.equals(moduleDependencies, other.moduleDependencies)
-        && Objects.equals(projectDependencies, other.projectDependencies);
   }
 }

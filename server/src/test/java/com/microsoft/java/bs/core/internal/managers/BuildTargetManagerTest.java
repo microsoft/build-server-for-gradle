@@ -4,18 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
-import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
-import com.microsoft.java.bs.gradle.model.GradleSourceSet;
-import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.core.internal.model.TestGradleSourceSet;
+import com.microsoft.java.bs.core.internal.model.TestGradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.JvmBuildTarget;
@@ -25,7 +24,12 @@ class BuildTargetManagerTest {
   @Test
   void testStore() {
     BuildTargetManager manager = new BuildTargetManager();
-    manager.store(new TestGradleSourceSets());
+    TestGradleSourceSets testGradleSourceSets = new TestGradleSourceSets();
+    TestGradleSourceSet testGradleSourceSet = new TestGradleSourceSet();
+    testGradleSourceSet.setSourceSetName("test");
+    testGradleSourceSets.setGradleSourceSets(Arrays.asList(testGradleSourceSet));
+
+    manager.store(testGradleSourceSets);
 
     List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
     BuildTarget buildTarget = list.get(0).getBuildTarget();
@@ -36,7 +40,11 @@ class BuildTargetManagerTest {
   @Test
   void testJvmExtension() {
     BuildTargetManager manager = new BuildTargetManager();
-    manager.store(new TestGradleSourceSets());
+    TestGradleSourceSets testGradleSourceSets = new TestGradleSourceSets();
+    TestGradleSourceSet testGradleSourceSet = new TestGradleSourceSet();
+    testGradleSourceSet.setJavaVersion("17");
+    testGradleSourceSets.setGradleSourceSets(Arrays.asList(testGradleSourceSet));
+    manager.store(testGradleSourceSets);
 
     List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
     BuildTarget buildTarget = list.get(0).getBuildTarget();
@@ -46,79 +54,41 @@ class BuildTargetManagerTest {
     assertEquals("17", jvmBt.getJavaVersion());
   }
 
-  class TestGradleSourceSets implements GradleSourceSets {
+  @Test
+  void testBuildTargetDependency() {
+    TestGradleSourceSet sourceSetFoo = new TestGradleSourceSet();
+    sourceSetFoo.setProjectPath(":foo");
+    sourceSetFoo.setProjectDir(new File("foo"));
+    TestGradleSourceSet sourceSetBar = new TestGradleSourceSet();
+    sourceSetBar.setProjectPath(":bar");
+    sourceSetBar.setProjectDir(new File("bar"));
+    Set<GradleProjectDependency> dependencies = new HashSet<>();
+    dependencies.add(new GradleProjectDependency() {
+      @Override
+      public String getProjectPath() {
+        return ":foo";
+      }
+    });
+    sourceSetBar.setProjectDependencies(dependencies);
 
-    @Override
-    public List<GradleSourceSet> getGradleSourceSets() {
-      return Arrays.asList(new TestGradleSourceSet());
-    }
-  }
+    TestGradleSourceSets testGradleSourceSets = new TestGradleSourceSets();
+    testGradleSourceSets.setGradleSourceSets(Arrays.asList(sourceSetFoo, sourceSetBar));
 
-  class TestGradleSourceSet implements GradleSourceSet {
+    BuildTargetManager manager = new BuildTargetManager();
+    manager.store(testGradleSourceSets);
 
-    @Override
-    public String getProjectName() {
-      return "test";
-    }
+    List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
+    BuildTarget buildTargetFoo = list.stream()
+        .filter(bt -> bt.getBuildTarget().getId().getUri().contains("foo"))
+        .findFirst()
+        .get()
+        .getBuildTarget();
+    BuildTarget buildTargetBar = list.stream()
+        .filter(bt -> bt.getBuildTarget().getId().getUri().contains("bar"))
+        .findFirst()
+        .get()
+        .getBuildTarget();
 
-    @Override
-    public String getProjectPath() {
-      return ":";
-    }
-
-    @Override
-    public File getProjectDir() {
-      return Paths.get(System.getProperty("user.dir")).toFile();
-    }
-
-    @Override
-    public File getRootDir() {
-      return Paths.get(System.getProperty("user.dir")).toFile();
-    }
-
-    @Override
-    public String getSourceSetName() {
-      return "test";
-    }
-
-    @Override
-    public Set<File> getSourceDirs() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public Set<File> getGeneratedSourceDirs() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public File getSourceOutputDir() {
-      return null;
-    }
-
-    @Override
-    public Set<File> getResourceDirs() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public File getResourceOutputDir() {
-      return null;
-    }
-
-    @Override
-    public File getJavaHome() {
-      return new File("javaHome");
-    }
-
-    @Override
-    public String getJavaVersion() {
-      return "17";
-    }
-
-    @Override
-    public Set<GradleModuleDependency> getModuleDependencies() {
-      return null;
-    }
+    assertTrue(buildTargetBar.getDependencies().contains(buildTargetFoo.getId()));
   }
 }

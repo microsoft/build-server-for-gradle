@@ -7,8 +7,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -34,6 +37,9 @@ public class BuildTargetManager {
    */
   public void store(GradleSourceSets gradleSourceSets) {
     Map<BuildTargetIdentifier, GradleBuildTarget> newCache = new HashMap<>();
+    Map<String, BuildTargetIdentifier> projectPathToBuildTargetId = new HashMap<>();
+    // The dependency project paths of a build target id.
+    Map<BuildTargetIdentifier, Set<String>> projectDependencies = new HashMap<>();
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
       String sourceSetName = sourceSet.getSourceSetName();
       URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
@@ -63,6 +69,20 @@ public class BuildTargetManager {
 
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
       newCache.put(btId, buildTarget);
+
+      // Store the relationship between the project path and the build target id.
+      // 'test' and other source sets are ignored.
+      if ("main".equals(sourceSet.getSourceSetName())) {
+        projectPathToBuildTargetId.put(sourceSet.getProjectPath(), btId);
+      }
+
+      // Store the dependency project paths of a build target id.
+      Set<String> dependentProjectPaths = sourceSet.getProjectDependencies()
+          .stream()
+          .map(GradleProjectDependency::getProjectPath)
+          .collect(Collectors.toSet());
+      projectDependencies.put(btId, dependentProjectPaths);
+      updateBuildTargetDependencies(projectPathToBuildTargetId, projectDependencies, newCache);
     }
     this.cache = newCache;
   }
@@ -85,5 +105,21 @@ public class BuildTargetManager {
       tags.add(BuildTargetTag.TEST);
     }
     return tags;
+  }
+
+  private void updateBuildTargetDependencies(
+      Map<String, BuildTargetIdentifier> projectPathToBuildTargetId,
+      Map<BuildTargetIdentifier, Set<String>> projectDependencies,
+      Map<BuildTargetIdentifier, GradleBuildTarget> cache
+  ) {
+    for (Map.Entry<BuildTargetIdentifier, Set<String>> entry : projectDependencies.entrySet()) {
+      BuildTargetIdentifier btId = entry.getKey();
+      Set<String> dependentProjectPaths = entry.getValue();
+      List<BuildTargetIdentifier> btDependencies = dependentProjectPaths
+          .stream()
+          .map(projectPathToBuildTargetId::get)
+          .collect(Collectors.toList());
+      cache.get(btId).getBuildTarget().setDependencies(btDependencies);
+    }
   }
 }
