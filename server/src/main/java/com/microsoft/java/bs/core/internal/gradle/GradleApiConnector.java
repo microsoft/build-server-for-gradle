@@ -13,6 +13,7 @@ import org.gradle.tooling.GradleConnectionException;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 
+import com.microsoft.java.bs.core.i18n.MessageUtils;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 /**
@@ -83,7 +84,7 @@ public class GradleApiConnector {
         Files.write(pluginJarFile.toPath(), pluginJarBytes);
       }
     } catch (IOException | NoSuchAlgorithmException e) {
-      throw new IllegalStateException("Failed to get plugin jar.", e);
+      throw new IllegalStateException(MessageUtils.get("error.pluginMissing"), e);
     }
     return pluginJarFile;
   }
@@ -116,7 +117,7 @@ public class GradleApiConnector {
       }
       return initScriptFile;
     } catch (IOException | NoSuchAlgorithmException e) {
-      throw new IllegalStateException("Failed to get init.script", e);
+      throw new IllegalStateException(MessageUtils.get("error.initScriptMissing"), e);
     }
   }
 

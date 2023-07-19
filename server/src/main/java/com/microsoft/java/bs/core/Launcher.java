@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.microsoft.java.bs.core.i18n.MessageUtils;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.server.GradleBuildServer;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
@@ -18,7 +19,7 @@ import ch.epfl.scala.bsp4j.BuildClient;
  * Main entry point for the BSP server.
  */
 public class Launcher {
-  
+
   /**
    * The property name for the build server storage location.
    */
@@ -54,7 +55,7 @@ public class Launcher {
 
   private static void checkRequiredProperties() {
     if (System.getProperty(PROP_BUILD_SERVER_STORAGE) == null) {
-      throw new IllegalStateException("The property 'buildServerStorage' is not set");
+      throw new IllegalStateException(MessageUtils.get("error.serverStorageMissing"));
     }
   }
 
