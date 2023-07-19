@@ -1,7 +1,7 @@
 package com.microsoft.java.bs.core;
 
 import static com.microsoft.java.bs.core.Launcher.PROP_BUILD_SERVER_STORAGE;
-import static com.microsoft.java.bs.core.Launcher.PROP_PLUGIN_LOCATION;
+import static com.microsoft.java.bs.core.Launcher.PROP_PLUGIN_DIR;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -19,7 +19,7 @@ class LauncherTest {
 
   @Test
   void testSystemPropertyCheckForPluginLocation() {
-    System.clearProperty(PROP_PLUGIN_LOCATION);
+    System.clearProperty(PROP_PLUGIN_DIR);
     System.setProperty(PROP_BUILD_SERVER_STORAGE, "test");
     assertThrows(IllegalStateException.class, () -> {
       Launcher.main(null);
