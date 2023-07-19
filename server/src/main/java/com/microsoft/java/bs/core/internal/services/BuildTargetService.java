@@ -10,10 +10,17 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.DependencyModule;
+import ch.epfl.scala.bsp4j.DependencyModulesItem;
+import ch.epfl.scala.bsp4j.DependencyModulesParams;
+import ch.epfl.scala.bsp4j.DependencyModulesResult;
+import ch.epfl.scala.bsp4j.MavenDependencyModule;
+import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.OutputPathItem;
 import ch.epfl.scala.bsp4j.OutputPathItemKind;
 import ch.epfl.scala.bsp4j.OutputPathsItem;
@@ -33,6 +40,8 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
  * Service to handle build target related BSP requests.
  */
 public class BuildTargetService {
+
+  private static final String MAVEN_DATA_KIND = "maven";
 
   private static final Logger logger = LoggerFactory.getLogger(BuildTargetService.class);
 
@@ -146,5 +155,45 @@ public class BuildTargetService {
       items.add(item);
     }
     return new OutputPathsResult(items);
+  }
+
+  /**
+   * Get artifacts dependencies.
+   */
+  public DependencyModulesResult getBuildTargetDependencyModules(DependencyModulesParams params) {
+    List<DependencyModulesItem> items = new ArrayList<>();
+    for (BuildTargetIdentifier btId : params.getTargets()) {
+      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      if (target == null) {
+        logger.warn("Skip output collection for the build target: {}"
+            + "because it cannot be found in the cache.", btId.getUri());
+        continue;
+      }
+
+      GradleSourceSet sourceSet = target.getSourceSet();
+      List<DependencyModule> modules = new ArrayList<>();
+      for (GradleModuleDependency dep : sourceSet.getModuleDependencies()) {
+        DependencyModule module = new DependencyModule(dep.getModule(), dep.getVersion());
+        module.setDataKind(MAVEN_DATA_KIND);
+        List<MavenDependencyModuleArtifact> artifacts = dep.getArtifacts().stream().map(a -> {
+          MavenDependencyModuleArtifact artifact = new MavenDependencyModuleArtifact(
+              a.getUri().toString());
+          artifact.setClassifier(a.getClassifier());
+          return artifact;
+        }).collect(Collectors.toList());
+        MavenDependencyModule mavenModule = new MavenDependencyModule(
+            dep.getGroup(),
+            dep.getModule(),
+            dep.getVersion(),
+            artifacts
+        );
+        module.setData(mavenModule);
+        modules.add(module);
+      }
+
+      DependencyModulesItem item = new DependencyModulesItem(btId, modules);
+      items.add(item);
+    }
+    return new DependencyModulesResult(items);
   }
 }

@@ -5,8 +5,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,6 +30,7 @@ import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSets;
 
@@ -57,39 +60,67 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
     public Object buildAll(String modelName, Project rootProject) {
       Set<Project> allProject = rootProject.getAllprojects();
       List<GradleSourceSet> gradleSourceSets = new ArrayList<>();
+      // mapping Gradle source set to our customized model.
+      Map<SourceSet, DefaultGradleSourceSet> sourceSetMap = new HashMap<>();
       for (Project project : allProject) {
         SourceSetContainer sourceSets = getSourceSetContainer(project);
         if (sourceSets == null || sourceSets.isEmpty()) {
           continue;
         }
 
+        // this set is used to eliminate the source, resource and output
+        // directories from the module dependencies.
+        Set<File> exclusionFromDependencies = new HashSet<>();
         sourceSets.forEach(sourceSet -> {
           DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
+          sourceSetMap.put(sourceSet, gradleSourceSet);
           gradleSourceSet.setSourceSetName(sourceSet.getName());
 
           // source
           Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
           gradleSourceSet.setSourceDirs(srcDirs);
+          exclusionFromDependencies.addAll(srcDirs);
           Set<File> generatedSrcDirs = new HashSet<>();
           addAnnotationProcessingDir(project, sourceSet, generatedSrcDirs);
           addGeneratedSourceDirs(project, sourceSet, srcDirs, generatedSrcDirs);
           gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
+          exclusionFromDependencies.addAll(generatedSrcDirs);
 
           // source output dir
-          gradleSourceSet.setSourceOutputDir(getSourceOutputDir(sourceSet));
+          File sourceOutputDir = getSourceOutputDir(sourceSet);
+          if (sourceOutputDir != null) {
+            gradleSourceSet.setSourceOutputDir(sourceOutputDir);
+            exclusionFromDependencies.add(sourceOutputDir);
+          }
 
           // resource
           Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
           gradleSourceSet.setResourceDirs(resourceDirs);
+          exclusionFromDependencies.addAll(resourceDirs);
 
           // resource output dir
-          gradleSourceSet.setResourceOutputDir(sourceSet.getOutput().getResourcesDir());
+          File resourceOutputDir = sourceSet.getOutput().getResourcesDir();
+          if (resourceOutputDir != null) {
+            gradleSourceSet.setResourceOutputDir(resourceOutputDir);
+            exclusionFromDependencies.add(resourceOutputDir);
+          }
 
           // jdk
           gradleSourceSet.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
           gradleSourceSet.setJavaVersion(getJavaVersion(project, sourceSet));
 
           gradleSourceSets.add(gradleSourceSet);
+        });
+
+        sourceSets.forEach(sourceSet -> {
+          DefaultGradleSourceSet gradleSourceSet = sourceSetMap.get(sourceSet);
+          if (gradleSourceSet == null) {
+            return;
+          }
+          DependencyCollector collector = new DependencyCollector(project,
+              exclusionFromDependencies);
+          collector.collectByConfigurationNames(getClasspathConfigurationNames(sourceSet));
+          gradleSourceSet.setModuleDependencies(collector.getModuleDependencies());
         });
       }
       DefaultGradleSourceSets result = new DefaultGradleSourceSets();
@@ -222,6 +253,13 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       }
 
       return "";
+    }
+
+    private Set<String> getClasspathConfigurationNames(SourceSet sourceSet) {
+      Set<String> configurationNames = new HashSet<>();
+      configurationNames.add(sourceSet.getCompileClasspathConfigurationName());
+      configurationNames.add(sourceSet.getRuntimeClasspathConfigurationName());
+      return configurationNames;
     }
   }
 }

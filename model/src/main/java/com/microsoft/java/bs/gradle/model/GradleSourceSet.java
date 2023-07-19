@@ -68,4 +68,9 @@ public interface GradleSourceSet {
    * The java version this target is supposed to use.
    */
   public String getJavaVersion();
+
+  /**
+   * Module dependencies.
+   */
+  public Set<GradleModuleDependency> getModuleDependencies();
 }

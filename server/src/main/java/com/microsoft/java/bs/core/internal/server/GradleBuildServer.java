@@ -174,8 +174,8 @@ public class GradleBuildServer implements BuildServer {
   @Override
   public CompletableFuture<DependencyModulesResult> buildTargetDependencyModules(
       DependencyModulesParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetDependencyModules'");
+    return handleRequest("buildTarget/dependencyModules", cc ->
+        buildTargetService.getBuildTargetDependencyModules(params));
   }
 
   private <R> CompletableFuture<R> handleRequest(String methodName,
