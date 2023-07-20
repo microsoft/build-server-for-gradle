@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -114,17 +115,14 @@ public class BuildTargetManager {
       Set<GradleProjectDependency> projectDependencies = 
           gradleBuildTarget.getSourceSet().getProjectDependencies();
       if (projectDependencies != null) {
-        Set<String> dependencyProjectPaths = projectDependencies
-            .stream()
-            .map(GradleProjectDependency::getProjectPath)
-            .collect(Collectors.toSet());
-        List<BuildTargetIdentifier> btDependencies = new ArrayList<>();
-        for (String projectPath : dependencyProjectPaths) {
-          BuildTargetIdentifier btId = projectPathToBuildTargetId.get(projectPath);
-          if (btId != null) {
-            btDependencies.add(btId);
-          }
-        }
+        List<BuildTargetIdentifier> btDependencies = projectDependencies.stream()
+            .map(projectDependency -> {
+              String path = projectDependency.getProjectPath();
+              return projectPathToBuildTargetId.get(path);
+            })
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
         gradleBuildTarget.getBuildTarget().setDependencies(btDependencies);
       }
     }
