@@ -81,20 +81,18 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public void onBuildInitialized() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'onBuildInitialized'");
+    handleNotification("build/initialized", lifecycleService::onBuildInitialized);
   }
 
   @Override
   public CompletableFuture<Object> buildShutdown() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildShutdown'");
+    return handleRequest("buildTarget/shutdown", cc ->
+        lifecycleService.shutdown());
   }
 
   @Override
   public void onBuildExit() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'onBuildExit'");
+    handleNotification("build/exit", lifecycleService::exit);
   }
 
   @Override
@@ -176,6 +174,11 @@ public class GradleBuildServer implements BuildServer {
       DependencyModulesParams params) {
     return handleRequest("buildTarget/dependencyModules", cc ->
         buildTargetService.getBuildTargetDependencyModules(params));
+  }
+
+  private void handleNotification(String methodName, Runnable runnable) {
+    logger.info(">> {} received.", methodName);
+    runnable.run();
   }
 
   private <R> CompletableFuture<R> handleRequest(String methodName,

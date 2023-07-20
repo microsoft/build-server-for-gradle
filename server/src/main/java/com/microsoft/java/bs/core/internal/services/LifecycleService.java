@@ -15,6 +15,8 @@ import ch.epfl.scala.bsp4j.InitializeBuildResult;
  */
 public class LifecycleService {
 
+  private Status status = Status.UNINITIALIZED;
+
   private BuildTargetManager buildTargetManager;
 
   public LifecycleService(BuildTargetManager buildTargetManager) {
@@ -41,5 +43,31 @@ public class LifecycleService {
     BuildServerCapabilities capabilities = new BuildServerCapabilities();
     // TODO: add more capabilities
     return capabilities;
+  }
+
+  public void onBuildInitialized() {
+    status = Status.INITIALIZED;
+  }
+
+  public Object shutdown() {
+    status = Status.SHUTDOWN;
+    return null;
+  }
+
+  /**
+   * Exit build server.
+   */
+  public void exit() {
+    if (status == Status.SHUTDOWN) {
+      System.exit(0);
+    }
+
+    System.exit(1);
+  }
+
+  enum Status {
+    UNINITIALIZED,
+    INITIALIZED,
+    SHUTDOWN;
   }
 }
