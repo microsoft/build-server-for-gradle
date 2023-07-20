@@ -81,7 +81,7 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public void onBuildInitialized() {
-    handleNotification("build/initialized", lifecycleService::onBuildInitialized);
+    handleNotificationAsync("build/initialized", lifecycleService::onBuildInitialized);
   }
 
   @Override
@@ -179,6 +179,11 @@ public class GradleBuildServer implements BuildServer {
   private void handleNotification(String methodName, Runnable runnable) {
     logger.info(">> {} received.", methodName);
     runnable.run();
+  }
+
+  private void handleNotificationAsync(String methodName, Runnable runnable) {
+    logger.info(">> {} received.", methodName);
+    CompletableFuture.runAsync(runnable);
   }
 
   private <R> CompletableFuture<R> handleRequest(String methodName,
