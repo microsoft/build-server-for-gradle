@@ -48,7 +48,27 @@ test {
     }
 }
 
+task generateInitScript() {
+  doLast {
+    def initScript = file("$buildDir/libs/plugins/init.gradle")
+    initScript.parentFile.mkdirs()
+    initScript.write """
+      initscript {
+        dependencies {
+          classpath files('plugin.jar')
+        }
+      }
+      allprojects {
+        afterEvaluate {
+          it.getPlugins().apply(com.microsoft.java.bs.gradle.plugin.GradleBuildServerPlugin)
+        }
+      }
+      """
+  }
+}
+
 processResources {
   dependsOn(':plugin:copyJar')
+  dependsOn(':server:generateInitScript')
   duplicatesStrategy = 'include'
 }

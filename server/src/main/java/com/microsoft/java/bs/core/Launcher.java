@@ -22,7 +22,12 @@ public class Launcher {
   /**
    * The property name for the build server storage location.
    */
-  private static final String PROP_BUILD_SERVER_STORAGE = "buildServerStorage";
+  static final String PROP_BUILD_SERVER_STORAGE = "server.storage";
+
+  /**
+   * The property name for the directory location storing the plugin and init script.
+   */
+  static final String PROP_PLUGIN_DIR = "plugin.dir";
 
   private static final Logger logger = LoggerFactory.getLogger(Launcher.class);
 
@@ -54,7 +59,12 @@ public class Launcher {
 
   private static void checkRequiredProperties() {
     if (System.getProperty(PROP_BUILD_SERVER_STORAGE) == null) {
-      throw new IllegalStateException("The property 'buildServerStorage' is not set");
+      throw new IllegalStateException("The property '"
+          + PROP_BUILD_SERVER_STORAGE + "' is not set");
+    }
+
+    if (System.getProperty(PROP_PLUGIN_DIR) == null) {
+      throw new IllegalStateException("The property '" + PROP_PLUGIN_DIR + "' is not set");
     }
   }
 
