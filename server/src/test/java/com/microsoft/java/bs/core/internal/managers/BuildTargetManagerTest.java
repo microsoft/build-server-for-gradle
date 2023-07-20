@@ -2,9 +2,12 @@ package com.microsoft.java.bs.core.internal.managers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -12,9 +15,9 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.core.internal.model.TestGradleSourceSet;
-import com.microsoft.java.bs.core.internal.model.TestGradleSourceSets;
 import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
+import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.JvmBuildTarget;
@@ -23,13 +26,13 @@ class BuildTargetManagerTest {
 
   @Test
   void testStore() {
-    BuildTargetManager manager = new BuildTargetManager();
-    TestGradleSourceSets testGradleSourceSets = new TestGradleSourceSets();
-    TestGradleSourceSet testGradleSourceSet = new TestGradleSourceSet();
-    testGradleSourceSet.setSourceSetName("test");
-    testGradleSourceSets.setGradleSourceSets(Arrays.asList(testGradleSourceSet));
+    GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
+    when(gradleSourceSet.getSourceSetName()).thenReturn("test");
+    GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
+    when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
 
-    manager.store(testGradleSourceSets);
+    BuildTargetManager manager = new BuildTargetManager();
+    manager.store(gradleSourceSets);
 
     List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
     BuildTarget buildTarget = list.get(0).getBuildTarget();
@@ -39,12 +42,13 @@ class BuildTargetManagerTest {
 
   @Test
   void testJvmExtension() {
+    GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
+    when(gradleSourceSet.getJavaVersion()).thenReturn("17");
+    GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
+    when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
+    
     BuildTargetManager manager = new BuildTargetManager();
-    TestGradleSourceSets testGradleSourceSets = new TestGradleSourceSets();
-    TestGradleSourceSet testGradleSourceSet = new TestGradleSourceSet();
-    testGradleSourceSet.setJavaVersion("17");
-    testGradleSourceSets.setGradleSourceSets(Arrays.asList(testGradleSourceSet));
-    manager.store(testGradleSourceSets);
+    manager.store(gradleSourceSets);
 
     List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
     BuildTarget buildTarget = list.get(0).getBuildTarget();
@@ -56,26 +60,26 @@ class BuildTargetManagerTest {
 
   @Test
   void testBuildTargetDependency() {
-    TestGradleSourceSet sourceSetFoo = new TestGradleSourceSet();
-    sourceSetFoo.setProjectPath(":foo");
-    sourceSetFoo.setProjectDir(new File("foo"));
-    TestGradleSourceSet sourceSetBar = new TestGradleSourceSet();
-    sourceSetBar.setProjectPath(":bar");
-    sourceSetBar.setProjectDir(new File("bar"));
-    Set<GradleProjectDependency> dependencies = new HashSet<>();
-    dependencies.add(new GradleProjectDependency() {
-      @Override
-      public String getProjectPath() {
-        return ":foo";
-      }
-    });
-    sourceSetBar.setProjectDependencies(dependencies);
+    GradleSourceSet gradleSourceSetFoo = getMockedTestGradleSourceSet();
+    when(gradleSourceSetFoo.getProjectPath()).thenReturn(":foo");
+    when(gradleSourceSetFoo.getProjectDir()).thenReturn(new File("foo"));
 
-    TestGradleSourceSets testGradleSourceSets = new TestGradleSourceSets();
-    testGradleSourceSets.setGradleSourceSets(Arrays.asList(sourceSetFoo, sourceSetBar));
+
+    GradleProjectDependency gradleProjectDependency = mock(GradleProjectDependency.class);
+    when(gradleProjectDependency.getProjectPath()).thenReturn(":foo");
+    Set<GradleProjectDependency> dependencies = new HashSet<>();
+    dependencies.add(gradleProjectDependency);
+    GradleSourceSet gradleSourceSetBar = getMockedTestGradleSourceSet();
+    when(gradleSourceSetBar.getProjectPath()).thenReturn(":bar");
+    when(gradleSourceSetBar.getProjectDir()).thenReturn(new File("bar"));
+    when(gradleSourceSetBar.getProjectDependencies()).thenReturn(dependencies);
+
+    GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
+    when(gradleSourceSets.getGradleSourceSets()).thenReturn(
+        Arrays.asList(gradleSourceSetFoo, gradleSourceSetBar));
 
     BuildTargetManager manager = new BuildTargetManager();
-    manager.store(testGradleSourceSets);
+    manager.store(gradleSourceSets);
 
     List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
     BuildTarget buildTargetFoo = list.stream()
@@ -90,5 +94,18 @@ class BuildTargetManagerTest {
         .getBuildTarget();
 
     assertTrue(buildTargetBar.getDependencies().contains(buildTargetFoo.getId()));
+  }
+
+  private GradleSourceSet getMockedTestGradleSourceSet() {
+    GradleSourceSet mocked = mock(GradleSourceSet.class);
+    when(mocked.getProjectDir()).thenReturn(new File("test"));
+    when(mocked.getRootDir()).thenReturn(new File("test"));
+    when(mocked.getSourceSetName()).thenReturn("main");
+    when(mocked.getSourceDirs()).thenReturn(Collections.emptySet());
+    when(mocked.getGeneratedSourceDirs()).thenReturn(Collections.emptySet());
+    when(mocked.getResourceDirs()).thenReturn(Collections.emptySet());
+    when(mocked.getModuleDependencies()).thenReturn(Collections.emptySet());
+    when(mocked.getProjectDependencies()).thenReturn(Collections.emptySet());
+    return mocked;
   }
 }
