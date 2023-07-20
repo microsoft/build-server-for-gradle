@@ -3,6 +3,7 @@ package com.microsoft.java.bs.core.internal.managers;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -38,8 +39,6 @@ public class BuildTargetManager {
   public void store(GradleSourceSets gradleSourceSets) {
     Map<BuildTargetIdentifier, GradleBuildTarget> newCache = new HashMap<>();
     Map<String, BuildTargetIdentifier> projectPathToBuildTargetId = new HashMap<>();
-    // The dependency project paths of a build target id.
-    Map<BuildTargetIdentifier, Set<String>> projectDependencies = new HashMap<>();
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
       String sourceSetName = sourceSet.getSourceSetName();
       URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
@@ -59,31 +58,17 @@ public class BuildTargetManager {
       );
       bt.setBaseDirectory(sourceSet.getRootDir().toURI().toString());
 
-      // See: https://build-server-protocol.github.io/docs/extensions/jvm#jvmbuildtarget
-      JvmBuildTarget jvmBuildTarget = new JvmBuildTarget(
-          sourceSet.getJavaHome() == null ? "" : sourceSet.getJavaHome().toURI().toString(),
-          sourceSet.getJavaVersion() == null ? "" : sourceSet.getJavaVersion()
-      );
-      bt.setDataKind("jvm");
-      bt.setData(jvmBuildTarget);
+      setJvmBuildTarget(sourceSet, bt);
 
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
       newCache.put(btId, buildTarget);
-
       // Store the relationship between the project path and the build target id.
       // 'test' and other source sets are ignored.
       if ("main".equals(sourceSet.getSourceSetName())) {
         projectPathToBuildTargetId.put(sourceSet.getProjectPath(), btId);
       }
-
-      // Store the dependency project paths of a build target id.
-      Set<String> dependentProjectPaths = sourceSet.getProjectDependencies()
-          .stream()
-          .map(GradleProjectDependency::getProjectPath)
-          .collect(Collectors.toSet());
-      projectDependencies.put(btId, dependentProjectPaths);
-      updateBuildTargetDependencies(projectPathToBuildTargetId, projectDependencies, newCache);
     }
+    updateBuildTargetDependencies(newCache.values(), projectPathToBuildTargetId);
     this.cache = newCache;
   }
 
@@ -107,19 +92,41 @@ public class BuildTargetManager {
     return tags;
   }
 
+  private void setJvmBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
+    // See: https://build-server-protocol.github.io/docs/extensions/jvm#jvmbuildtarget
+    JvmBuildTarget jvmBuildTarget = new JvmBuildTarget(
+        sourceSet.getJavaHome() == null ? "" : sourceSet.getJavaHome().toURI().toString(),
+        sourceSet.getJavaVersion() == null ? "" : sourceSet.getJavaVersion()
+    );
+    bt.setDataKind("jvm");
+    bt.setData(jvmBuildTarget);
+  }
+
+  /**
+   * Iterate all the gradle build targets, and update their dependencies with
+   * the help of 'project path to id' mapping.
+   */
   private void updateBuildTargetDependencies(
-      Map<String, BuildTargetIdentifier> projectPathToBuildTargetId,
-      Map<BuildTargetIdentifier, Set<String>> projectDependencies,
-      Map<BuildTargetIdentifier, GradleBuildTarget> cache
+      Collection<GradleBuildTarget> gradleBuildTargets,
+      Map<String, BuildTargetIdentifier> projectPathToBuildTargetId
   ) {
-    for (Map.Entry<BuildTargetIdentifier, Set<String>> entry : projectDependencies.entrySet()) {
-      BuildTargetIdentifier btId = entry.getKey();
-      Set<String> dependentProjectPaths = entry.getValue();
-      List<BuildTargetIdentifier> btDependencies = dependentProjectPaths
-          .stream()
-          .map(projectPathToBuildTargetId::get)
-          .collect(Collectors.toList());
-      cache.get(btId).getBuildTarget().setDependencies(btDependencies);
+    for (GradleBuildTarget gradleBuildTarget : gradleBuildTargets) {
+      Set<GradleProjectDependency> projectDependencies = 
+          gradleBuildTarget.getSourceSet().getProjectDependencies();
+      if (projectDependencies != null) {
+        Set<String> dependencyProjectPaths = projectDependencies
+            .stream()
+            .map(GradleProjectDependency::getProjectPath)
+            .collect(Collectors.toSet());
+        List<BuildTargetIdentifier> btDependencies = new ArrayList<>();
+        for (String projectPath : dependencyProjectPaths) {
+          BuildTargetIdentifier btId = projectPathToBuildTargetId.get(projectPath);
+          if (btId != null) {
+            btDependencies.add(btId);
+          }
+        }
+        gradleBuildTarget.getBuildTarget().setDependencies(btDependencies);
+      }
     }
   }
 }
