@@ -8,6 +8,7 @@ import java.util.Set;
 import org.gradle.api.Project;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 /**
@@ -41,6 +42,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
   private String javaVersion;
 
   private Set<GradleModuleDependency> moduleDependencies;
+
+  private Set<GradleProjectDependency> projectDependencies;
 
   /**
    * Construct a default Gradle source set from a Gradle project.
@@ -156,12 +159,21 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.moduleDependencies = moduleDependencies;
   }
 
+  public Set<GradleProjectDependency> getProjectDependencies() {
+    return projectDependencies;
+  }
+
+  public void setProjectDependencies(Set<GradleProjectDependency> projectDependencies) {
+    this.projectDependencies = projectDependencies;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(projectName, projectPath, projectDir,
         rootDir, sourceSetName, sourceDirs, generatedSourceDirs,
         sourceOutputDir, resourceDirs, resourceOutputDir,
-        javaHome, javaVersion, moduleDependencies);
+        javaHome, javaVersion, moduleDependencies, projectDependencies
+    );
   }
 
   @Override
@@ -188,6 +200,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(resourceOutputDir, other.resourceOutputDir)
         && Objects.equals(javaHome, other.javaHome)
         && Objects.equals(javaVersion, other.javaVersion)
-        && Objects.equals(moduleDependencies, other.moduleDependencies);
+        && Objects.equals(moduleDependencies, other.moduleDependencies)
+        && Objects.equals(projectDependencies, other.projectDependencies);
   }
 }

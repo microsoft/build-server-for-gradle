@@ -2,18 +2,20 @@ package com.microsoft.java.bs.core.internal.managers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.File;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -24,8 +26,13 @@ class BuildTargetManagerTest {
 
   @Test
   void testStore() {
+    GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
+    when(gradleSourceSet.getSourceSetName()).thenReturn("test");
+    GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
+    when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
+
     BuildTargetManager manager = new BuildTargetManager();
-    manager.store(new TestGradleSourceSets());
+    manager.store(gradleSourceSets);
 
     List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
     BuildTarget buildTarget = list.get(0).getBuildTarget();
@@ -35,8 +42,13 @@ class BuildTargetManagerTest {
 
   @Test
   void testJvmExtension() {
+    GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
+    when(gradleSourceSet.getJavaVersion()).thenReturn("17");
+    GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
+    when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
+    
     BuildTargetManager manager = new BuildTargetManager();
-    manager.store(new TestGradleSourceSets());
+    manager.store(gradleSourceSets);
 
     List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
     BuildTarget buildTarget = list.get(0).getBuildTarget();
@@ -46,79 +58,54 @@ class BuildTargetManagerTest {
     assertEquals("17", jvmBt.getJavaVersion());
   }
 
-  class TestGradleSourceSets implements GradleSourceSets {
+  @Test
+  void testBuildTargetDependency() {
+    GradleSourceSet gradleSourceSetFoo = getMockedTestGradleSourceSet();
+    when(gradleSourceSetFoo.getProjectPath()).thenReturn(":foo");
+    when(gradleSourceSetFoo.getProjectDir()).thenReturn(new File("foo"));
 
-    @Override
-    public List<GradleSourceSet> getGradleSourceSets() {
-      return Arrays.asList(new TestGradleSourceSet());
-    }
+
+    GradleProjectDependency gradleProjectDependency = mock(GradleProjectDependency.class);
+    when(gradleProjectDependency.getProjectPath()).thenReturn(":foo");
+    Set<GradleProjectDependency> dependencies = new HashSet<>();
+    dependencies.add(gradleProjectDependency);
+    GradleSourceSet gradleSourceSetBar = getMockedTestGradleSourceSet();
+    when(gradleSourceSetBar.getProjectPath()).thenReturn(":bar");
+    when(gradleSourceSetBar.getProjectDir()).thenReturn(new File("bar"));
+    when(gradleSourceSetBar.getProjectDependencies()).thenReturn(dependencies);
+
+    GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
+    when(gradleSourceSets.getGradleSourceSets()).thenReturn(
+        Arrays.asList(gradleSourceSetFoo, gradleSourceSetBar));
+
+    BuildTargetManager manager = new BuildTargetManager();
+    manager.store(gradleSourceSets);
+
+    List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
+    BuildTarget buildTargetFoo = list.stream()
+        .filter(bt -> bt.getBuildTarget().getId().getUri().contains("foo"))
+        .findFirst()
+        .get()
+        .getBuildTarget();
+    BuildTarget buildTargetBar = list.stream()
+        .filter(bt -> bt.getBuildTarget().getId().getUri().contains("bar"))
+        .findFirst()
+        .get()
+        .getBuildTarget();
+
+    assertTrue(buildTargetBar.getDependencies().contains(buildTargetFoo.getId()));
   }
 
-  class TestGradleSourceSet implements GradleSourceSet {
-
-    @Override
-    public String getProjectName() {
-      return "test";
-    }
-
-    @Override
-    public String getProjectPath() {
-      return ":";
-    }
-
-    @Override
-    public File getProjectDir() {
-      return Paths.get(System.getProperty("user.dir")).toFile();
-    }
-
-    @Override
-    public File getRootDir() {
-      return Paths.get(System.getProperty("user.dir")).toFile();
-    }
-
-    @Override
-    public String getSourceSetName() {
-      return "test";
-    }
-
-    @Override
-    public Set<File> getSourceDirs() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public Set<File> getGeneratedSourceDirs() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public File getSourceOutputDir() {
-      return null;
-    }
-
-    @Override
-    public Set<File> getResourceDirs() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public File getResourceOutputDir() {
-      return null;
-    }
-
-    @Override
-    public File getJavaHome() {
-      return new File("javaHome");
-    }
-
-    @Override
-    public String getJavaVersion() {
-      return "17";
-    }
-
-    @Override
-    public Set<GradleModuleDependency> getModuleDependencies() {
-      return null;
-    }
+  private GradleSourceSet getMockedTestGradleSourceSet() {
+    GradleSourceSet mocked = mock(GradleSourceSet.class);
+    when(mocked.getProjectDir()).thenReturn(new File("test"));
+    when(mocked.getRootDir()).thenReturn(new File("test"));
+    when(mocked.getSourceSetName()).thenReturn("main");
+    when(mocked.getSourceDirs()).thenReturn(Collections.emptySet());
+    when(mocked.getGeneratedSourceDirs()).thenReturn(Collections.emptySet());
+    when(mocked.getResourceDirs()).thenReturn(Collections.emptySet());
+    when(mocked.getModuleDependencies()).thenReturn(Collections.emptySet());
+    when(mocked.getProjectDependencies()).thenReturn(Collections.emptySet());
+    return mocked;
   }
 }

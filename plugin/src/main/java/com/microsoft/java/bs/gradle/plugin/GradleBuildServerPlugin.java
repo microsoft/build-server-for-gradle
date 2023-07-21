@@ -112,6 +112,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           gradleSourceSets.add(gradleSourceSet);
         });
 
+        // dependencies
         sourceSets.forEach(sourceSet -> {
           DefaultGradleSourceSet gradleSourceSet = sourceSetMap.get(sourceSet);
           if (gradleSourceSet == null) {
@@ -121,6 +122,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
               exclusionFromDependencies);
           collector.collectByConfigurationNames(getClasspathConfigurationNames(sourceSet));
           gradleSourceSet.setModuleDependencies(collector.getModuleDependencies());
+          gradleSourceSet.setProjectDependencies(collector.getProjectDependencies());
         });
       }
       DefaultGradleSourceSets result = new DefaultGradleSourceSets();
@@ -188,6 +190,15 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       }
     }
 
+    /**
+     * Skip the source root inference if:
+     * <ul>
+     * <li>File is not a Java file.</li>
+     * <li>File already belongs to srcDirs.</li>
+     * <li>File already belongs to generatedSrcDirs.</li>
+     * </ul>
+     * Return <code>true</code> if the source root inference can be skipped.
+     */
     private boolean canSkipInferSourceRoot(File sourceFile, Set<File> srcDirs,
         Set<File> generatedSrcDirs) {
       if (!sourceFile.isFile() || !sourceFile.exists() || !sourceFile.getName().endsWith(".java")) {
