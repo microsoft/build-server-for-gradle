@@ -52,11 +52,6 @@ public class GradleBuildServer implements BuildServer {
 
   private static final Logger logger = LoggerFactory.getLogger(GradleBuildServer.class);
 
-  /**
-   * The root URI of the workspace.
-   */
-  private URI rootUri;
-
   private LifecycleService lifecycleService;
 
   private BuildTargetService buildTargetService;
@@ -69,14 +64,7 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public CompletableFuture<InitializeBuildResult> buildInitialize(InitializeBuildParams params) {
-    return handleRequest("build/initialize", cc -> {
-      try {
-        rootUri = new URI(params.getRootUri());
-      } catch (URISyntaxException e) {
-        throw new IllegalArgumentException("Invalid rootUri: " + params.getRootUri(), e);
-      }
-      return lifecycleService.initializeServer(rootUri);
-    });
+    return handleRequest("build/initialize", cc -> lifecycleService.initializeServer(params));
   }
 
   @Override

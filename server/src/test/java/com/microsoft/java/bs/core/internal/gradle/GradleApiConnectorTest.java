@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -32,7 +33,8 @@ class GradleApiConnectorTest {
   @Test
   void testGetGradleSourceSets() {
     File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
-    GradleApiConnector connector = new GradleApiConnector();
+    Preferences preferences = new Preferences();
+    GradleApiConnector connector = new GradleApiConnector(preferences);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
