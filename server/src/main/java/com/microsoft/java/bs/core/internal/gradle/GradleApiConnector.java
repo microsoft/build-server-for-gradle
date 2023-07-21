@@ -7,12 +7,19 @@ import org.gradle.tooling.GradleConnectionException;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 
+import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 /**
  * Connect to Gradle Daemon via Gradle Tooling API.
  */
 public class GradleApiConnector {
+
+  Preferences preferences;
+
+  public GradleApiConnector(Preferences preferences) {
+    this.preferences = preferences;
+  }
 
   /**
    * Get the source sets of the Gradle project.
@@ -25,9 +32,10 @@ public class GradleApiConnector {
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
-    try (ProjectConnection connection = Utils.getProjectConnection(projectUri)) {
+    try (ProjectConnection connection = Utils.getProjectConnection(projectUri, preferences)) {
       ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
           connection,
+          preferences,
           GradleSourceSets.class
       );
       customModelBuilder.addArguments("--init-script", initScript.getAbsolutePath());

@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
@@ -38,16 +39,23 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 
 class BuildTargetServiceTest {
 
+  private BuildTargetManager buildTargetManager;
+
+  @BeforeEach
+  void setUp() {
+    buildTargetManager = mock(BuildTargetManager.class);
+  }
+
   @Test
   void testWorkspaceBuildTargets() {
-    BuildTargetManager manager = mock(BuildTargetManager.class);
     BuildTarget target = mock(BuildTarget.class);
     when(target.getBaseDirectory()).thenReturn("foo/bar");
     GradleBuildTarget gradleBuildTarget = new GradleBuildTarget(target,
         mock(GradleSourceSet.class));
-    when(manager.getAllGradleBuildTargets()).thenReturn(Arrays.asList(gradleBuildTarget));
+    when(buildTargetManager.getAllGradleBuildTargets())
+        .thenReturn(Arrays.asList(gradleBuildTarget));
     
-    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager);
 
     WorkspaceBuildTargetsResult response = buildTargetService.getWorkspaceBuildTargets();
 
@@ -57,9 +65,8 @@ class BuildTargetServiceTest {
 
   @Test
   void testGetBuildTargetSources() {
-    BuildTargetManager manager = mock(BuildTargetManager.class);
     GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
-    when(manager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
 
     GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
@@ -75,7 +82,7 @@ class BuildTargetServiceTest {
     when(gradleSourceSet.getSourceDirs()).thenReturn(srcDirs);
     when(gradleSourceSet.getGeneratedSourceDirs()).thenReturn(generatedSrcDirs);
 
-    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager);
     SourcesResult buildTargetSources = buildTargetService.getBuildTargetSources(new SourcesParams(
             Arrays.asList(new BuildTargetIdentifier("test"))));
     buildTargetSources.getItems().forEach(item -> {
@@ -91,9 +98,8 @@ class BuildTargetServiceTest {
 
   @Test
   void testGetBuildTargetResources() {
-    BuildTargetManager manager = mock(BuildTargetManager.class);
     GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
-    when(manager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
 
     GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
@@ -104,7 +110,7 @@ class BuildTargetServiceTest {
 
     when(gradleSourceSet.getResourceDirs()).thenReturn(resourceDirs);
 
-    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager);
     ResourcesResult buildTargetResources = buildTargetService.getBuildTargetResources(
         new ResourcesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
     buildTargetResources.getItems().forEach(item -> {
@@ -116,9 +122,8 @@ class BuildTargetServiceTest {
 
   @Test
   void testGetBuildTargetOutputPaths() {
-    BuildTargetManager manager = mock(BuildTargetManager.class);
     GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
-    when(manager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
 
     GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
@@ -128,7 +133,7 @@ class BuildTargetServiceTest {
     File resourceOutputDir = new File(("resourceOutputDir"));
     when(gradleSourceSet.getResourceOutputDir()).thenReturn(resourceOutputDir);
 
-    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager);
     OutputPathsResult  outputPathsResult = buildTargetService.getBuildTargetOutputPaths(
         new OutputPathsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
     assertEquals(1, outputPathsResult.getItems().size());
@@ -137,9 +142,8 @@ class BuildTargetServiceTest {
 
   @Test
   void testGetBuildTargetDependencyModules() {
-    BuildTargetManager manager = mock(BuildTargetManager.class);
     GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
-    when(manager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
 
     GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
@@ -179,7 +183,7 @@ class BuildTargetServiceTest {
     moduleDependencies.add(moduleDependency);
     when(gradleSourceSet.getModuleDependencies()).thenReturn(moduleDependencies);
 
-    BuildTargetService buildTargetService = new BuildTargetService(manager);
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager);
     DependencyModulesResult res = buildTargetService.getBuildTargetDependencyModules(
         new DependencyModulesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
     assertEquals(1, res.getItems().size());
