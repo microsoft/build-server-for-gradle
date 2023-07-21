@@ -37,7 +37,7 @@ public class LifecycleService {
    */
   public InitializeBuildResult initializeServer(InitializeBuildParams params) {
     initializePreferenceManager(params);
-    initializeBuildTargetManager();
+    updateBuildTargetManager();
 
     BuildServerCapabilities capabilities = initializeServerCapabilities();
     return new InitializeBuildResult(
@@ -46,6 +46,11 @@ public class LifecycleService {
         Constants.BSP_VERSION,
         capabilities
     );
+  }
+
+  public Object reloadWorkspace() {
+    updateBuildTargetManager();
+    return null;
   }
 
   void initializePreferenceManager(InitializeBuildParams params) {
@@ -60,7 +65,7 @@ public class LifecycleService {
     preferenceManager.setRootUri(rootUri);
   }
 
-  void initializeBuildTargetManager() {
+  void updateBuildTargetManager() {
     GradleApiConnector gradleConnector = new GradleApiConnector(preferenceManager.getPreferences());
     GradleSourceSets sourceSets = gradleConnector.getGradleSourceSets(
           preferenceManager.getRootUri());

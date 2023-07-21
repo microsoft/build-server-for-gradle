@@ -34,7 +34,7 @@ class LifecycleServiceTest {
     );
 
     LifecycleService lifecycleService = mock(LifecycleService.class);
-    doNothing().when(lifecycleService).initializeBuildTargetManager();
+    doNothing().when(lifecycleService).updateBuildTargetManager();
     doNothing().when(lifecycleService).initializePreferenceManager(any());
     when(lifecycleService.initializeServer(any())).thenCallRealMethod();
 

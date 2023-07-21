@@ -1,7 +1,5 @@
 package com.microsoft.java.bs.core.internal.server;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -91,8 +89,8 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public CompletableFuture<Object> workspaceReload() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'workspaceReload'");
+    return handleRequest("workspace/reload", cc ->
+        lifecycleService.reloadWorkspace());
   }
 
   @Override
