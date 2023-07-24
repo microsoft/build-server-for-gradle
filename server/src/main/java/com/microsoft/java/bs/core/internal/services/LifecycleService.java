@@ -1,6 +1,7 @@
 package com.microsoft.java.bs.core.internal.services;
 
 import java.net.URI;
+import java.util.Arrays;
 
 import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
@@ -12,6 +13,7 @@ import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildServerCapabilities;
+import ch.epfl.scala.bsp4j.CompileProvider;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.InitializeBuildResult;
 
@@ -69,7 +71,11 @@ public class LifecycleService {
 
   private BuildServerCapabilities initializeServerCapabilities() {
     BuildServerCapabilities capabilities = new BuildServerCapabilities();
-    // TODO: add more capabilities
+    capabilities.setResourcesProvider(true);
+    capabilities.setOutputPathsProvider(true);
+    capabilities.setDependencyModulesProvider(true);
+    capabilities.setCanReload(true);
+    capabilities.setCompileProvider(new CompileProvider(Arrays.asList("java")));
     return capabilities;
   }
 
