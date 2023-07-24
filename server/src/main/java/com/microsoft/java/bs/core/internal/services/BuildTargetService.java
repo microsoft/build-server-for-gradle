@@ -217,7 +217,7 @@ public class BuildTargetService {
    * Compile the build targets.
    */
   public CompileResult compile(CompileParams params) {
-    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByBaseDir(
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(
         params.getTargets());
 
     GradleApiConnector gradleConnector = new GradleApiConnector(
@@ -237,16 +237,16 @@ public class BuildTargetService {
   }
 
   /**
-   * Group the build targets by the project base directory,
-   * projects with the same base directory can run their tasks
+   * Group the build targets by the project root directory,
+   * projects with the same root directory can run their tasks
    * in one single call.
    */
-  private Map<URI, Set<BuildTargetIdentifier>> groupBuildTargetsByBaseDir(
+  private Map<URI, Set<BuildTargetIdentifier>> groupBuildTargetsByRootDir(
       List<BuildTargetIdentifier> targets
   ) {
     Map<URI, Set<BuildTargetIdentifier>> groupedTargets = new HashMap<>();
     for (BuildTargetIdentifier btId : targets) {
-      URI projectUri = getProjectUri(btId);
+      URI projectUri = getRootProjectUri(btId);
       if (projectUri == null) {
         continue;
       }
@@ -256,10 +256,10 @@ public class BuildTargetService {
   }
 
   /**
-   * Try to get the project base directory uri. If base directory is not available,
+   * Try to get the project root directory uri. If root directory is not available,
    * return the uri of the build target.
    */
-  private URI getProjectUri(BuildTargetIdentifier btId) {
+  private URI getRootProjectUri(BuildTargetIdentifier btId) {
     GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
     if (gradleBuildTarget == null) {
       // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
