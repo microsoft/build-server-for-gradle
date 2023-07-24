@@ -1,20 +1,31 @@
 package com.microsoft.java.bs.core.internal.services;
 
 import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
+import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.CompileParams;
+import ch.epfl.scala.bsp4j.CompileResult;
 import ch.epfl.scala.bsp4j.DependencyModule;
 import ch.epfl.scala.bsp4j.DependencyModulesItem;
 import ch.epfl.scala.bsp4j.DependencyModulesParams;
@@ -34,6 +45,7 @@ import ch.epfl.scala.bsp4j.SourceItemKind;
 import ch.epfl.scala.bsp4j.SourcesItem;
 import ch.epfl.scala.bsp4j.SourcesParams;
 import ch.epfl.scala.bsp4j.SourcesResult;
+import ch.epfl.scala.bsp4j.StatusCode;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 
 /**
@@ -47,8 +59,12 @@ public class BuildTargetService {
 
   private BuildTargetManager buildTargetManager;
 
-  public BuildTargetService(BuildTargetManager buildTargetManager) {
+  private PreferenceManager preferenceManager;
+
+  public BuildTargetService(BuildTargetManager buildTargetManager,
+      PreferenceManager preferenceManager) {
     this.buildTargetManager = buildTargetManager;
+    this.preferenceManager = preferenceManager;
   }
 
   /**
@@ -195,5 +211,94 @@ public class BuildTargetService {
       items.add(item);
     }
     return new DependencyModulesResult(items);
+  }
+
+  /**
+   * Compile the build targets.
+   */
+  public CompileResult compile(CompileParams params) {
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByBaseDir(
+        params.getTargets());
+
+    GradleApiConnector gradleConnector = new GradleApiConnector(
+        preferenceManager.getPreferences());
+    StatusCode code = StatusCode.OK;
+    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
+      Set<BuildTargetIdentifier> btIds = entry.getValue();
+      String[] tasks = btIds.stream().map(this::getBuildTaskName).toArray(String[]::new);
+      code = gradleConnector.runTasks(entry.getKey(), tasks);
+      if (code == StatusCode.ERROR) {
+        break;
+      }
+    }
+    CompileResult result = new CompileResult(code);
+    result.setOriginId(params.getOriginId());
+    return result;
+  }
+
+  /**
+   * Group the build targets by the project base directory,
+   * projects with the same base directory can run their tasks
+   * in one single call.
+   */
+  private Map<URI, Set<BuildTargetIdentifier>> groupBuildTargetsByBaseDir(
+      List<BuildTargetIdentifier> targets
+  ) {
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = new HashMap<>();
+    for (BuildTargetIdentifier btId : targets) {
+      URI projectUri = getProjectUri(btId);
+      if (projectUri == null) {
+        continue;
+      }
+      groupedTargets.computeIfAbsent(projectUri, k -> new HashSet<>()).add(btId);
+    }
+    return groupedTargets;
+  }
+
+  /**
+   * Try to get the project base directory uri. If base directory is not available,
+   * return the uri of the build target.
+   */
+  private URI getProjectUri(BuildTargetIdentifier btId) {
+    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
+    if (gradleBuildTarget == null) {
+      // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
+      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
+    }
+    BuildTarget buildTarget = gradleBuildTarget.getBuildTarget();
+    if (buildTarget.getBaseDirectory() != null) {
+      return UriUtils.getUriFromString(buildTarget.getBaseDirectory());
+    }
+
+    return UriUtils.getUriWithoutQuery(btId.getUri());
+  }
+
+  /**
+   * Return the build task name - [project path]:[task].
+   */
+  private String getBuildTaskName(BuildTargetIdentifier btId) {
+    String sourceSetName = UriUtils.getQueryValueByKey(btId.getUri(), "sourceset");
+    if (StringUtils.isBlank(sourceSetName)) {
+      throw new IllegalArgumentException("The uri does not contain source set information: "
+          + btId.getUri());
+    }
+
+    String taskName = switch (sourceSetName) {
+      case "main" -> "classes";
+      case "test" -> "testClasses";
+      // https://docs.gradle.org/current/userguide/java_plugin.html#java_source_set_tasks
+      default -> sourceSetName + "Classes";
+    };
+
+    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
+    if (gradleBuildTarget == null) {
+      // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
+      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
+    }
+    String modulePath = gradleBuildTarget.getSourceSet().getProjectPath();
+    if (modulePath == null || modulePath.equals(":")) {
+      return taskName;
+    }
+    return modulePath + ":" + taskName;
   }
 }

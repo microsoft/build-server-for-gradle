@@ -47,7 +47,8 @@ public class Launcher {
     BuildTargetManager buildTargetManager = new BuildTargetManager();
     PreferenceManager preferenceManager = new PreferenceManager();
     LifecycleService lifecycleService = new LifecycleService(buildTargetManager, preferenceManager);
-    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager);
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        preferenceManager);
     GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
         buildTargetService);
     return new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
