@@ -3,12 +3,16 @@ package com.microsoft.java.bs.core.internal.gradle;
 import java.io.File;
 import java.net.URI;
 
+import org.gradle.tooling.BuildException;
+import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnectionException;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+
+import ch.epfl.scala.bsp4j.StatusCode;
 
 /**
  * Connect to Gradle Daemon via Gradle Tooling API.
@@ -44,5 +48,21 @@ public class GradleApiConnector {
       // TODO: report the error to client via build server protocol
       throw e;
     }
+  }
+
+  /**
+   * Request Gradle daemon to run the tasks.
+   */
+  public StatusCode runTasks(URI projectUri, String... tasks) {
+    try (ProjectConnection connection = Utils.getProjectConnection(projectUri, preferences)) {
+      BuildLauncher launcher = Utils.getBuildLauncher(connection, preferences);
+      launcher.forTasks(tasks);
+      launcher.run();
+    } catch (BuildException e) {
+      // TODO: report the error to client via build server protocol
+      return StatusCode.ERROR;
+    }
+
+    return StatusCode.OK;
   }
 }

@@ -16,7 +16,48 @@ public class UriUtils {
     try {
       return new URI(uri);
     } catch (URISyntaxException e) {
-      throw new IllegalArgumentException("Invalid rootUri: " + uri, e);
+      throw new IllegalArgumentException("Invalid uri: " + uri, e);
+    }
+  }
+
+  /**
+   * Returns the URI without query.
+   */
+  public static URI getUriWithoutQuery(String uriString) {
+    try {
+      URI uri = new URI(uriString);
+      if (uri.getQuery() == null) {
+        return uri;
+      }
+
+      return new URI(uri.getScheme(), uri.getHost(), uri.getPath(), null, uri.getFragment());
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException("Invalid uri: " + uriString, e);
+    }
+  }
+
+  /**
+   * Returns the query value by key from the URI.
+   */
+  public static String getQueryValueByKey(String uriString, String key) {
+    try {
+      URI uri = new URI(uriString);
+      if (uri.getQuery() == null) {
+        return "";
+      }
+
+      String query = uri.getQuery();
+      String[] pairs = query.split("&");
+      for (String pair : pairs) {
+        int idx = pair.indexOf("=");
+        if (idx > 0 && key.equals(pair.substring(0, idx))) {
+          return pair.substring(idx + 1);
+        }
+      }
+
+      return "";
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException("Invalid uri: " + uriString, e);
     }
   }
 }

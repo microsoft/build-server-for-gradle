@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
+import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
@@ -96,6 +97,33 @@ public class Utils {
       modelBuilder.withArguments(gradleArguments);
     }
     return modelBuilder;
+  }
+
+  /**
+   * Get the Build Launcher.
+   *
+   * @param connection The project connection.
+   * @param preferences The preferences.
+   */
+  public static BuildLauncher getBuildLauncher(ProjectConnection connection,
+      Preferences preferences) {
+    BuildLauncher launcher = connection.newBuild();
+
+    File gradleJavaHomeFile = getGradleJavaHomeFile(preferences.getGradleJavaHome());
+    if (gradleJavaHomeFile != null && gradleJavaHomeFile.exists()) {
+      launcher.setJavaHome(gradleJavaHomeFile);
+    }
+
+    List<String> gradleJvmArguments = preferences.getGradleJvmArguments();
+    if (gradleJvmArguments != null && !gradleJvmArguments.isEmpty()) {
+      launcher.setJvmArguments(gradleJvmArguments);
+    }
+
+    List<String> gradleArguments = preferences.getGradleArguments();
+    if (gradleArguments != null && !gradleArguments.isEmpty()) {
+      launcher.withArguments(gradleArguments);
+    }
+    return launcher;
   }
 
   public static File getInitScriptFile() {

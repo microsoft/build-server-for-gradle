@@ -127,8 +127,7 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public CompletableFuture<CompileResult> buildTargetCompile(CompileParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetCompile'");
+    return handleRequest("buildTarget/compile", cc -> buildTargetService.compile(params));
   }
 
   @Override
