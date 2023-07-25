@@ -2,10 +2,6 @@ plugins {
     id 'application'
 }
 
-configurations {
-    bundled
-}
-
 dependencies {
     implementation project(':model')
     implementation 'org.gradle:gradle-tooling-api:8.1.1'
@@ -18,22 +14,10 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.mockito:mockito-core:5.3.0'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.3.0'
-
-    bundled(project(":model")) {
-        transitive = false
-    }
 }
 
 java {
   sourceCompatibility = JavaVersion.VERSION_17
-}
-
-jar {
-    from {
-        configurations.bundled.collect {
-            it.isDirectory() ? it : zipTree(it)
-        }
-    }
 }
 
 application {
@@ -67,8 +51,14 @@ task generateInitScript() {
   }
 }
 
+task copyRuntimeLibs(type: Copy) {
+  from configurations.runtimeClasspath
+  into "$buildDir/libs/runtime"
+}
+
 processResources {
   dependsOn(':plugin:copyJar')
+  dependsOn copyRuntimeLibs
   dependsOn(':server:generateInitScript')
   duplicatesStrategy = 'include'
 }
