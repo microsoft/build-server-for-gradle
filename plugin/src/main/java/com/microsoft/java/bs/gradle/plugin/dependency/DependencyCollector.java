@@ -82,8 +82,8 @@ public class DependencyCollector {
         resolveFileArtifactDependency((OpaqueComponentArtifactIdentifier) id, artifactResult);
       } else if (id instanceof ComponentFileArtifactIdentifier) {
         resolveFileArtifactDependency((ComponentFileArtifactIdentifier) id, artifactResult);
-      } else if (id instanceof ProjectComponentIdentifier) {
-        resolveProjectDependency((ProjectComponentIdentifier) id);
+      } else if (id.getComponentIdentifier() instanceof ProjectComponentIdentifier) {
+        resolveProjectDependency((ProjectComponentIdentifier) id.getComponentIdentifier());
       }
     }
   }
