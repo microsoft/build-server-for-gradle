@@ -72,6 +72,8 @@ public class GradleApiConnector {
     TaskProgressReporter reporter = new TaskProgressReporter(new CompileProgressReporter(
         btIds.iterator().next()));
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
+    String summary = "BUILD SUCCESSFUL";
+    StatusCode statusCode = StatusCode.OK;
     try (ProjectConnection connection = Utils.getProjectConnection(projectUri, preferences);
         errorOut;
     ) {
@@ -82,15 +84,18 @@ public class GradleApiConnector {
           .setStandardError(errorOut)
           .forTasks(tasks)
           .run();
-      reporter.taskFinished("BUILD SUCCESSFUL", StatusCode.OK);
     } catch (IOException e) {
       // caused by close the output stream, just simply log the error.
       logger.error(e.getMessage(), e);
     } catch (BuildException e) {
-      reporter.taskFinished(errorOut.toString(), StatusCode.ERROR);
-      return StatusCode.ERROR;
+      summary = errorOut.toString();
+      statusCode = StatusCode.ERROR;
+    } finally {
+      // If a build/taskStart notification has been sent,
+      // the server must send build/taskFinish on completion of the same task.
+      reporter.taskFinished(summary, statusCode);
     }
 
-    return StatusCode.OK;
+    return statusCode;
   }
 }
