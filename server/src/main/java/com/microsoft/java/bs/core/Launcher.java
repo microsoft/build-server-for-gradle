@@ -19,7 +19,9 @@ import ch.epfl.scala.bsp4j.BuildClient;
  * Main entry point for the BSP server.
  */
 public class Launcher {
-  
+
+  public static BuildClient client;
+
   /**
    * The property name for the build server storage location.
    */
@@ -40,6 +42,7 @@ public class Launcher {
     logSessionStart();
 
     org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher = createLauncher();
+    client = launcher.getRemoteProxy();
     launcher.startListening();
   }
 
