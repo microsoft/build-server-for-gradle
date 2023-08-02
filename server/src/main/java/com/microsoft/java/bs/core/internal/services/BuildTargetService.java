@@ -226,7 +226,7 @@ public class BuildTargetService {
     for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
       Set<BuildTargetIdentifier> btIds = entry.getValue();
       String[] tasks = btIds.stream().map(this::getBuildTaskName).toArray(String[]::new);
-      code = gradleConnector.runTasks(entry.getKey(), tasks);
+      code = gradleConnector.runTasks(entry.getKey(), btIds, tasks);
       if (code == StatusCode.ERROR) {
         break;
       }
