@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
+import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TaskProgressReporter;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -47,17 +48,26 @@ public class GradleApiConnector {
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
+    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
+    String summary = "";
+    StatusCode statusCode = StatusCode.OK;
     try (ProjectConnection connection = Utils.getProjectConnection(projectUri, preferences)) {
+      reporter.taskStarted("Connect to Gradle Daemon");
       ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
           connection,
           preferences,
           GradleSourceSets.class
       );
-      customModelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      return customModelBuilder.get();
+      return customModelBuilder.addProgressListener(reporter,
+          OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
+          .addArguments("--init-script", initScript.getAbsolutePath())
+          .get();
     } catch (GradleConnectionException | IllegalStateException e) {
-      // TODO: report the error to client via build server protocol
+      summary = e.getMessage();
+      statusCode = StatusCode.ERROR;
       throw e;
+    } finally {
+      reporter.taskFinished(summary, statusCode);
     }
   }
 
