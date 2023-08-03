@@ -2,7 +2,6 @@ package com.microsoft.java.bs.core;
 
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
-import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import com.microsoft.java.bs.core.internal.log.LogHandler;
@@ -21,6 +20,8 @@ import ch.epfl.scala.bsp4j.BuildClient;
 public class Launcher {
 
   public static BuildClient client;
+
+  public static final Logger LOGGER = Logger.getLogger("GradleBuildServerLogger");
 
   /**
    * The property name for the build server storage location.
@@ -68,16 +69,15 @@ public class Launcher {
   }
 
   private static void setupLoggers() {
-    LogManager.getLogManager().reset();
-    Logger rootLogger = LogManager.getLogManager().getLogger("");
+    LOGGER.setUseParentHandlers(false);
     LogHandler logHandler = new LogHandler();
     logHandler.setLevel(Level.FINE);
-    rootLogger.addHandler(logHandler);
+    LOGGER.addHandler(logHandler);
 
     if (System.getProperty("disableServerTelemetry") == null) {
       TelemetryHandler telemetryHandler = new TelemetryHandler();
       telemetryHandler.setLevel(Level.INFO);
-      rootLogger.addHandler(telemetryHandler);
+      LOGGER.addHandler(telemetryHandler);
     }
   }
 }

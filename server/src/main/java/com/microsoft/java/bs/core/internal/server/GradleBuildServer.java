@@ -1,11 +1,12 @@
 package com.microsoft.java.bs.core.internal.server;
 
+import static com.microsoft.java.bs.core.Launcher.LOGGER;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
@@ -50,8 +51,6 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
  * The implementation of the Build Server Protocol.
  */
 public class GradleBuildServer implements BuildServer {
-
-  private static final Logger LOGGER = Logger.getLogger(GradleBuildServer.class.getName());
 
   private LifecycleService lifecycleService;
 
@@ -166,7 +165,7 @@ public class GradleBuildServer implements BuildServer {
 
   private void handleNotification(String methodName, Runnable runnable, boolean async) {
     LogEntity entity = new LogEntity.Builder()
-        .bspRequestName(escapeMethodName(methodName))
+        .operationName(escapeMethodName(methodName))
         .build();
     LOGGER.log(Level.INFO, "Received notification '" + methodName + "'.", entity);
     if (async) {
@@ -202,8 +201,8 @@ public class GradleBuildServer implements BuildServer {
 
   private <T> CompletableFuture<T> success(String methodName, T response, long elapsedTime) {
     LogEntity entity = new LogEntity.Builder()
-        .bspRequestName(escapeMethodName(methodName))
-        .time(String.valueOf(elapsedTime))
+        .operationName(escapeMethodName(methodName))
+        .duration(String.valueOf(elapsedTime))
         .build();
     String message = String.format("Sending response '%s'. Processing request took %d ms.",
         methodName, elapsedTime);
@@ -216,7 +215,7 @@ public class GradleBuildServer implements BuildServer {
     Throwable rootCause = ExceptionUtils.getRootCause(throwable);
     String rootCauseMessage = rootCause != null ? rootCause.getMessage() : null;
     LogEntity entity = new LogEntity.Builder()
-        .bspRequestName(escapeMethodName(methodName))
+        .operationName(escapeMethodName(methodName))
         .stackTrace(stackTrace)
         .rootCauseMessage(rootCauseMessage)
         .build();

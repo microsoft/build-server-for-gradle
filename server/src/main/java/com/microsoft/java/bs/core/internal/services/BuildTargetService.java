@@ -1,5 +1,7 @@
 package com.microsoft.java.bs.core.internal.services;
 
+import static com.microsoft.java.bs.core.Launcher.LOGGER;
+
 import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
@@ -8,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
@@ -53,8 +54,6 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 public class BuildTargetService {
 
   private static final String MAVEN_DATA_KIND = "maven";
-
-  private static final Logger LOGGER = Logger.getLogger(BuildTargetService.class.getName());
 
   private BuildTargetManager buildTargetManager;
 
