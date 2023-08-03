@@ -8,11 +8,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
@@ -55,7 +54,7 @@ public class BuildTargetService {
 
   private static final String MAVEN_DATA_KIND = "maven";
 
-  private static final Logger logger = LoggerFactory.getLogger(BuildTargetService.class);
+  private static final Logger LOGGER = Logger.getLogger(BuildTargetService.class.getName());
 
   private BuildTargetManager buildTargetManager;
 
@@ -86,8 +85,8 @@ public class BuildTargetService {
     for (BuildTargetIdentifier btId : params.getTargets()) {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
       if (target == null) {
-        logger.warn("Skip sources collection for the build target: {}"
-            + "because it cannot be found in the cache.", btId.getUri());
+        LOGGER.warning("Skip sources collection for the build target: " + btId.getUri()
+            + ". Because it cannot be found in the cache.");
         continue;
       }
 
@@ -115,8 +114,8 @@ public class BuildTargetService {
     for (BuildTargetIdentifier btId : params.getTargets()) {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
       if (target == null) {
-        logger.warn("Skip resources collection for the build target: {}"
-            + "because it cannot be found in the cache.", btId.getUri());
+        LOGGER.warning("Skip resources collection for the build target: " + btId.getUri()
+            + ". Because it cannot be found in the cache.");
         continue;
       }
 
@@ -139,8 +138,8 @@ public class BuildTargetService {
     for (BuildTargetIdentifier btId : params.getTargets()) {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
       if (target == null) {
-        logger.warn("Skip output collection for the build target: {}"
-            + "because it cannot be found in the cache.", btId.getUri());
+        LOGGER.warning("Skip output collection for the build target: " + btId.getUri()
+            + ". Because it cannot be found in the cache.");
         continue;
       }
 
@@ -181,8 +180,8 @@ public class BuildTargetService {
     for (BuildTargetIdentifier btId : params.getTargets()) {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
       if (target == null) {
-        logger.warn("Skip output collection for the build target: {}"
-            + "because it cannot be found in the cache.", btId.getUri());
+        LOGGER.warning("Skip output collection for the build target: " + btId.getUri()
+            + ". Because it cannot be found in the cache.");
         continue;
       }
 
