@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json.schemastore.org/component-detection-manifest.json",
+  "Registrations": [
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "ch.epfl.scala",
+          "ArtifactId": "bsp4j",
+          "Version": "2.1.0-M4"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.checkerframework",
+          "ArtifactId": "checker-qual",
+          "Version": "3.5.0"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.apache.commons",
+          "ArtifactId": "commons-lang3",
+          "Version": "3.13.0"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "com.google.errorprone",
+          "ArtifactId": "error_prone_annotations",
+          "Version": "2.3.4"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "com.google.guava",
+          "ArtifactId": "failureaccess",
+          "Version": "1.0.1"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.gradle",
+          "ArtifactId": "gradle-tooling-api",
+          "Version": "8.1.1"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "com.google.code.gson",
+          "ArtifactId": "gson",
+          "Version": "2.9.1"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "com.google.guava",
+          "ArtifactId": "guava",
+          "Version": "30.1-jre"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "com.google.j2objc",
+          "ArtifactId": "j2objc-annotations",
+          "Version": "1.3"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "com.google.code.findbugs",
+          "ArtifactId": "jsr305",
+          "Version": "3.0.2"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "com.google.guava",
+          "ArtifactId": "listenablefuture",
+          "Version": "9999.0-empty-to-avoid-conflict-with-guava"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.eclipse.lsp4j",
+          "ArtifactId": "org.eclipse.lsp4j.generator",
+          "Version": "0.19.0"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.eclipse.lsp4j",
+          "ArtifactId": "org.eclipse.lsp4j.jsonrpc",
+          "Version": "0.19.0"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.eclipse.xtend",
+          "ArtifactId": "org.eclipse.xtend.lib",
+          "Version": "2.28.0"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.eclipse.xtend",
+          "ArtifactId": "org.eclipse.xtend.lib.macro",
+          "Version": "2.28.0"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.eclipse.xtext",
+          "ArtifactId": "org.eclipse.xtext.xbase.lib",
+          "Version": "2.28.0"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.slf4j",
+          "ArtifactId": "slf4j-api",
+          "Version": "1.7.30"
+        }
+      },
+      "DevelopmentDependency": false
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.junit.jupiter",
+          "ArtifactId": "junit-bom",
+          "Version": "5.9.2"
+        }
+      },
+      "DevelopmentDependency": true
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.mockito",
+          "ArtifactId": "mockito-core",
+          "Version": "5.3.0"
+        }
+      },
+      "DevelopmentDependency": true
+    },
+    {
+      "Component": {
+        "Type": "maven",
+        "Maven": {
+          "GroupId": "org.mockito",
+          "ArtifactId": "mockito-junit-jupiter",
+          "Version": "5.3.0"
+        }
+      },
+      "DevelopmentDependency": true
+    }
+  ]
+}
