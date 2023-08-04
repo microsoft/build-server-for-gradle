@@ -1,5 +1,7 @@
 package com.microsoft.java.bs.core.internal.gradle;
 
+import static com.microsoft.java.bs.core.Launcher.LOGGER;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -12,8 +14,6 @@ import org.gradle.tooling.GradleConnectionException;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.events.OperationType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
@@ -28,8 +28,6 @@ import ch.epfl.scala.bsp4j.StatusCode;
  * Connect to Gradle Daemon via Gradle Tooling API.
  */
 public class GradleApiConnector {
-
-  private static final Logger logger = LoggerFactory.getLogger(GradleApiConnector.class);
 
   Preferences preferences;
 
@@ -96,7 +94,7 @@ public class GradleApiConnector {
           .run();
     } catch (IOException e) {
       // caused by close the output stream, just simply log the error.
-      logger.error(e.getMessage(), e);
+      LOGGER.severe(e.getMessage());
     } catch (BuildException e) {
       summary = errorOut.toString();
       statusCode = StatusCode.ERROR;

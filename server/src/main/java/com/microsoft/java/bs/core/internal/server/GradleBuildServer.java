@@ -1,18 +1,22 @@
 package com.microsoft.java.bs.core.internal.server;
 
+import static com.microsoft.java.bs.core.Launcher.LOGGER;
+
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.logging.Level;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.microsoft.java.bs.core.internal.log.LogEntity;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
 
@@ -48,8 +52,6 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
  */
 public class GradleBuildServer implements BuildServer {
 
-  private static final Logger logger = LoggerFactory.getLogger(GradleBuildServer.class);
-
   private LifecycleService lifecycleService;
 
   private BuildTargetService buildTargetService;
@@ -67,7 +69,7 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public void onBuildInitialized() {
-    handleNotificationAsync("build/initialized", lifecycleService::onBuildInitialized);
+    handleNotification("build/initialized", lifecycleService::onBuildInitialized, true /*async*/);
   }
 
   @Override
@@ -78,7 +80,7 @@ public class GradleBuildServer implements BuildServer {
 
   @Override
   public void onBuildExit() {
-    handleNotification("build/exit", lifecycleService::exit);
+    handleNotification("build/exit", lifecycleService::exit, false /*async*/);
   }
 
   @Override
@@ -161,52 +163,73 @@ public class GradleBuildServer implements BuildServer {
         buildTargetService.getBuildTargetDependencyModules(params));
   }
 
-  private void handleNotification(String methodName, Runnable runnable) {
-    logger.info(">> {} received.", methodName);
-    runnable.run();
-  }
-
-  private void handleNotificationAsync(String methodName, Runnable runnable) {
-    logger.info(">> {} received.", methodName);
-    CompletableFuture.runAsync(runnable);
+  private void handleNotification(String methodName, Runnable runnable, boolean async) {
+    LogEntity entity = new LogEntity.Builder()
+        .operationName(escapeMethodName(methodName))
+        .build();
+    LOGGER.log(Level.INFO, "Received notification '" + methodName + "'.", entity);
+    if (async) {
+      CompletableFuture.runAsync(runnable);
+    } else {
+      runnable.run();
+    }
   }
 
   private <R> CompletableFuture<R> handleRequest(String methodName,
       Function<CancelChecker, R> supplier) {
-    logger.info(">> {} starts.", methodName);
     return runAsync(methodName, supplier);
   }
 
   public <T, R> CompletableFuture<R> handleRequest(String methodName,
       BiFunction<CancelChecker, T, R> function, T arg) {
-    logger.info(">> {} starts with arguments: {}", methodName, arg);
+    LOGGER.info("Received request '" + methodName + "'.");
     return runAsync(methodName, cancelChecker -> function.apply(cancelChecker, arg));
   }
 
   private <T> CompletableFuture<T> runAsync(String methodName, Function<CancelChecker, T> request) {
+    long startTime = System.nanoTime();
     return CompletableFutures.computeAsync(request)
         .thenApply(Either::<Throwable, T>forRight)
         .exceptionally(Either::forLeft)
-        .thenCompose(
-            either ->
-                either.isLeft()
-                    ? failure(methodName, either.getLeft())
-                    : success(methodName, either.getRight())
-        );
+        .thenCompose(either -> {
+          long elapsedTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
+          return either.isLeft()
+              ? failure(methodName, either.getLeft())
+              : success(methodName, either.getRight(), elapsedTime);
+        });
   }
 
-  private <T> CompletableFuture<T> success(String methodName, T response) {
-    logger.info(">> {} finished.", methodName);
+  private <T> CompletableFuture<T> success(String methodName, T response, long elapsedTime) {
+    LogEntity entity = new LogEntity.Builder()
+        .operationName(escapeMethodName(methodName))
+        .duration(String.valueOf(elapsedTime))
+        .build();
+    String message = String.format("Sending response '%s'. Processing request took %d ms.",
+        methodName, elapsedTime);
+    LOGGER.log(Level.INFO, message, entity);
     return CompletableFuture.completedFuture(response);
   }
 
   private <T> CompletableFuture<T> failure(String methodName, Throwable throwable) {
-    logger.error(">> {} failed: {}", methodName, throwable.getMessage());
+    String stackTrace = ExceptionUtils.getStackTrace(throwable);
+    Throwable rootCause = ExceptionUtils.getRootCause(throwable);
+    String rootCauseMessage = rootCause != null ? rootCause.getMessage() : null;
+    LogEntity entity = new LogEntity.Builder()
+        .operationName(escapeMethodName(methodName))
+        .stackTrace(stackTrace)
+        .rootCauseMessage(rootCauseMessage)
+        .build();
+    String message = String.format("Failed to process '%s': %s", methodName, stackTrace);
+    LOGGER.log(Level.SEVERE, message, entity);
     if (throwable instanceof ResponseErrorException) {
       return CompletableFuture.failedFuture(throwable);
     }
     return CompletableFuture.failedFuture(
         new ResponseErrorException(
             new ResponseError(ResponseErrorCode.InternalError, throwable.getMessage(), null)));
+  }
+
+  private String escapeMethodName(String name) {
+    return name.replace('/', '-');
   }
 }
