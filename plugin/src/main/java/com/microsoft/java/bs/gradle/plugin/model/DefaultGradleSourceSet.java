@@ -41,6 +41,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   private String javaVersion;
 
+  private String gradleVersion;
+
   private Set<GradleModuleDependency> moduleDependencies;
 
   private Set<GradleProjectDependency> projectDependencies;
@@ -151,6 +153,14 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.javaVersion = javaVersion;
   }
 
+  public String getGradleVersion() {
+    return gradleVersion;
+  }
+
+  public void setGradleVersion(String gradleVersion) {
+    this.gradleVersion = gradleVersion;
+  }
+
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -172,7 +182,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     return Objects.hash(projectName, projectPath, projectDir,
         rootDir, sourceSetName, sourceDirs, generatedSourceDirs,
         sourceOutputDir, resourceDirs, resourceOutputDir,
-        javaHome, javaVersion, moduleDependencies, projectDependencies
+        javaHome, javaVersion, gradleVersion,
+        moduleDependencies, projectDependencies
     );
   }
 
@@ -200,6 +211,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(resourceOutputDir, other.resourceOutputDir)
         && Objects.equals(javaHome, other.javaHome)
         && Objects.equals(javaVersion, other.javaVersion)
+        && Objects.equals(gradleVersion, other.gradleVersion)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(projectDependencies, other.projectDependencies);
   }

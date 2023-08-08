@@ -57,6 +57,7 @@ class GradleBuildServerPluginTest {
 
         assertNotNull(gradleSourceSet.getJavaHome());
         assertNotNull(gradleSourceSet.getJavaVersion());
+        assertNotNull(gradleSourceSet.getGradleVersion());
         assertNotNull(gradleSourceSet.getModuleDependencies());
         assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
             dependency -> dependency.getModule().equals("a.jar")

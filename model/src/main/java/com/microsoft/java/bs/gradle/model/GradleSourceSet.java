@@ -70,6 +70,11 @@ public interface GradleSourceSet {
   public String getJavaVersion();
 
   /**
+   * The Gradle version of the project.
+   */
+  public String getGradleVersion();
+
+  /**
    * Module dependencies.
    */
   public Set<GradleModuleDependency> getModuleDependencies();
