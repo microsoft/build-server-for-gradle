@@ -62,15 +62,15 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       List<GradleSourceSet> gradleSourceSets = new ArrayList<>();
       // mapping Gradle source set to our customized model.
       Map<SourceSet, DefaultGradleSourceSet> sourceSetMap = new HashMap<>();
+      // this set is used to eliminate the source, resource and output
+      // directories from the module dependencies.
+      Set<File> exclusionFromDependencies = new HashSet<>();
       for (Project project : allProject) {
         SourceSetContainer sourceSets = getSourceSetContainer(project);
         if (sourceSets == null || sourceSets.isEmpty()) {
           continue;
         }
 
-        // this set is used to eliminate the source, resource and output
-        // directories from the module dependencies.
-        Set<File> exclusionFromDependencies = new HashSet<>();
         File defaultJavaHome = DefaultInstalledJdk.current().getJavaHome();
         String gradleVersion = project.getGradle().getGradleVersion();
         sourceSets.forEach(sourceSet -> {
@@ -115,6 +115,14 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           gradleSourceSets.add(gradleSourceSet);
         });
 
+      }
+
+      for (Project project : allProject) {
+        SourceSetContainer sourceSets = getSourceSetContainer(project);
+        if (sourceSets == null || sourceSets.isEmpty()) {
+          continue;
+        }
+
         // dependencies
         sourceSets.forEach(sourceSet -> {
           DefaultGradleSourceSet gradleSourceSet = sourceSetMap.get(sourceSet);
@@ -128,6 +136,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           gradleSourceSet.setProjectDependencies(collector.getProjectDependencies());
         });
       }
+
       DefaultGradleSourceSets result = new DefaultGradleSourceSets();
       result.setGradleSourceSets(gradleSourceSets);
       return result;
