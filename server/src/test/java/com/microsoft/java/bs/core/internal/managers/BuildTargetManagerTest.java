@@ -21,6 +21,7 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.JvmBuildTarget;
+import ch.epfl.scala.bsp4j.extended.JvmBuildTargetEx;
 
 class BuildTargetManagerTest {
 
@@ -56,6 +57,24 @@ class BuildTargetManagerTest {
     assertEquals("jvm", buildTarget.getDataKind());
     JvmBuildTarget jvmBt = (JvmBuildTarget) buildTarget.getData();
     assertEquals("17", jvmBt.getJavaVersion());
+  }
+
+  @Test
+  void testJvmExtensionEx() {
+    GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
+    when(gradleSourceSet.getGradleVersion()).thenReturn("8.0");
+    GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
+    when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
+    
+    BuildTargetManager manager = new BuildTargetManager();
+    manager.store(gradleSourceSets);
+
+    List<GradleBuildTarget> list = manager.getAllGradleBuildTargets();
+    BuildTarget buildTarget = list.get(0).getBuildTarget();
+
+    assertEquals("jvm", buildTarget.getDataKind());
+    JvmBuildTargetEx jvmBt = (JvmBuildTargetEx) buildTarget.getData();
+    assertEquals("8.0", jvmBt.getGradleVersion());
   }
 
   @Test

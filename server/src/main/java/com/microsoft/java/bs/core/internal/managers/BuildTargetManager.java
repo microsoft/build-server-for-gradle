@@ -21,7 +21,7 @@ import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.BuildTargetTag;
-import ch.epfl.scala.bsp4j.JvmBuildTarget;
+import ch.epfl.scala.bsp4j.extended.JvmBuildTargetEx;
 
 /**
  * Build targets manager.
@@ -95,9 +95,10 @@ public class BuildTargetManager {
 
   private void setJvmBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
     // See: https://build-server-protocol.github.io/docs/extensions/jvm#jvmbuildtarget
-    JvmBuildTarget jvmBuildTarget = new JvmBuildTarget(
+    JvmBuildTargetEx jvmBuildTarget = new JvmBuildTargetEx(
         sourceSet.getJavaHome() == null ? "" : sourceSet.getJavaHome().toURI().toString(),
-        sourceSet.getJavaVersion() == null ? "" : sourceSet.getJavaVersion()
+        sourceSet.getJavaVersion() == null ? "" : sourceSet.getJavaVersion(),
+        sourceSet.getGradleVersion() == null ? "" : sourceSet.getGradleVersion()
     );
     bt.setDataKind("jvm");
     bt.setData(jvmBuildTarget);

@@ -71,6 +71,8 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
         // this set is used to eliminate the source, resource and output
         // directories from the module dependencies.
         Set<File> exclusionFromDependencies = new HashSet<>();
+        File defaultJavaHome = DefaultInstalledJdk.current().getJavaHome();
+        String gradleVersion = project.getGradle().getGradleVersion();
         sourceSets.forEach(sourceSet -> {
           DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
           sourceSetMap.put(sourceSet, gradleSourceSet);
@@ -106,8 +108,9 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           }
 
           // jdk
-          gradleSourceSet.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
-          gradleSourceSet.setJavaVersion(getJavaVersion(project, sourceSet));
+          gradleSourceSet.setJavaHome(defaultJavaHome);
+          gradleSourceSet.setJavaVersion(getSourceCompatibility(project, sourceSet));
+          gradleSourceSet.setGradleVersion(gradleVersion);
 
           gradleSourceSets.add(gradleSourceSet);
         });
@@ -257,10 +260,13 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       }
     }
 
-    private String getJavaVersion(Project project, SourceSet sourceSet) {
+    /**
+     * Get the source compatibility level of the source set.
+     */
+    private String getSourceCompatibility(Project project, SourceSet sourceSet) {
       JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
       if (javaCompile != null) {
-        return javaCompile.getTargetCompatibility();
+        return javaCompile.getSourceCompatibility();
       }
 
       return "";
