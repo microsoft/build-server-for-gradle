@@ -172,7 +172,10 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           }
         } catch (NoSuchMethodError e) {
           // to be compatible with Gradle < 6.3
-          generatedSrcDirs.add(options.getAnnotationProcessorGeneratedSourcesDirectory());
+          File generatedDir = options.getAnnotationProcessorGeneratedSourcesDirectory();
+          if (generatedDir != null) {
+            generatedSrcDirs.add(generatedDir);
+          }
         }
       }
     }
