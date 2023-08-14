@@ -57,6 +57,8 @@ class GradleBuildServerPluginTest {
 
         assertNotNull(gradleSourceSet.getJavaHome());
         assertNotNull(gradleSourceSet.getJavaVersion());
+        assertNotNull(gradleSourceSet.getSourceCompatibility());
+        assertNotNull(gradleSourceSet.getTargetCompatibility());
         assertNotNull(gradleSourceSet.getGradleVersion());
         assertNotNull(gradleSourceSet.getModuleDependencies());
         assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(

@@ -72,6 +72,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
         }
 
         File defaultJavaHome = DefaultInstalledJdk.current().getJavaHome();
+        String javaVersion = DefaultInstalledJdk.current().getJavaVersion().getMajorVersion();
         String gradleVersion = project.getGradle().getGradleVersion();
         sourceSets.forEach(sourceSet -> {
           DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
@@ -109,9 +110,10 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
 
           // jdk
           gradleSourceSet.setJavaHome(defaultJavaHome);
-          gradleSourceSet.setJavaVersion(getSourceCompatibility(project, sourceSet));
+          gradleSourceSet.setJavaVersion(javaVersion);
           gradleSourceSet.setGradleVersion(gradleVersion);
-
+          gradleSourceSet.setSourceCompatibility(getSourceCompatibility(project, sourceSet));
+          gradleSourceSet.setTargetCompatibility(getTargetCompatibility(project, sourceSet));
           gradleSourceSets.add(gradleSourceSet);
         });
 
@@ -279,6 +281,18 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
       JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
       if (javaCompile != null) {
         return javaCompile.getSourceCompatibility();
+      }
+
+      return "";
+    }
+
+    /**
+     * Get the target compatibility level of the source set.
+     */
+    private String getTargetCompatibility(Project project, SourceSet sourceSet) {
+      JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
+      if (javaCompile != null) {
+        return javaCompile.getTargetCompatibility();
       }
 
       return "";

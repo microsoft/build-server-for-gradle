@@ -98,7 +98,9 @@ public class BuildTargetManager {
     JvmBuildTargetEx jvmBuildTarget = new JvmBuildTargetEx(
         sourceSet.getJavaHome() == null ? "" : sourceSet.getJavaHome().toURI().toString(),
         sourceSet.getJavaVersion() == null ? "" : sourceSet.getJavaVersion(),
-        sourceSet.getGradleVersion() == null ? "" : sourceSet.getGradleVersion()
+        sourceSet.getGradleVersion() == null ? "" : sourceSet.getGradleVersion(),
+        sourceSet.getSourceCompatibility() == null ? "" : sourceSet.getSourceCompatibility(),
+        sourceSet.getTargetCompatibility() == null ? "" : sourceSet.getTargetCompatibility()
     );
     bt.setDataKind("jvm");
     bt.setData(jvmBuildTarget);

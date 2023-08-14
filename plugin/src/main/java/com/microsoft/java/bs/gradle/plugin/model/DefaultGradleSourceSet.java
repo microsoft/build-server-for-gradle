@@ -43,6 +43,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   private String gradleVersion;
 
+  private String sourceCompatibility;
+
+  private String targetCompatibility;
+
   private Set<GradleModuleDependency> moduleDependencies;
 
   private Set<GradleProjectDependency> projectDependencies;
@@ -161,6 +165,22 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.gradleVersion = gradleVersion;
   }
 
+  public String getSourceCompatibility() {
+    return sourceCompatibility;
+  }
+
+  public void setSourceCompatibility(String sourceCompatibility) {
+    this.sourceCompatibility = sourceCompatibility;
+  }
+
+  public String getTargetCompatibility() {
+    return targetCompatibility;
+  }
+
+  public void setTargetCompatibility(String targetCompatibility) {
+    this.targetCompatibility = targetCompatibility;
+  }
+
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -182,9 +202,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     return Objects.hash(projectName, projectPath, projectDir,
         rootDir, sourceSetName, sourceDirs, generatedSourceDirs,
         sourceOutputDir, resourceDirs, resourceOutputDir,
-        javaHome, javaVersion, gradleVersion,
-        moduleDependencies, projectDependencies
-    );
+        javaHome, javaVersion, gradleVersion, sourceCompatibility,
+        targetCompatibility, moduleDependencies, projectDependencies);
   }
 
   @Override
@@ -212,6 +231,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(javaHome, other.javaHome)
         && Objects.equals(javaVersion, other.javaVersion)
         && Objects.equals(gradleVersion, other.gradleVersion)
+        && Objects.equals(sourceCompatibility, other.sourceCompatibility)
+        && Objects.equals(targetCompatibility, other.targetCompatibility)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(projectDependencies, other.projectDependencies);
   }
