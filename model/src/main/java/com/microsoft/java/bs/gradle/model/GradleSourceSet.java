@@ -75,6 +75,16 @@ public interface GradleSourceSet {
   public String getGradleVersion();
 
   /**
+   * The source compatibility of the source set.
+   */
+  public String getSourceCompatibility();
+
+  /**
+   * The target compatibility of the source set.
+   */
+  public String getTargetCompatibility();
+
+  /**
    * Module dependencies.
    */
   public Set<GradleModuleDependency> getModuleDependencies();
