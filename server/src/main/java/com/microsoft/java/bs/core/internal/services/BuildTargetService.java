@@ -283,7 +283,8 @@ public class BuildTargetService {
     GradleSourceSet sourceSet = gradleBuildTarget.getSourceSet();
     String classesTaskName = sourceSet.getClassesTaskName();
     if (StringUtils.isBlank(classesTaskName)) {
-      throw new IllegalArgumentException("The build target does not have a classes task: " + btId.getUri());
+      throw new IllegalArgumentException("The build target does not have a classes task: "
+          + btId.getUri());
     }
 
     String modulePath = sourceSet.getProjectPath();
