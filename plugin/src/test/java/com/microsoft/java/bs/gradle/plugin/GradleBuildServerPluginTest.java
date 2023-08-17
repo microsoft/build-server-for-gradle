@@ -49,6 +49,8 @@ class GradleBuildServerPluginTest {
         assertEquals(projectDir, gradleSourceSet.getRootDir());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
             || gradleSourceSet.getSourceSetName().equals("test"));
+        assertTrue(gradleSourceSet.getClassesTaskName().equals("classes")
+            || gradleSourceSet.getClassesTaskName().equals("testClasses"));
         assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getResourceDirs().size() > 0);

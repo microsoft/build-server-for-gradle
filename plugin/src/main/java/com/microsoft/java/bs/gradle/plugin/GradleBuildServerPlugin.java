@@ -78,6 +78,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
           DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
           sourceSetMap.put(sourceSet, gradleSourceSet);
           gradleSourceSet.setSourceSetName(sourceSet.getName());
+          gradleSourceSet.setClassesTaskName(sourceSet.getClassesTaskName());
 
           // source
           Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
