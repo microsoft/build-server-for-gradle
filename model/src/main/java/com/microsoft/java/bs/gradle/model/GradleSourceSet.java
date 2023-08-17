@@ -34,6 +34,11 @@ public interface GradleSourceSet {
   public String getSourceSetName();
 
   /**
+   * The name of the classes task.
+   */
+  public String getClassesTaskName();
+
+  /**
    * The source directories of this source set.
    */
   public Set<File> getSourceDirs();

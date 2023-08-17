@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
@@ -275,28 +275,21 @@ public class BuildTargetService {
    * Return the build task name - [project path]:[task].
    */
   private String getBuildTaskName(BuildTargetIdentifier btId) {
-    String sourceSetName = UriUtils.getQueryValueByKey(btId.getUri(), "sourceset");
-    if (StringUtils.isBlank(sourceSetName)) {
-      throw new IllegalArgumentException("The uri does not contain source set information: "
-          + btId.getUri());
-    }
-
-    String taskName = switch (sourceSetName) {
-      case "main" -> "classes";
-      case "test" -> "testClasses";
-      // https://docs.gradle.org/current/userguide/java_plugin.html#java_source_set_tasks
-      default -> sourceSetName + "Classes";
-    };
-
     GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
     if (gradleBuildTarget == null) {
       // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
       throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
     }
-    String modulePath = gradleBuildTarget.getSourceSet().getProjectPath();
-    if (modulePath == null || modulePath.equals(":")) {
-      return taskName;
+    GradleSourceSet sourceSet = gradleBuildTarget.getSourceSet();
+    String classesTaskName = sourceSet.getClassesTaskName();
+    if (StringUtils.isBlank(classesTaskName)) {
+      throw new IllegalArgumentException("The build target does not have a classes task: " + btId.getUri());
     }
-    return modulePath + ":" + taskName;
+
+    String modulePath = sourceSet.getProjectPath();
+    if (modulePath == null || modulePath.equals(":")) {
+      return classesTaskName;
+    }
+    return modulePath + ":" + classesTaskName;
   }
 }
