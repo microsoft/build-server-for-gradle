@@ -1,7 +1,7 @@
 package com.microsoft.java.bs.gradle.plugin.dependency;
 
 import java.io.File;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -51,8 +51,8 @@ public class DependencyCollector {
   public DependencyCollector(Project project, Set<File> exclusionFromDependencies) {
     this.project = project;
     this.exclusionFromDependencies = exclusionFromDependencies;
-    this.moduleDependencies = new HashSet<>();
-    this.projectDependencies = new HashSet<>();
+    this.moduleDependencies = new LinkedHashSet<>();
+    this.projectDependencies = new LinkedHashSet<>();
   }
 
   public Set<GradleModuleDependency> getModuleDependencies() {
