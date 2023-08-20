@@ -14,6 +14,8 @@ import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnJre;
+import org.junit.jupiter.api.condition.JRE;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -71,7 +73,22 @@ class GradleBuildServerPluginTest {
         ));
       }
     }
-    
+  }
+
+  @Test
+  @EnabledOnJre({JRE.JAVA_8})
+  void testGetOutputLocationFromOldGradle() throws IOException {
+    File projectDir = projectPath.resolve("legacy-gradle").toFile();
+    GradleConnector connector = GradleConnector.newConnector()
+        .forProjectDirectory(projectDir)
+        .useGradleVersion("5.6.4");
+    try (ProjectConnection connect = connector.connect()) {
+      File initScript = PluginHelper.getInitScript();
+      GradleSourceSets gradleSourceSets = connect.model(GradleSourceSets.class)
+          .addArguments("--init-script", initScript.getAbsolutePath())
+          .get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+    }
   }
 
   @Test

@@ -21,15 +21,27 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        include:
+          # Checkstyle and build for the module 'server' only enabled in Java 17.
+          - java-version: 8
+            build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
+          - java-version: 11
+            build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
+          - java-version: 17
+            build-command: ./gradlew clean build
+
     steps:
     - uses: actions/checkout@v3
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
+
     - name: Setup Gradle
       uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
 
     - name: Execute Gradle build
-      run: ./gradlew clean build
+      run: ${{ matrix.build-command }}
