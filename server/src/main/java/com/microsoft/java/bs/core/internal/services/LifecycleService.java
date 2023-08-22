@@ -137,10 +137,10 @@ public class LifecycleService {
     }
 
     if (StringUtils.isBlank(preferences.getGradleJavaHome())) {
-      String gradleVersion;
-      if (StringUtils.isBlank(preferences.getGradleVersion())) {
+      String gradleVersion = "";
+      if (preferences.isWrapperEnabled()) {
         gradleVersion = Utils.getGradleVersion(rootUri);
-      } else {
+      } else if (StringUtils.isNotBlank(preferences.getGradleVersion())) {
         gradleVersion = preferences.getGradleVersion();
       }
 

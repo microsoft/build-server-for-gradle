@@ -63,16 +63,17 @@ public class Utils {
       connector.useGradleUserHomeDir(gradleUserHome);
     }
 
-    if (preferences.getGradleVersion() != null) {
+    if (preferences.isWrapperEnabled()) {
+      connector.useBuildDistribution();
+    } else if (StringUtils.isNotBlank(preferences.getGradleVersion())) {
       connector.useGradleVersion(preferences.getGradleVersion());
-    } else if (preferences.getGradleHome() != null) {
+    } else if (StringUtils.isNotBlank(preferences.getGradleHome())) {
       File gradleHome = getGradleHome(preferences.getGradleHome());
       if (gradleHome != null && gradleHome.exists()) {
         connector.useInstallation(gradleHome);
       }
-    } else {
-      connector.useBuildDistribution();
     }
+
     return connector.connect();
   }
 
@@ -137,7 +138,10 @@ public class Utils {
   public static String getGradleVersion(URI projectUri) {
     try (ProjectConnection connection = Utils.getProjectConnection(projectUri,
         new Preferences())) {
-      BuildEnvironment model = connection.model(BuildEnvironment.class).get();
+      BuildEnvironment model = connection
+          .model(BuildEnvironment.class)
+          .withArguments("--no-daemon")
+          .get();
       return model.getGradle().getGradleVersion();
     } catch (BuildException e) {
       LOGGER.severe("Failed to get Gradle version: " + e.getMessage());
