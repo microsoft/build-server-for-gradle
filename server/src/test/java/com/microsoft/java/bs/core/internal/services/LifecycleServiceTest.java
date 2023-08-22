@@ -6,8 +6,13 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -65,5 +70,18 @@ class LifecycleServiceTest {
     lifecycleService.initializePreferenceManager(params);
 
     assertEquals("17", preferenceManager.getPreferences().getGradleVersion());
+  }
+
+  @Test
+  void testGetJdkToLaunchDaemon() throws URISyntaxException {
+    Map<String, String> jdks = new HashMap<>();
+    jdks.put("1.8", "file:///path/to/jdk8");
+    jdks.put("11", "file:///path/to/jdk11");
+    jdks.put("17", "file:///path/to/jdk17");
+
+    assertEquals(new File(new URI("file:///path/to/jdk11")),
+        LifecycleService.getJdkToLaunchDaemon(jdks, "13"));
+    assertEquals(new File(new URI("file:///path/to/jdk8")),
+        LifecycleService.getJdkToLaunchDaemon(jdks, "9"));
   }
 }

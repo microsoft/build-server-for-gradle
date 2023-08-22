@@ -1,10 +1,20 @@
 package com.microsoft.java.bs.core.internal.services;
 
+import static com.microsoft.java.bs.core.Launcher.LOGGER;
+
+import java.io.File;
+import java.lang.Runtime.Version;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.apache.commons.lang3.StringUtils;
 
 import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
+import com.microsoft.java.bs.core.internal.gradle.Utils;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
@@ -56,15 +66,17 @@ public class LifecycleService {
   }
 
   void initializePreferenceManager(InitializeBuildParams params) {
+    URI rootUri = UriUtils.getUriFromString(params.getRootUri());
+    preferenceManager.setRootUri(rootUri);
+
     Preferences preferences = JsonUtils.toModel(params.getData(), Preferences.class);
     if (preferences == null) {
       // If no preferences are provided, use an empty preferences.
       preferences = new Preferences();
     }
-    preferenceManager.setPreferences(preferences);
 
-    URI rootUri = UriUtils.getUriFromString(params.getRootUri());
-    preferenceManager.setRootUri(rootUri);
+    updateGradleJavaHomeIfNecessary(rootUri, preferences);
+    preferenceManager.setPreferences(preferences);
   }
 
   void updateBuildTargetManager() {
@@ -108,5 +120,63 @@ public class LifecycleService {
     UNINITIALIZED,
     INITIALIZED,
     SHUTDOWN;
+  }
+
+  /**
+   * Try to update the Gradle Java home if:
+   * <ul>
+   *   <li>Gradle Java home is not set.</li>
+   *   <li>A valid JDK can be found to launch Gradle.</li>
+   * </ul>
+   *
+   * <p>The JDK installation path string will be set to {@link Preferences#gradleJavaHome}.
+   */
+  private void updateGradleJavaHomeIfNecessary(URI rootUri, Preferences preferences) {
+    if (StringUtils.isBlank(preferences.getGradleJavaHome())) {
+      String gradleVersion;
+      if (StringUtils.isBlank(preferences.getGradleVersion())) {
+        gradleVersion = Utils.getGradleVersion(rootUri);
+      } else {
+        gradleVersion = preferences.getGradleVersion();
+      }
+
+      if (StringUtils.isNotBlank(gradleVersion)) {
+        String highestJavaVersion = Utils.getHighestCompatibleJavaVersion(gradleVersion);
+        File jdkInstallation = getJdkToLaunchDaemon(preferences.getJdks(), highestJavaVersion);
+        if (jdkInstallation != null) {
+          preferences.setGradleJavaHome(jdkInstallation.getAbsolutePath());
+        }
+      }
+    }
+  }
+
+  /**
+   * Find the latest JDK but equal or lower than the {@code highestJavaVersion}.
+   */
+  static File getJdkToLaunchDaemon(Map<String, String> jdks, String highestJavaVersion) {
+    if (StringUtils.isBlank(highestJavaVersion)) {
+      return null;
+    }
+
+    Entry<String, String> selected = null;
+    for (Entry<String, String> jdk : jdks.entrySet()) {
+      String javaVersion = jdk.getKey();
+      if (Version.parse(javaVersion).compareTo(Version.parse(highestJavaVersion)) <= 0
+          && (selected == null || Version.parse(selected.getKey())
+              .compareTo(Version.parse(javaVersion)) < 0)) {
+        selected = jdk;
+      }
+    }
+
+    if (selected == null) {
+      return null;
+    }
+
+    try {
+      return new File(new URI(selected.getValue()));
+    } catch (URISyntaxException e) {
+      LOGGER.severe("Invalid JDK URI: " + selected.getValue());
+      return null;
+    }
   }
 }

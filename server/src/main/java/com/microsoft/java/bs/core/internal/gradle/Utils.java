@@ -1,15 +1,20 @@
 package com.microsoft.java.bs.core.internal.gradle;
 
+import static com.microsoft.java.bs.core.Launcher.LOGGER;
+
 import java.io.File;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.List;
 
 import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
+import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
+import org.gradle.tooling.model.build.BuildEnvironment;
+import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.core.internal.model.Preferences;
 
@@ -124,6 +129,59 @@ public class Utils {
       launcher.withArguments(gradleArguments);
     }
     return launcher;
+  }
+
+  /**
+   * Get the Gradle version of the project.
+   */
+  public static String getGradleVersion(URI projectUri) {
+    try (ProjectConnection connection = Utils.getProjectConnection(projectUri,
+        new Preferences())) {
+      BuildEnvironment model = connection.model(BuildEnvironment.class).get();
+      return model.getGradle().getGradleVersion();
+    } catch (BuildException e) {
+      LOGGER.severe("Failed to get Gradle version: " + e.getMessage());
+      return "";
+    }
+  }
+
+  /**
+   * Get the highest compatible Java version for the current Gradle version, according
+   * to https://docs.gradle.org/current/userguide/compatibility.html
+   *
+   * <p>If none of the compatible Java versions is found, an empty string will be returned.
+   */
+  public static String getHighestCompatibleJavaVersion(String gradleVersion) {
+    GradleVersion version = GradleVersion.version(gradleVersion);
+    if (version.compareTo(GradleVersion.version("8.3")) >= 0) {
+      return "20";
+    } else if (version.compareTo(GradleVersion.version("7.6")) >= 0) {
+      return "19";
+    } else if (version.compareTo(GradleVersion.version("7.5")) >= 0) {
+      return "18";
+    } else if (version.compareTo(GradleVersion.version("7.3")) >= 0) {
+      return "17";
+    } else if (version.compareTo(GradleVersion.version("7.0")) >= 0) {
+      return "16";
+    } else if (version.compareTo(GradleVersion.version("6.7")) >= 0) {
+      return "15";
+    } else if (version.compareTo(GradleVersion.version("6.3")) >= 0) {
+      return "14";
+    } else if (version.compareTo(GradleVersion.version("6.0")) >= 0) {
+      return "13";
+    } else if (version.compareTo(GradleVersion.version("5.4")) >= 0) {
+      return "12";
+    } else if (version.compareTo(GradleVersion.version("5.0")) >= 0) {
+      return "11";
+    } else if (version.compareTo(GradleVersion.version("4.7")) >= 0) {
+      return "10";
+    } else if (version.compareTo(GradleVersion.version("4.3")) >= 0) {
+      return "9";
+    } else if (version.compareTo(GradleVersion.version("2.0")) >= 0) {
+      return "1.8";
+    }
+
+    return "";
   }
 
   public static File getInitScriptFile() {
