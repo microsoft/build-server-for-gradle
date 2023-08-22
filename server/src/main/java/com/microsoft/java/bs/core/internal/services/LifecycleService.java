@@ -132,6 +132,10 @@ public class LifecycleService {
    * <p>The JDK installation path string will be set to {@link Preferences#gradleJavaHome}.
    */
   private void updateGradleJavaHomeIfNecessary(URI rootUri, Preferences preferences) {
+    if (preferences.getJdks() == null || preferences.getJdks().isEmpty()) {
+      return;
+    }
+
     if (StringUtils.isBlank(preferences.getGradleJavaHome())) {
       String gradleVersion;
       if (StringUtils.isBlank(preferences.getGradleVersion())) {

@@ -61,7 +61,7 @@ class LifecycleServiceTest {
         capabilities
     );
     Preferences preferences = new Preferences();
-    preferences.setGradleVersion("17");
+    preferences.setGradleVersion("8.1");
     params.setData(preferences);
 
     PreferenceManager preferenceManager = new PreferenceManager();
@@ -69,7 +69,7 @@ class LifecycleServiceTest {
         preferenceManager);
     lifecycleService.initializePreferenceManager(params);
 
-    assertEquals("17", preferenceManager.getPreferences().getGradleVersion());
+    assertEquals("8.1", preferenceManager.getPreferences().getGradleVersion());
   }
 
   @Test
