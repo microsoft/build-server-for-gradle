@@ -63,15 +63,16 @@ public class Utils {
       connector.useGradleUserHomeDir(gradleUserHome);
     }
 
-    if (preferences.isWrapperEnabled()) {
-      connector.useBuildDistribution();
-    } else if (StringUtils.isNotBlank(preferences.getGradleVersion())) {
-      connector.useGradleVersion(preferences.getGradleVersion());
-    } else if (StringUtils.isNotBlank(preferences.getGradleHome())) {
-      File gradleHome = getGradleHome(preferences.getGradleHome());
-      if (gradleHome != null && gradleHome.exists()) {
-        connector.useInstallation(gradleHome);
-      }
+    switch (getEffectiveBuildKind(project, preferences)) {
+      case SPECIFIED_VERSION:
+        connector.useGradleVersion(preferences.getGradleVersion());
+        break;
+      case SPECIFIED_INSTALLATION:
+        connector.useInstallation(getGradleHome(preferences.getGradleHome()));
+        break;
+      default:
+        connector.useBuildDistribution();
+        break;
     }
 
     return connector.connect();
@@ -233,5 +234,30 @@ public class Utils {
       }
     }
     return null;
+  }
+
+  /**
+   * Get the effective Gradle build kind according to the preferences.
+   *
+   * @param projectRoot Root path of the project.
+   * @param preferences The preferences.
+   */
+  public static GradleBuildKind getEffectiveBuildKind(File projectRoot, Preferences preferences) {
+    if (preferences.isWrapperEnabled()) {
+      File wrapperProperties = Paths.get(projectRoot.getAbsolutePath(), "gradle", "wrapper",
+          "gradle-wrapper.properties").toFile();
+      if (wrapperProperties.exists()) {
+        return GradleBuildKind.WRAPPER;
+      }
+    } else if (StringUtils.isNotBlank(preferences.getGradleVersion())) {
+      return GradleBuildKind.SPECIFIED_VERSION;
+    } else if (StringUtils.isNotBlank(preferences.getGradleHome())) {
+      File gradleHome = getGradleHome(preferences.getGradleHome());
+      if (gradleHome != null && gradleHome.exists()) {
+        return GradleBuildKind.SPECIFIED_INSTALLATION;
+      }
+    }
+
+    return GradleBuildKind.TAPI;
   }
 }

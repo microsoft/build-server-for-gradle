@@ -2,10 +2,7 @@ package com.microsoft.java.bs.core.internal.gradle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
@@ -16,6 +13,13 @@ import org.junit.jupiter.api.Test;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 
 class UtilsTest {
+
+  private File projectDir = Paths.get(
+      System.getProperty("user.dir"),
+      "..",
+      "testProjects",
+      "gradle-4.3-with-wrapper"
+  ).toFile();
 
   @Test
   void testGetFileFromProperty() {
@@ -32,13 +36,6 @@ class UtilsTest {
 
   @Test
   void testGetGradleVersion() {
-    File projectDir = Paths.get(
-        System.getProperty("user.dir"),
-        "..",
-        "testProjects",
-        "gradle-4.3-with-wrapper"
-    ).normalize().toFile();
-
     assertEquals("4.3", Utils.getGradleVersion(projectDir.toURI()));
   }
 
@@ -46,10 +43,7 @@ class UtilsTest {
   void testPreferencesPriority_wrapperEnabled() {
     Preferences preferences = mock(Preferences.class);
     when(preferences.isWrapperEnabled()).thenReturn(true);
-    Utils.getProjectConnection(new File(""), preferences);
-    verify(preferences, atLeastOnce()).isWrapperEnabled();
-    verify(preferences, never()).getGradleVersion();
-    verify(preferences, never()).getGradleHome();
+    assertEquals(GradleBuildKind.WRAPPER, Utils.getEffectiveBuildKind(projectDir, preferences));
   }
 
   @Test
@@ -57,21 +51,16 @@ class UtilsTest {
     Preferences preferences = mock(Preferences.class);
     when(preferences.isWrapperEnabled()).thenReturn(false);
     when(preferences.getGradleVersion()).thenReturn("8.1");
-    Utils.getProjectConnection(new File(""), preferences);
-    verify(preferences, atLeastOnce()).isWrapperEnabled();
-    verify(preferences, atLeastOnce()).getGradleVersion();
-    verify(preferences, never()).getGradleHome();
+    assertEquals(GradleBuildKind.SPECIFIED_VERSION,
+        Utils.getEffectiveBuildKind(projectDir, preferences));
   }
 
   @Test
   void testPreferencesPriority_gradleHomeSet() {
     Preferences preferences = mock(Preferences.class);
     when(preferences.isWrapperEnabled()).thenReturn(false);
-    when(preferences.getGradleVersion()).thenReturn("");
-    when(preferences.getGradleHome()).thenReturn("test");
-    Utils.getProjectConnection(new File(""), preferences);
-    verify(preferences, atLeastOnce()).isWrapperEnabled();
-    verify(preferences, atLeastOnce()).getGradleVersion();
-    verify(preferences, atLeastOnce()).getGradleHome();
+    when(preferences.getGradleHome()).thenReturn(new File("").getAbsolutePath());
+    assertEquals(GradleBuildKind.SPECIFIED_INSTALLATION,
+        Utils.getEffectiveBuildKind(projectDir, preferences));
   }
 }

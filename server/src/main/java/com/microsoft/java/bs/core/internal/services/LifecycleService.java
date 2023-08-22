@@ -14,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
+import com.microsoft.java.bs.core.internal.gradle.GradleBuildKind;
 import com.microsoft.java.bs.core.internal.gradle.Utils;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
@@ -138,10 +139,11 @@ public class LifecycleService {
 
     if (StringUtils.isBlank(preferences.getGradleJavaHome())) {
       String gradleVersion = "";
-      if (preferences.isWrapperEnabled()) {
-        gradleVersion = Utils.getGradleVersion(rootUri);
-      } else if (StringUtils.isNotBlank(preferences.getGradleVersion())) {
+      GradleBuildKind buildKind = Utils.getEffectiveBuildKind(new File(rootUri), preferences);
+      if (buildKind == GradleBuildKind.SPECIFIED_VERSION) {
         gradleVersion = preferences.getGradleVersion();
+      } else {
+        gradleVersion = Utils.getGradleVersion(rootUri);
       }
 
       if (StringUtils.isNotBlank(gradleVersion)) {
