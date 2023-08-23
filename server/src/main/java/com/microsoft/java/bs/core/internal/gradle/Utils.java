@@ -249,9 +249,13 @@ public class Utils {
       if (wrapperProperties.exists()) {
         return GradleBuildKind.WRAPPER;
       }
-    } else if (StringUtils.isNotBlank(preferences.getGradleVersion())) {
+    }
+
+    if (StringUtils.isNotBlank(preferences.getGradleVersion())) {
       return GradleBuildKind.SPECIFIED_VERSION;
-    } else if (StringUtils.isNotBlank(preferences.getGradleHome())) {
+    }
+
+    if (StringUtils.isNotBlank(preferences.getGradleHome())) {
       File gradleHome = getGradleHome(preferences.getGradleHome());
       if (gradleHome != null && gradleHome.exists()) {
         return GradleBuildKind.SPECIFIED_INSTALLATION;
