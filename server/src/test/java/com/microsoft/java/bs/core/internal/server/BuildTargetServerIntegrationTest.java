@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
@@ -35,7 +36,7 @@ class BuildTargetServerIntegrationTest {
   static void beforeClass() {
     String pluginDir = Paths.get(System.getProperty("user.dir"),
         "build", "libs", "plugins").toString();
-    System.setProperty("plugin.dir", pluginDir);
+    System.setProperty(Launcher.PROP_PLUGIN_DIR, pluginDir);
   }
 
   @BeforeEach
@@ -50,7 +51,7 @@ class BuildTargetServerIntegrationTest {
 
   @AfterAll
   static void afterClass() {
-    System.clearProperty("plugin.dir");
+    System.clearProperty(Launcher.PROP_PLUGIN_DIR);
   }
 
   @Test
