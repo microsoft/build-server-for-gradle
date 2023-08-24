@@ -24,14 +24,9 @@ public class Launcher {
   public static final Logger LOGGER = Logger.getLogger("GradleBuildServerLogger");
 
   /**
-   * The property name for the build server storage location.
-   */
-  static final String PROP_BUILD_SERVER_STORAGE = "server.storage";
-
-  /**
    * The property name for the directory location storing the plugin and init script.
    */
-  static final String PROP_PLUGIN_DIR = "plugin.dir";
+  public static final String PROP_PLUGIN_DIR = "plugin.dir";
 
   /**
    * Main entry point.

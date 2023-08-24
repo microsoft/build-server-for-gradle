@@ -16,6 +16,7 @@ import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.model.build.BuildEnvironment;
 import org.gradle.util.GradleVersion;
 
+import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 
 /**
@@ -190,7 +191,7 @@ public class Utils {
   }
 
   public static File getInitScriptFile() {
-    return Paths.get(System.getProperty("plugin.dir"), INIT_GRADLE_SCRIPT).toFile();
+    return Paths.get(System.getProperty(Launcher.PROP_PLUGIN_DIR), INIT_GRADLE_SCRIPT).toFile();
   }
 
   static File getGradleUserHomeFile(String gradleUserHome) {

@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -27,7 +28,7 @@ class GradleApiConnectorTest {
     ).normalize();
     String pluginDir = Paths.get(System.getProperty("user.dir"),
         "build", "libs", "plugins").toString();
-    System.setProperty("plugin.dir", pluginDir);
+    System.setProperty(Launcher.PROP_PLUGIN_DIR, pluginDir);
   }
 
   @Test
