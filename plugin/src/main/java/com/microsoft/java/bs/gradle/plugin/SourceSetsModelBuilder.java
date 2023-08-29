@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.SourceDirectorySet;
-import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -134,18 +133,26 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   }
 
   private SourceSetContainer getSourceSetContainer(Project project) {
-    try {
+    if (!project.getPlugins().hasPlugin("java")) {
+      return null;
+    }
+
+    if (GradleVersion.current().compareTo(GradleVersion.version("7.1")) >= 0) {
       JavaPluginExtension javaPlugin = project.getExtensions()
           .findByType(JavaPluginExtension.class);
       if (javaPlugin != null) {
         return javaPlugin.getSourceSets();
       }
-    } catch (NoClassDefFoundError | NoSuchMethodError e) {
-      // to be compatible with Gradle < 7.1
-      JavaPluginConvention convention = project.getConvention()
-          .getPlugin(JavaPluginConvention.class);
-      if (convention != null) {
-        return convention.getSourceSets();
+    } else {
+      Object javaPluginConvention = project.getConvention().getPlugins().get("java");
+      if (javaPluginConvention != null) {
+        try {
+          Method getSourceSetsMethod = javaPluginConvention.getClass().getMethod("getSourceSets");
+          return (SourceSetContainer) getSourceSetsMethod.invoke(javaPluginConvention);
+        } catch (NoSuchMethodException | SecurityException | IllegalAccessException
+          | IllegalArgumentException | InvocationTargetException e) {
+        // ignore
+        }
       }
     }
     return null;

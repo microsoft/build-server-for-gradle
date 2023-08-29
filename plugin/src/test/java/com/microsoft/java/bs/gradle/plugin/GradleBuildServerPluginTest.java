@@ -77,6 +77,22 @@ class GradleBuildServerPluginTest {
 
   @Test
   @EnabledOnJre({JRE.JAVA_8})
+  void testGetSourceContainerFromOldGradle() throws IOException {
+    File projectDir = projectPath.resolve("non-java").toFile();
+    GradleConnector connector = GradleConnector.newConnector()
+        .forProjectDirectory(projectDir)
+        .useGradleVersion("4.8");
+    try (ProjectConnection connect = connector.connect()) {
+      File initScript = PluginHelper.getInitScript();
+      GradleSourceSets gradleSourceSets = connect.model(GradleSourceSets.class)
+          .addArguments("--init-script", initScript.getAbsolutePath())
+          .get();
+      assertEquals(0, gradleSourceSets.getGradleSourceSets().size());
+    }
+  }
+
+  @Test
+  @EnabledOnJre({JRE.JAVA_8})
   void testGetOutputLocationFromOldGradle() throws IOException {
     File projectDir = projectPath.resolve("legacy-gradle").toFile();
     GradleConnector connector = GradleConnector.newConnector()
