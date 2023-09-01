@@ -12,11 +12,15 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
+import org.gradle.api.artifacts.component.ProjectComponentSelector;
 import org.gradle.api.artifacts.result.ArtifactResolutionResult;
 import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
+import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
+import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
@@ -89,7 +93,7 @@ public class DependencyCollector {
   }
 
   private List<ResolvedArtifactResult> getConfigurationArtifacts(Configuration config) {
-    return config.getIncoming()
+    List<ResolvedArtifactResult> res = config.getIncoming()
         .artifactView(viewConfiguration -> {
           viewConfiguration.lenient(true);
           viewConfiguration.componentFilter(Specs.<ComponentIdentifier>satisfyAll());
@@ -98,6 +102,23 @@ public class DependencyCollector {
         .getArtifacts() // get a set of ResolvedArtifactResult from ArtifactCollection.
         .stream()
         .collect(Collectors.toList());
+
+    recoverUnresolvedDependencies(config);
+
+    return res;
+  }
+
+  private void recoverUnresolvedDependencies(Configuration config) {
+    Set<? extends DependencyResult> dependencies = config.getIncoming()
+        .getResolutionResult().getRoot().getDependencies();
+    for (DependencyResult result : dependencies) {
+      if (result instanceof UnresolvedDependencyResult) {
+        ComponentSelector selector = ((UnresolvedDependencyResult) result).getAttempted();
+        if (selector instanceof ProjectComponentSelector) {
+          resolveProjectDependency(((ProjectComponentSelector) selector));
+        }
+      }
+    }
   }
 
   private void resolveModuleArtifactDependency(ModuleComponentArtifactIdentifier artifactIdentifier,
@@ -187,6 +208,16 @@ public class DependencyCollector {
 
     projectDependencies.add(new DefaultGradleProjectDependency(
         id.getProjectPath()
+    ));
+  }
+
+  private void resolveProjectDependency(ProjectComponentSelector selector) {
+    if (Objects.equals(selector.getProjectPath(), project.getPath())) {
+      return;
+    }
+
+    projectDependencies.add(new DefaultGradleProjectDependency(
+        selector.getProjectPath()
     ));
   }
 }
