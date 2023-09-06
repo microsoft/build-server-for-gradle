@@ -216,7 +216,7 @@ public class GradleBuildServer implements BuildServer {
     String rootCauseMessage = rootCause != null ? rootCause.getMessage() : null;
     LogEntity entity = new LogEntity.Builder()
         .operationName(escapeMethodName(methodName))
-        .stackTrace(stackTrace)
+        .trace(stackTrace)
         .rootCauseMessage(rootCauseMessage)
         .build();
     String message = String.format("Failed to process '%s': %s", methodName, stackTrace);
