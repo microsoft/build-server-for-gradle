@@ -9,14 +9,14 @@ public class LogEntity {
   private final String buildServerVersion;
   private final String operationName;
   private final String duration;
-  private final String stackTrace;
+  private final String trace;
   private final String rootCauseMessage;
 
   private LogEntity(Builder builder) {
     this.buildServerVersion = builder.buildServerVersion;
     this.operationName = builder.operationName;
     this.duration = builder.duration;
-    this.stackTrace = builder.stackTrace;
+    this.trace = builder.trace;
     this.rootCauseMessage = builder.rootCauseMessage;
   }
 
@@ -24,8 +24,8 @@ public class LogEntity {
     return rootCauseMessage;
   }
 
-  public String getStackTrace() {
-    return stackTrace;
+  public String getTrace() {
+    return trace;
   }
 
   public String getOperationName() {
@@ -46,7 +46,7 @@ public class LogEntity {
   public static class Builder {
     private final String buildServerVersion;
     private String rootCauseMessage;
-    private String stackTrace;
+    private String trace;
     private String operationName;
     private String duration;
 
@@ -59,8 +59,8 @@ public class LogEntity {
       return this;
     }
 
-    public Builder stackTrace(String stackTrace) {
-      this.stackTrace = stackTrace;
+    public Builder trace(String trace) {
+      this.trace = trace;
       return this;
     }
 
