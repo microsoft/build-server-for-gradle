@@ -35,6 +35,9 @@ import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.InitializeBuildResult;
 import ch.epfl.scala.bsp4j.InverseSourcesParams;
 import ch.epfl.scala.bsp4j.InverseSourcesResult;
+import ch.epfl.scala.bsp4j.JavaBuildServer;
+import ch.epfl.scala.bsp4j.JavacOptionsParams;
+import ch.epfl.scala.bsp4j.JavacOptionsResult;
 import ch.epfl.scala.bsp4j.OutputPathsParams;
 import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesParams;
@@ -50,7 +53,7 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 /**
  * The implementation of the Build Server Protocol.
  */
-public class GradleBuildServer implements BuildServer {
+public class GradleBuildServer implements BuildServer, JavaBuildServer {
 
   private LifecycleService lifecycleService;
 
@@ -161,6 +164,12 @@ public class GradleBuildServer implements BuildServer {
       DependencyModulesParams params) {
     return handleRequest("buildTarget/dependencyModules", cc ->
         buildTargetService.getBuildTargetDependencyModules(params));
+  }
+
+  @Override
+  public CompletableFuture<JavacOptionsResult> buildTargetJavacOptions(JavacOptionsParams params) {
+    return handleRequest("buildTarget/javacOptions", cc ->
+        buildTargetService.getBuildTargetrJavacOptions(params));
   }
 
   private void handleNotification(String methodName, Runnable runnable, boolean async) {

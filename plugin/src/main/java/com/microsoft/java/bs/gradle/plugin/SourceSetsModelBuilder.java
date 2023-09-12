@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -102,6 +103,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setGradleVersion(gradleVersion);
         gradleSourceSet.setSourceCompatibility(getSourceCompatibility(project, sourceSet));
         gradleSourceSet.setTargetCompatibility(getTargetCompatibility(project, sourceSet));
+        gradleSourceSet.setCompilerArgs(getCompilerArgs(project, sourceSet));
         gradleSourceSets.add(gradleSourceSet);
       });
 
@@ -300,6 +302,18 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
 
     return "";
+  }
+
+  /**
+   * Get the compilation arguments of the source set.
+   */
+  private List<String> getCompilerArgs(Project project, SourceSet sourceSet) {
+    JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
+    if (javaCompile != null) {
+      return javaCompile.getOptions().getCompilerArgs();
+    }
+
+    return Collections.emptyList();
   }
 
   private Set<String> getClasspathConfigurationNames(SourceSet sourceSet) {

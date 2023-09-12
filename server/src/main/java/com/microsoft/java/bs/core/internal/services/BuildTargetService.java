@@ -5,6 +5,7 @@ import static com.microsoft.java.bs.core.Launcher.LOGGER;
 import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +31,9 @@ import ch.epfl.scala.bsp4j.DependencyModule;
 import ch.epfl.scala.bsp4j.DependencyModulesItem;
 import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
+import ch.epfl.scala.bsp4j.JavacOptionsItem;
+import ch.epfl.scala.bsp4j.JavacOptionsParams;
+import ch.epfl.scala.bsp4j.JavacOptionsResult;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.OutputPathItem;
@@ -232,6 +236,30 @@ public class BuildTargetService {
     CompileResult result = new CompileResult(code);
     result.setOriginId(params.getOriginId());
     return result;
+  }
+
+  /**
+   * Get the compiler options.
+   */
+  public JavacOptionsResult getBuildTargetrJavacOptions(JavacOptionsParams params) {
+    List<JavacOptionsItem> items = new ArrayList<>();
+    for (BuildTargetIdentifier btId : params.getTargets()) {
+      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      if (target == null) {
+        LOGGER.warning("Skip javac options collection for the build target: " + btId.getUri()
+            + ". Because it cannot be found in the cache.");
+        continue;
+      }
+
+      GradleSourceSet sourceSet = target.getSourceSet();
+      items.add(new JavacOptionsItem(
+          btId,
+          sourceSet.getCompilerArgs(),
+          Collections.emptyList(), // classpath, not support currently 
+          "" // classDirectory, not support currently
+      ));
+    }
+    return new JavacOptionsResult(items);
   }
 
   /**

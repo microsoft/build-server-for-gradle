@@ -1,6 +1,7 @@
 package com.microsoft.java.bs.gradle.model;
 
 import java.io.File;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -88,6 +89,11 @@ public interface GradleSourceSet {
    * The target compatibility of the source set.
    */
   public String getTargetCompatibility();
+
+  /**
+   * The list of compiler arguments.
+   */
+  public List<String> getCompilerArgs();
 
   /**
    * Module dependencies.
