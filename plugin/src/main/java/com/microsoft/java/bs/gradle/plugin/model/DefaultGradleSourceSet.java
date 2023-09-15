@@ -2,6 +2,7 @@ package com.microsoft.java.bs.gradle.plugin.model;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -48,6 +49,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
   private String sourceCompatibility;
 
   private String targetCompatibility;
+
+  private List<String> compilerArgs;
 
   private Set<GradleModuleDependency> moduleDependencies;
 
@@ -191,6 +194,14 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
     this.targetCompatibility = targetCompatibility;
   }
 
+  public List<String> getCompilerArgs() {
+    return compilerArgs;
+  }
+
+  public void setCompilerArgs(List<String> compilerArgs) {
+    this.compilerArgs = compilerArgs;
+  }
+
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -210,10 +221,11 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
   @Override
   public int hashCode() {
     return Objects.hash(projectName, projectPath, projectDir,
-        rootDir, sourceSetName, classesTaskName, sourceDirs, generatedSourceDirs,
-        sourceOutputDir, resourceDirs, resourceOutputDir,
-        javaHome, javaVersion, gradleVersion, sourceCompatibility,
-        targetCompatibility, moduleDependencies, projectDependencies);
+        rootDir, sourceSetName, classesTaskName, sourceDirs,
+        generatedSourceDirs, sourceOutputDir, resourceDirs,
+        resourceOutputDir, javaHome, javaVersion, gradleVersion,
+        sourceCompatibility, targetCompatibility, compilerArgs,
+        moduleDependencies, projectDependencies);
   }
 
   @Override
@@ -244,6 +256,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
         && Objects.equals(gradleVersion, other.gradleVersion)
         && Objects.equals(sourceCompatibility, other.sourceCompatibility)
         && Objects.equals(targetCompatibility, other.targetCompatibility)
+        && Objects.equals(compilerArgs, other.compilerArgs)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(projectDependencies, other.projectDependencies);
   }

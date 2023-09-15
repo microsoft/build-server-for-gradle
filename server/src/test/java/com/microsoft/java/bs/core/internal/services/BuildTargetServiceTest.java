@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -29,6 +30,8 @@ import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.DependencyModule;
 import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
+import ch.epfl.scala.bsp4j.JavacOptionsParams;
+import ch.epfl.scala.bsp4j.JavacOptionsResult;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.OutputPathsParams;
@@ -211,5 +214,28 @@ class BuildTargetServiceTest {
 
     MavenDependencyModuleArtifact artifact = module.getArtifacts().get(0);
     assertEquals("sources", artifact.getClassifier());
+  }
+
+  @Test
+  void testGetJavacOptions() {
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+
+    List<String> compilerArgs = new ArrayList<>();
+
+    compilerArgs.add("--add-opens");
+    compilerArgs.add("java.base/java.lang=ALL-UNNAMED");
+    when(gradleSourceSet.getCompilerArgs()).thenReturn(compilerArgs);
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        preferenceManager);
+    JavacOptionsResult javacOptions = buildTargetService.getBuildTargetrJavacOptions(
+        new JavacOptionsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+  
+    assertEquals(1, javacOptions.getItems().size());
+    assertEquals(2, javacOptions.getItems().get(0).getOptions().size());
   }
 }
