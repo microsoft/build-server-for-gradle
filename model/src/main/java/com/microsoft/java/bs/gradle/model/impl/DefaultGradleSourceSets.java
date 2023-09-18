@@ -1,6 +1,5 @@
-package com.microsoft.java.bs.gradle.plugin.model;
+package com.microsoft.java.bs.gradle.model.impl;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 
@@ -10,7 +9,7 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 /**
  * Default implementation of {@link GradleSourceSets}.
  */
-public class DefaultGradleSourceSets implements GradleSourceSets, Serializable {
+public class DefaultGradleSourceSets implements GradleSourceSets {
   private static final long serialVersionUID = 1L;
 
   private List<GradleSourceSet> gradleSourceSets;

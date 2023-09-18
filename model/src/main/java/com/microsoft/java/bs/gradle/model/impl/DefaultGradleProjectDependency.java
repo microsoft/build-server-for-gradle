@@ -1,6 +1,5 @@
-package com.microsoft.java.bs.gradle.plugin.model;
+package com.microsoft.java.bs.gradle.model.impl;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
@@ -8,13 +7,22 @@ import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
 /**
  * Default implementation of {@link GradleProjectDependency}.
  */
-public class DefaultGradleProjectDependency implements GradleProjectDependency, Serializable {
+public class DefaultGradleProjectDependency implements GradleProjectDependency {
   private static final long serialVersionUID = 1L;
 
   private String projectPath;
 
   public DefaultGradleProjectDependency(String projectPath) {
     this.projectPath = projectPath;
+  }
+
+  /**
+   * Copy constructor.
+   *
+   * @param projectDependency the other instance to copy from.
+   */
+  public DefaultGradleProjectDependency(GradleProjectDependency projectDependency) {
+    this.projectPath = projectDependency.getProjectPath();
   }
 
   public String getProjectPath() {

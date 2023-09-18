@@ -1,11 +1,12 @@
 package com.microsoft.java.bs.gradle.model;
 
+import java.io.Serializable;
 import java.net.URI;
 
 /**
  * Represents an artifact.
  */
-public interface Artifact {
+public interface Artifact extends Serializable {
   public URI getUri();
 
   /**

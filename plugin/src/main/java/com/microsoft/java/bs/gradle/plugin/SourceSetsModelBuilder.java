@@ -30,9 +30,9 @@ import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
-import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSet;
-import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleSourceSets;
 
 /**
  * Model builder used to get information of source set.
@@ -63,7 +63,11 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       String javaVersion = DefaultInstalledJdk.current().getJavaVersion().getMajorVersion();
       String gradleVersion = project.getGradle().getGradleVersion();
       sourceSets.forEach(sourceSet -> {
-        DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet(project);
+        DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
+        gradleSourceSet.setProjectName(project.getName());
+        gradleSourceSet.setProjectPath(project.getPath());
+        gradleSourceSet.setProjectDir(project.getProjectDir());
+        gradleSourceSet.setRootDir(project.getRootDir());
         sourceSetMap.put(sourceSet, gradleSourceSet);
         gradleSourceSet.setSourceSetName(sourceSet.getName());
         gradleSourceSet.setClassesTaskName(sourceSet.getClassesTaskName());

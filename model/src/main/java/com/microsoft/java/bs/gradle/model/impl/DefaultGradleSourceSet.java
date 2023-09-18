@@ -1,12 +1,10 @@
-package com.microsoft.java.bs.gradle.plugin.model;
+package com.microsoft.java.bs.gradle.model.impl;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-
-import org.gradle.api.Project;
+import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
@@ -15,7 +13,7 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 /**
  * Default implementation of {@link GradleSourceSet}.
  */
-public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
+public class DefaultGradleSourceSet implements GradleSourceSet {
   private static final long serialVersionUID = 1L;
 
   private String projectName;
@@ -56,14 +54,35 @@ public class DefaultGradleSourceSet implements GradleSourceSet, Serializable {
 
   private Set<GradleProjectDependency> projectDependencies;
 
+  public DefaultGradleSourceSet() {}
+
   /**
-   * Construct a default Gradle source set from a Gradle project.
+   * Copy constructor.
+   *
+   * @param gradleSourceSet the source set to copy from.
    */
-  public DefaultGradleSourceSet(Project project) {
-    this.projectName = project.getName();
-    this.projectPath = project.getPath();
-    this.projectDir = project.getProjectDir();
-    this.rootDir = project.getRootDir();
+  public DefaultGradleSourceSet(GradleSourceSet gradleSourceSet) {
+    this.projectName = gradleSourceSet.getProjectName();
+    this.projectPath = gradleSourceSet.getProjectPath();
+    this.projectDir = gradleSourceSet.getProjectDir();
+    this.rootDir = gradleSourceSet.getRootDir();
+    this.sourceSetName = gradleSourceSet.getSourceSetName();
+    this.classesTaskName = gradleSourceSet.getClassesTaskName();
+    this.sourceDirs = gradleSourceSet.getSourceDirs();
+    this.generatedSourceDirs = gradleSourceSet.getGeneratedSourceDirs();
+    this.sourceOutputDir = gradleSourceSet.getSourceOutputDir();
+    this.resourceDirs = gradleSourceSet.getResourceDirs();
+    this.resourceOutputDir = gradleSourceSet.getResourceOutputDir();
+    this.javaHome = gradleSourceSet.getJavaHome();
+    this.javaVersion = gradleSourceSet.getJavaVersion();
+    this.gradleVersion = gradleSourceSet.getGradleVersion();
+    this.sourceCompatibility = gradleSourceSet.getSourceCompatibility();
+    this.targetCompatibility = gradleSourceSet.getTargetCompatibility();
+    this.compilerArgs = gradleSourceSet.getCompilerArgs();
+    this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
+        .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
+    this.projectDependencies = gradleSourceSet.getProjectDependencies().stream()
+        .map(DefaultGradleProjectDependency::new).collect(Collectors.toSet());
   }
 
   public String getProjectName() {
