@@ -56,10 +56,14 @@ public class GradleApiConnector {
           preferences,
           GradleSourceSets.class
       );
-      return customModelBuilder.addProgressListener(reporter,
+      customModelBuilder.addProgressListener(reporter,
           OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
-          .addArguments("--init-script", initScript.getAbsolutePath())
-          .get();
+          .addArguments("--init-script", initScript.getAbsolutePath());
+      if (Boolean.getBoolean("bsp.plugin.debug.enabled")) {
+        customModelBuilder.addJvmArguments(
+            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005");
+      }
+      return customModelBuilder.get();
     } catch (GradleConnectionException | IllegalStateException e) {
       summary = e.getMessage();
       statusCode = StatusCode.ERROR;
