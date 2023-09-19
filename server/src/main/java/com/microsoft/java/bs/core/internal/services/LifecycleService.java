@@ -93,6 +93,7 @@ public class LifecycleService {
     capabilities.setOutputPathsProvider(true);
     capabilities.setDependencyModulesProvider(true);
     capabilities.setCanReload(true);
+    capabilities.setBuildTargetChangedProvider(true);
     capabilities.setCompileProvider(new CompileProvider(Arrays.asList("java")));
     return capabilities;
   }
@@ -101,9 +102,8 @@ public class LifecycleService {
     status = Status.INITIALIZED;
   }
 
-  public Object shutdown() {
+  public void shutdown() {
     status = Status.SHUTDOWN;
-    return null;
   }
 
   /**

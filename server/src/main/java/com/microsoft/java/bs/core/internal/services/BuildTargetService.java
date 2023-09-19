@@ -11,10 +11,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 
+import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
@@ -22,8 +27,10 @@ import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
+import ch.epfl.scala.bsp4j.BuildTargetEvent;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.CompileParams;
 import ch.epfl.scala.bsp4j.CompileResult;
@@ -34,6 +41,7 @@ import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsItem;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.OutputPathItem;
@@ -59,14 +67,31 @@ public class BuildTargetService {
 
   private static final String MAVEN_DATA_KIND = "maven";
 
+  private static final int UPDATE_PROJECT_DELAY = 3;
+
   private BuildTargetManager buildTargetManager;
 
   private PreferenceManager preferenceManager;
 
+  private ScheduledExecutorService executorService;
+
+  /**
+   * The scheduled task that will refetch the project structure
+   * and will be executed after the build task.
+   */
+  private  ScheduledFuture<?> taskFuture;
+
+  /**
+   * Initialize the build target service.
+   *
+   * @param buildTargetManager the build target manager.
+   * @param preferenceManager the preference manager.
+   */
   public BuildTargetService(BuildTargetManager buildTargetManager,
       PreferenceManager preferenceManager) {
     this.buildTargetManager = buildTargetManager;
     this.preferenceManager = preferenceManager;
+    this.executorService = Executors.newScheduledThreadPool(1);
   }
 
   /**
@@ -219,6 +244,9 @@ public class BuildTargetService {
    * Compile the build targets.
    */
   public CompileResult compile(CompileParams params) {
+    if (this.taskFuture != null) {
+      this.taskFuture.cancel(true);
+    }
     Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(
         params.getTargets());
 
@@ -235,6 +263,12 @@ public class BuildTargetService {
     }
     CompileResult result = new CompileResult(code);
     result.setOriginId(params.getOriginId());
+
+    // Schedule a task to refetch the build targets after compilation, this is to
+    // auto detect the source roots changes for those code generation framework,
+    // such as Protocol Buffer.
+    this.taskFuture = this.executorService.schedule(new RefetchBuildTargetTask(),
+        UPDATE_PROJECT_DELAY, TimeUnit.SECONDS);
     return result;
   }
 
@@ -320,5 +354,32 @@ public class BuildTargetService {
       return classesTaskName;
     }
     return modulePath + ":" + classesTaskName;
+  }
+
+  public void shutdown() {
+    this.executorService.shutdownNow();
+  }
+
+  class RefetchBuildTargetTask implements Runnable {
+
+    @Override
+    public void run() {
+      GradleApiConnector gradleConnector = new GradleApiConnector(
+          preferenceManager.getPreferences());
+      GradleSourceSets sourceSets = gradleConnector.getGradleSourceSets(
+          preferenceManager.getRootUri());
+      List<BuildTargetIdentifier> changedTargets = buildTargetManager.store(sourceSets);
+      if (!changedTargets.isEmpty()) {
+        notifyBuildTargetsChanged(changedTargets);
+      }
+    }
+
+    private void notifyBuildTargetsChanged(List<BuildTargetIdentifier> changedTargets) {
+      List<BuildTargetEvent> events = changedTargets.stream()
+          .map(BuildTargetEvent::new)
+          .collect(Collectors.toList());
+      DidChangeBuildTarget param = new DidChangeBuildTarget(events);
+      Launcher.client.onBuildTargetDidChange(param);
+    }
   }
 }
