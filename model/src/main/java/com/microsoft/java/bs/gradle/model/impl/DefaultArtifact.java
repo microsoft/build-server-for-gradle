@@ -1,6 +1,5 @@
-package com.microsoft.java.bs.gradle.plugin.model;
+package com.microsoft.java.bs.gradle.model.impl;
 
-import java.io.Serializable;
 import java.net.URI;
 import java.util.Objects;
 
@@ -9,7 +8,7 @@ import com.microsoft.java.bs.gradle.model.Artifact;
 /**
  * Default implementation of {@link Artifact}.
  */
-public class DefaultArtifact implements Artifact, Serializable {
+public class DefaultArtifact implements Artifact {
   private static final long serialVersionUID = 1L;
 
   private URI uri;
@@ -19,6 +18,16 @@ public class DefaultArtifact implements Artifact, Serializable {
   public DefaultArtifact(URI uri, String classifier) {
     this.uri = uri;
     this.classifier = classifier;
+  }
+
+  /**
+   * Copy constructor.
+   *
+   * @param artifact the other instance to copy from.
+   */
+  public DefaultArtifact(Artifact artifact) {
+    this.uri = artifact.getUri();
+    this.classifier = artifact.getClassifier();
   }
 
   public URI getUri() {

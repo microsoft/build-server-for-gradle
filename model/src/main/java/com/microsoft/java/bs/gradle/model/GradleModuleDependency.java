@@ -1,11 +1,12 @@
 package com.microsoft.java.bs.gradle.model;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Represents a set of artifact dependency.
  */
-public interface GradleModuleDependency {
+public interface GradleModuleDependency extends Serializable {
   public String getGroup();
 
   public String getModule();

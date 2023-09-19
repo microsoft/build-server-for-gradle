@@ -1,5 +1,7 @@
 package com.microsoft.java.bs.core.internal.model;
 
+import java.util.Objects;
+
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
@@ -31,5 +33,26 @@ public class GradleBuildTarget {
 
   public void setSourceSet(GradleSourceSet sourceSet) {
     this.sourceSet = sourceSet;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(buildTarget, sourceSet);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    GradleBuildTarget other = (GradleBuildTarget) obj;
+    return Objects.equals(buildTarget, other.buildTarget)
+        && Objects.equals(sourceSet, other.sourceSet);
   }
 }

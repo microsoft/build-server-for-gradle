@@ -29,9 +29,9 @@ import org.gradle.language.java.artifact.JavadocArtifact;
 import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
-import com.microsoft.java.bs.gradle.plugin.model.DefaultArtifact;
-import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleModuleDependency;
-import com.microsoft.java.bs.gradle.plugin.model.DefaultGradleProjectDependency;
+import com.microsoft.java.bs.gradle.model.impl.DefaultArtifact;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleProjectDependency;
 
 /**
  * Collects dependencies from a {@link SourceSet}.

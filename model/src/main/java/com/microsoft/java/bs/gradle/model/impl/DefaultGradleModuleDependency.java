@@ -1,8 +1,8 @@
-package com.microsoft.java.bs.gradle.plugin.model;
+package com.microsoft.java.bs.gradle.model.impl;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.Artifact;
@@ -10,7 +10,7 @@ import com.microsoft.java.bs.gradle.model.Artifact;
 /**
  * Default implementation of {@link GradleModuleDependency}.
  */
-public class DefaultGradleModuleDependency implements GradleModuleDependency, Serializable {
+public class DefaultGradleModuleDependency implements GradleModuleDependency {
   private static final long serialVersionUID = 1L;
 
   private String group;
@@ -35,6 +35,17 @@ public class DefaultGradleModuleDependency implements GradleModuleDependency, Se
     this.module = module;
     this.version = version;
     this.artifacts = artifacts;
+  }
+
+  /**
+   * Copy constructor.
+   */
+  public DefaultGradleModuleDependency(GradleModuleDependency moduleDependency) {
+    this.group = moduleDependency.getGroup();
+    this.module = moduleDependency.getModule();
+    this.version = moduleDependency.getVersion();
+    this.artifacts = moduleDependency.getArtifacts().stream().map(DefaultArtifact::new)
+        .collect(Collectors.toList());
   }
 
   public String getGroup() {

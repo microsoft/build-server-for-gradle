@@ -20,6 +20,7 @@ import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TaskProgressReporter;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.StatusCode;
@@ -63,7 +64,9 @@ public class GradleApiConnector {
         customModelBuilder.addJvmArguments(
             "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005");
       }
-      return customModelBuilder.get();
+      // since the model returned from Gradle TAPI is a wrapped object, here we re-construct it
+      // via a copy constructor and return as a POJO.
+      return new DefaultGradleSourceSets(customModelBuilder.get());
     } catch (GradleConnectionException | IllegalStateException e) {
       summary = e.getMessage();
       statusCode = StatusCode.ERROR;

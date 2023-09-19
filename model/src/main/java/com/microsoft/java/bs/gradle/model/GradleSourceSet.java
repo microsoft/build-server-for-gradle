@@ -1,13 +1,14 @@
 package com.microsoft.java.bs.gradle.model;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
 
 /**
  * Represents a source set in a Gradle project.
  */
-public interface GradleSourceSet {
+public interface GradleSourceSet extends Serializable {
 
   /**
    * Equivalent to {@code org.gradle.api.Project.getName()}. 
