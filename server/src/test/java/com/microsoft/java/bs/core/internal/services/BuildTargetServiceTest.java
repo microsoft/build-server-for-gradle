@@ -232,7 +232,7 @@ class BuildTargetServiceTest {
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
         preferenceManager);
-    JavacOptionsResult javacOptions = buildTargetService.getBuildTargetrJavacOptions(
+    JavacOptionsResult javacOptions = buildTargetService.getBuildTargetJavacOptions(
         new JavacOptionsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
   
     assertEquals(1, javacOptions.getItems().size());

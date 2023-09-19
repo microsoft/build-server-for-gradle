@@ -102,8 +102,9 @@ public class LifecycleService {
     status = Status.INITIALIZED;
   }
 
-  public void shutdown() {
+  public Object shutdown() {
     status = Status.SHUTDOWN;
+    return null;
   }
 
   /**

@@ -11,10 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -67,19 +64,9 @@ public class BuildTargetService {
 
   private static final String MAVEN_DATA_KIND = "maven";
 
-  private static final int UPDATE_PROJECT_DELAY = 3;
-
   private BuildTargetManager buildTargetManager;
 
   private PreferenceManager preferenceManager;
-
-  private ScheduledExecutorService executorService;
-
-  /**
-   * The scheduled task that will refetch the project structure
-   * and will be executed after the build task.
-   */
-  private  ScheduledFuture<?> taskFuture;
 
   /**
    * Initialize the build target service.
@@ -91,7 +78,6 @@ public class BuildTargetService {
       PreferenceManager preferenceManager) {
     this.buildTargetManager = buildTargetManager;
     this.preferenceManager = preferenceManager;
-    this.executorService = Executors.newScheduledThreadPool(1);
   }
 
   /**
@@ -244,9 +230,6 @@ public class BuildTargetService {
    * Compile the build targets.
    */
   public CompileResult compile(CompileParams params) {
-    if (this.taskFuture != null) {
-      this.taskFuture.cancel(true);
-    }
     Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(
         params.getTargets());
 
@@ -267,15 +250,14 @@ public class BuildTargetService {
     // Schedule a task to refetch the build targets after compilation, this is to
     // auto detect the source roots changes for those code generation framework,
     // such as Protocol Buffer.
-    this.taskFuture = this.executorService.schedule(new RefetchBuildTargetTask(),
-        UPDATE_PROJECT_DELAY, TimeUnit.SECONDS);
+    CompletableFuture.runAsync(new RefetchBuildTargetTask());
     return result;
   }
 
   /**
    * Get the compiler options.
    */
-  public JavacOptionsResult getBuildTargetrJavacOptions(JavacOptionsParams params) {
+  public JavacOptionsResult getBuildTargetJavacOptions(JavacOptionsParams params) {
     List<JavacOptionsItem> items = new ArrayList<>();
     for (BuildTargetIdentifier btId : params.getTargets()) {
       GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
@@ -354,10 +336,6 @@ public class BuildTargetService {
       return classesTaskName;
     }
     return modulePath + ":" + classesTaskName;
-  }
-
-  public void shutdown() {
-    this.executorService.shutdownNow();
   }
 
   class RefetchBuildTargetTask implements Runnable {
