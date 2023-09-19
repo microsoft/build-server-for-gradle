@@ -4,4 +4,9 @@
   "editor.tabSize": 2,
   "java.checkstyle.version": "10.9.3",
   "java.checkstyle.configuration": "${workspaceFolder}\\config\\checkstyle\\checkstyle.xml",
+  "java.templates.fileHeader": [
+    "// Copyright (c) Microsoft Corporation. All rights reserved.",
+    "// Licensed under the MIT license.",
+    ""
+  ]
 }
