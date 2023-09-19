@@ -93,6 +93,7 @@ public class LifecycleService {
     capabilities.setOutputPathsProvider(true);
     capabilities.setDependencyModulesProvider(true);
     capabilities.setCanReload(true);
+    capabilities.setBuildTargetChangedProvider(true);
     capabilities.setCompileProvider(new CompileProvider(Arrays.asList("java")));
     return capabilities;
   }

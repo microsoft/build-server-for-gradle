@@ -77,8 +77,9 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
 
   @Override
   public CompletableFuture<Object> buildShutdown() {
-    return handleRequest("buildTarget/shutdown", cc ->
-        lifecycleService.shutdown());
+    return handleRequest("build/shutdown", cc -> {
+      return lifecycleService.shutdown();
+    });
   }
 
   @Override
@@ -169,7 +170,7 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
   @Override
   public CompletableFuture<JavacOptionsResult> buildTargetJavacOptions(JavacOptionsParams params) {
     return handleRequest("buildTarget/javacOptions", cc ->
-        buildTargetService.getBuildTargetrJavacOptions(params));
+        buildTargetService.getBuildTargetJavacOptions(params));
   }
 
   private void handleNotification(String methodName, Runnable runnable, boolean async) {

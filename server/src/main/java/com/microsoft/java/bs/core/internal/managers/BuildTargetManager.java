@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,10 +37,13 @@ public class BuildTargetManager {
 
   /**
    * Store the Gradle source sets.
+   *
+   * @return whether the cache is updated.
    */
-  public void store(GradleSourceSets gradleSourceSets) {
+  public List<BuildTargetIdentifier> store(GradleSourceSets gradleSourceSets) {
     Map<BuildTargetIdentifier, GradleBuildTarget> newCache = new HashMap<>();
     Map<String, BuildTargetIdentifier> projectPathToBuildTargetId = new HashMap<>();
+    List<BuildTargetIdentifier> changedTargets = new LinkedList<>();
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
       String sourceSetName = sourceSet.getSourceSetName();
       URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
@@ -62,6 +66,9 @@ public class BuildTargetManager {
       setJvmBuildTarget(sourceSet, bt);
 
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
+      if (!Objects.equals(cache.get(btId), buildTarget)) {
+        changedTargets.add(btId);
+      }
       newCache.put(btId, buildTarget);
       // Store the relationship between the project path and the build target id.
       // 'test' and other source sets are ignored.
@@ -71,6 +78,7 @@ public class BuildTargetManager {
     }
     updateBuildTargetDependencies(newCache.values(), projectPathToBuildTargetId);
     this.cache = newCache;
+    return changedTargets;
   }
 
   public GradleBuildTarget getGradleBuildTarget(BuildTargetIdentifier buildTargetId) {
