@@ -77,9 +77,8 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
 
   @Override
   public CompletableFuture<Object> buildShutdown() {
-    return handleRequest("build/shutdown", cc -> {
-      return lifecycleService.shutdown();
-    });
+    return handleRequest("build/shutdown", cc ->
+        lifecycleService.shutdown());
   }
 
   @Override

@@ -1,14 +1,37 @@
-# Project
+# Build Server for Gradle
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+An implementation of the Build Server Protocol for Gradle.
 
-As the maintainer of this project, please make a few updates:
+## Requirement
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+JDK 17 or higher is required to build and launch the Build Server for Gradle.
+
+## Supported Requests
+
+Following BSP requests are supported in the current implementation:
+- `build/initialize`
+- `build/initialized`
+- `build/shutdown`
+- `build/exit`
+- `buildTarget/sources`
+- `buildTarget/resources`
+- `buildTarget/outputPaths`
+- `buildTarget/dependencyModules`
+- `buildTarget/compile`
+- `workspace/buildTargets`
+- `workspace/reload`
+
+
+## Architecture
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md)
+
+## Launch the Build Server for Gradle
+### Specify the Plugin Location
+The main class of the build server is `com.microsoft.java.bs.core.Launcher`. When you launch the server, you need to specify the location of the Gradle plugin via the system property `plugin.dir`. By default, you will find the plugin jar at `server/build/libs/plugins/plugin.jar` after building the project.
+### Preferences
+
+A [Preferences](./server/src/main/java/com/microsoft/java/bs/core/internal/model/Preferences.java) object can be put into the data field of the `build/initialize` request for customization. Please check the comments in the code for the meaning of each preference.
 
 ## Contributing
 
@@ -24,6 +47,8 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
+Please check [CONTRIBUTING.md](./CONTRIBUTING.md) for more details about how to setup and develop the project.
+
 ## Trademarks
 
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
@@ -31,3 +56,7 @@ trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+## Telemetry
+
+The Build Server for Gradle will not send telemetry by itself. But it will send telemetry event to its client. If you don't want this behavior, set the system property `disableServerTelemetry`.
