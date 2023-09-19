@@ -3,7 +3,6 @@ package com.microsoft.java.bs.core.internal.model;
 import java.util.Objects;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
-import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 
@@ -13,7 +12,7 @@ import ch.epfl.scala.bsp4j.BuildTarget;
 public class GradleBuildTarget {
   public GradleBuildTarget(BuildTarget buildTarget, GradleSourceSet sourceSet) {
     this.buildTarget = buildTarget;
-    this.sourceSet = new DefaultGradleSourceSet(sourceSet);
+    this.sourceSet = sourceSet;
   }
 
   private BuildTarget buildTarget;

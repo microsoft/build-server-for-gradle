@@ -133,9 +133,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       });
     }
 
-    DefaultGradleSourceSets result = new DefaultGradleSourceSets();
-    result.setGradleSourceSets(gradleSourceSets);
-    return result;
+    return new DefaultGradleSourceSets(gradleSourceSets);
   }
 
   private SourceSetContainer getSourceSetContainer(Project project) {
