@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license.
+
 package com.microsoft.java.bs.core.internal.managers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

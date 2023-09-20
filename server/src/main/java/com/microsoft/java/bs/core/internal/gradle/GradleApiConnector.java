@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license.
+
 package com.microsoft.java.bs.core.internal.gradle;
 
 import static com.microsoft.java.bs.core.Launcher.LOGGER;
