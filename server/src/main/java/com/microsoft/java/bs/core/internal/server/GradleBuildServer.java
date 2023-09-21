@@ -19,7 +19,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 
-import com.microsoft.java.bs.core.internal.log.LogEntity;
+import com.microsoft.java.bs.core.internal.log.BspTraceEntity;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
 
@@ -176,7 +176,7 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
   }
 
   private void handleNotification(String methodName, Runnable runnable, boolean async) {
-    LogEntity entity = new LogEntity.Builder()
+    BspTraceEntity entity = new BspTraceEntity.Builder()
         .operationName(escapeMethodName(methodName))
         .build();
     LOGGER.log(Level.INFO, "Received notification '" + methodName + "'.", entity);
@@ -212,7 +212,7 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
   }
 
   private <T> CompletableFuture<T> success(String methodName, T response, long elapsedTime) {
-    LogEntity entity = new LogEntity.Builder()
+    BspTraceEntity entity = new BspTraceEntity.Builder()
         .operationName(escapeMethodName(methodName))
         .duration(String.valueOf(elapsedTime))
         .build();
@@ -226,7 +226,7 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
     String stackTrace = ExceptionUtils.getStackTrace(throwable);
     Throwable rootCause = ExceptionUtils.getRootCause(throwable);
     String rootCauseMessage = rootCause != null ? rootCause.getMessage() : null;
-    LogEntity entity = new LogEntity.Builder()
+    BspTraceEntity entity = new BspTraceEntity.Builder()
         .operationName(escapeMethodName(methodName))
         .trace(stackTrace)
         .rootCauseMessage(rootCauseMessage)

@@ -12,6 +12,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.logging.Level;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -23,6 +24,7 @@ import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
+import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -151,6 +153,8 @@ public class LifecycleService {
       }
 
       if (StringUtils.isNotBlank(gradleVersion)) {
+        Map<String, String> map = TelemetryUtils.getMetadataMap("gradleVersion", gradleVersion);
+        LOGGER.log(Level.INFO, "Gradle version: " + gradleVersion, map);
         String highestJavaVersion = Utils.getHighestCompatibleJavaVersion(gradleVersion);
         File jdkInstallation = getJdkToLaunchDaemon(preferences.getJdks(), highestJavaVersion);
         if (jdkInstallation != null) {
