@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -24,6 +25,7 @@ import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
@@ -91,6 +93,9 @@ public class BuildTargetService {
     List<BuildTarget> targets = allTargets.stream()
         .map(GradleBuildTarget::getBuildTarget)
         .collect(Collectors.toList());
+    Map<String, String> map = TelemetryUtils.getMetadataMap("buildTargetCount",
+        String.valueOf(targets.size()));
+    LOGGER.log(Level.INFO, "Found " + targets.size() + " build targets", map);
     return new WorkspaceBuildTargetsResult(targets);
   }
 
