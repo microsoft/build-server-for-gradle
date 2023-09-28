@@ -41,7 +41,7 @@ public class BuildTargetManager {
   /**
    * Store the Gradle source sets.
    *
-   * @return whether the cache is updated.
+   * @return A list containing identifiers of changed build targets.
    */
   public List<BuildTargetIdentifier> store(GradleSourceSets gradleSourceSets) {
     Map<BuildTargetIdentifier, GradleBuildTarget> newCache = new HashMap<>();
@@ -69,7 +69,11 @@ public class BuildTargetManager {
       setJvmBuildTarget(sourceSet, bt);
 
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
-      if (!Objects.equals(cache.get(btId), buildTarget)) {
+      GradleBuildTarget existingTarget = cache.get(btId);
+      // only compare the source set instance, which is the result
+      // returned from the gradle plugin.
+      if (existingTarget != null
+          && !Objects.equals(existingTarget.getSourceSet(), buildTarget.getSourceSet())) {
         changedTargets.add(btId);
       }
       newCache.put(btId, buildTarget);
@@ -126,7 +130,7 @@ public class BuildTargetManager {
       Map<String, BuildTargetIdentifier> projectPathToBuildTargetId
   ) {
     for (GradleBuildTarget gradleBuildTarget : gradleBuildTargets) {
-      Set<GradleProjectDependency> projectDependencies = 
+      Set<GradleProjectDependency> projectDependencies =
           gradleBuildTarget.getSourceSet().getProjectDependencies();
       if (projectDependencies != null) {
         List<BuildTargetIdentifier> btDependencies = projectDependencies.stream()
