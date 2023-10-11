@@ -140,9 +140,8 @@ public class Utils {
   /**
    * Get the Gradle version of the project.
    */
-  public static String getGradleVersion(URI projectUri) {
-    try (ProjectConnection connection = Utils.getProjectConnection(projectUri,
-        new Preferences())) {
+  public static String getGradleVersion(URI projectUri, Preferences preferences) {
+    try (ProjectConnection connection = Utils.getProjectConnection(projectUri, preferences)) {
       BuildEnvironment model = connection
           .model(BuildEnvironment.class)
           .withArguments("--no-daemon")
