@@ -146,14 +146,16 @@ public class LifecycleService {
     if (StringUtils.isBlank(preferences.getGradleJavaHome())) {
       String gradleVersion = "";
       GradleBuildKind buildKind = Utils.getEffectiveBuildKind(new File(rootUri), preferences);
+      Map<String, String> map = TelemetryUtils.getMetadataMap("buildKind", buildKind.name());
+      LOGGER.log(Level.INFO, "Use build kind: " + buildKind.name(), map);
       if (buildKind == GradleBuildKind.SPECIFIED_VERSION) {
         gradleVersion = preferences.getGradleVersion();
       } else {
-        gradleVersion = Utils.getGradleVersion(rootUri);
+        gradleVersion = Utils.getGradleVersion(rootUri, preferences);
       }
 
       if (StringUtils.isNotBlank(gradleVersion)) {
-        Map<String, String> map = TelemetryUtils.getMetadataMap("gradleVersion", gradleVersion);
+        map = TelemetryUtils.getMetadataMap("gradleVersion", gradleVersion);
         LOGGER.log(Level.INFO, "Gradle version: " + gradleVersion, map);
         String highestJavaVersion = Utils.getHighestCompatibleJavaVersion(gradleVersion);
         File jdkInstallation = getJdkToLaunchDaemon(preferences.getJdks(), highestJavaVersion);

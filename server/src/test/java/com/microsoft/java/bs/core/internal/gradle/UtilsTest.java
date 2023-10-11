@@ -39,7 +39,7 @@ class UtilsTest {
 
   @Test
   void testGetGradleVersion() {
-    assertEquals("4.3", Utils.getGradleVersion(projectDir.toURI()));
+    assertEquals("4.3", Utils.getGradleVersion(projectDir.toURI(), new Preferences()));
   }
 
   @Test
