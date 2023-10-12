@@ -258,11 +258,9 @@ public class Utils {
       return GradleBuildKind.SPECIFIED_VERSION;
     }
 
-    if (StringUtils.isNotBlank(preferences.getGradleHome())) {
-      File gradleHome = getGradleHome(preferences.getGradleHome());
-      if (gradleHome != null && gradleHome.exists()) {
-        return GradleBuildKind.SPECIFIED_INSTALLATION;
-      }
+    File gradleHome = getGradleHome(preferences.getGradleHome());
+    if (gradleHome != null && gradleHome.exists()) {
+      return GradleBuildKind.SPECIFIED_INSTALLATION;
     }
 
     return GradleBuildKind.TAPI;
