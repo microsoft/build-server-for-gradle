@@ -57,7 +57,8 @@ class UtilsTest {
   void testPreferencesPriority_gradleHomeSet() {
     Preferences preferences = mock(Preferences.class);
     when(preferences.isWrapperEnabled()).thenReturn(false);
-    when(preferences.getGradleHome()).thenReturn(new File("").getAbsolutePath());
+    when(preferences.getGradleHome()).thenReturn(new File(System.getProperty("java.io.tmpdir"))
+        .getAbsolutePath());
     assertEquals(GradleBuildKind.SPECIFIED_INSTALLATION,
         Utils.getEffectiveBuildKind(projectDir, preferences));
   }
