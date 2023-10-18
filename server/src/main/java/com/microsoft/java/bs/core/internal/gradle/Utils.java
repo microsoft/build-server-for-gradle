@@ -43,6 +43,8 @@ public class Utils {
    */
   private static final String GRADLE_USER_HOME = "GRADLE_USER_HOME";
 
+  private static final String DEFAULT_BUILDSHIP_GRADLE_VERSION = "7.4.2";
+
   /**
    * Get the Gradle connector for the project.
    *
@@ -73,6 +75,9 @@ public class Utils {
         break;
       case SPECIFIED_INSTALLATION:
         connector.useInstallation(getGradleHome(preferences.getGradleHome()));
+        break;
+      case FALLBACK:
+        connector.useGradleVersion(DEFAULT_BUILDSHIP_GRADLE_VERSION);
         break;
       default:
         connector.useBuildDistribution();
@@ -247,6 +252,8 @@ public class Utils {
       return GradleBuildKind.SPECIFIED_INSTALLATION;
     }
 
-    return GradleBuildKind.TAPI;
+    // TODO: Once we figure out why TAPI fails a lot, we can enable it.
+    // return GradleBuildKind.TAPI;
+    return GradleBuildKind.FALLBACK;
   }
 }
