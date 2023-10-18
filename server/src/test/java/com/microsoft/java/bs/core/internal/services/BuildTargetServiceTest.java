@@ -20,6 +20,7 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
@@ -48,12 +49,13 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 class BuildTargetServiceTest {
 
   private BuildTargetManager buildTargetManager;
+  private GradleApiConnector connector;
   private PreferenceManager preferenceManager;
 
   @BeforeEach
   void setUp() {
     buildTargetManager = mock(BuildTargetManager.class);
-
+    connector = mock(GradleApiConnector.class);
     preferenceManager = mock(PreferenceManager.class);
     Preferences preferences = new Preferences();
     when(preferenceManager.getPreferences()).thenReturn(preferences);
@@ -69,7 +71,7 @@ class BuildTargetServiceTest {
         .thenReturn(Arrays.asList(gradleBuildTarget));
     
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        preferenceManager);
+        connector, preferenceManager);
 
     WorkspaceBuildTargetsResult response = buildTargetService.getWorkspaceBuildTargets();
 
@@ -97,7 +99,7 @@ class BuildTargetServiceTest {
     when(gradleSourceSet.getGeneratedSourceDirs()).thenReturn(generatedSrcDirs);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        preferenceManager);
+        connector, preferenceManager);
     SourcesResult buildTargetSources = buildTargetService.getBuildTargetSources(new SourcesParams(
             Arrays.asList(new BuildTargetIdentifier("test"))));
     buildTargetSources.getItems().forEach(item -> {
@@ -126,7 +128,7 @@ class BuildTargetServiceTest {
     when(gradleSourceSet.getResourceDirs()).thenReturn(resourceDirs);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        preferenceManager);
+        connector, preferenceManager);
     ResourcesResult buildTargetResources = buildTargetService.getBuildTargetResources(
         new ResourcesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
     buildTargetResources.getItems().forEach(item -> {
@@ -150,7 +152,7 @@ class BuildTargetServiceTest {
     when(gradleSourceSet.getResourceOutputDir()).thenReturn(resourceOutputDir);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        preferenceManager);
+        connector, preferenceManager);
     OutputPathsResult  outputPathsResult = buildTargetService.getBuildTargetOutputPaths(
         new OutputPathsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
     assertEquals(1, outputPathsResult.getItems().size());
@@ -201,7 +203,7 @@ class BuildTargetServiceTest {
     when(gradleSourceSet.getModuleDependencies()).thenReturn(moduleDependencies);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        preferenceManager);
+        connector, preferenceManager);
     DependencyModulesResult res = buildTargetService.getBuildTargetDependencyModules(
         new DependencyModulesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
     assertEquals(1, res.getItems().size());
@@ -234,7 +236,7 @@ class BuildTargetServiceTest {
     when(gradleSourceSet.getCompilerArgs()).thenReturn(compilerArgs);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        preferenceManager);
+        connector, preferenceManager);
     JavacOptionsResult javacOptions = buildTargetService.getBuildTargetJavacOptions(
         new JavacOptionsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
   

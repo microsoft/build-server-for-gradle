@@ -42,11 +42,17 @@ public class LifecycleService {
 
   private BuildTargetManager buildTargetManager;
 
+  private GradleApiConnector connector;
+
   private PreferenceManager preferenceManager;
 
+  /**
+   * Constructor for {@link LifecycleService}.
+   */
   public LifecycleService(BuildTargetManager buildTargetManager,
-      PreferenceManager preferenceManager) {
+      GradleApiConnector connector, PreferenceManager preferenceManager) {
     this.buildTargetManager = buildTargetManager;
+    this.connector = connector;
     this.preferenceManager = preferenceManager;
   }
 
@@ -81,13 +87,12 @@ public class LifecycleService {
       preferences = new Preferences();
     }
 
-    updateGradleJavaHomeIfNecessary(rootUri, preferences);
     preferenceManager.setPreferences(preferences);
+    updateGradleJavaHomeIfNecessary(rootUri);
   }
 
   void updateBuildTargetManager() {
-    GradleApiConnector gradleConnector = new GradleApiConnector(preferenceManager.getPreferences());
-    GradleSourceSets sourceSets = gradleConnector.getGradleSourceSets(
+    GradleSourceSets sourceSets = connector.getGradleSourceSets(
           preferenceManager.getRootUri());
     buildTargetManager.store(sourceSets);
   }
@@ -107,7 +112,11 @@ public class LifecycleService {
     status = Status.INITIALIZED;
   }
 
+  /**
+   * Shutdown all Gradle connectors and mark the server status to shutdown.
+   */
   public Object shutdown() {
+    connector.shutdown();
     status = Status.SHUTDOWN;
     return null;
   }
@@ -138,7 +147,8 @@ public class LifecycleService {
    *
    * <p>The JDK installation path string will be set to {@link Preferences#gradleJavaHome}.
    */
-  private void updateGradleJavaHomeIfNecessary(URI rootUri, Preferences preferences) {
+  private void updateGradleJavaHomeIfNecessary(URI rootUri) {
+    Preferences preferences = preferenceManager.getPreferences();
     if (preferences.getJdks() == null || preferences.getJdks().isEmpty()) {
       return;
     }
@@ -151,7 +161,7 @@ public class LifecycleService {
       if (buildKind == GradleBuildKind.SPECIFIED_VERSION) {
         gradleVersion = preferences.getGradleVersion();
       } else {
-        gradleVersion = Utils.getGradleVersion(rootUri, preferences);
+        gradleVersion = connector.getGradleVersion(rootUri);
       }
 
       if (StringUtils.isNotBlank(gradleVersion)) {

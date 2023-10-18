@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Launcher;
+import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
@@ -46,9 +47,11 @@ class BuildTargetServerIntegrationTest {
   void setUp() {
     BuildTargetManager buildTargetManager = new BuildTargetManager();
     PreferenceManager preferenceManager = new PreferenceManager();
-    LifecycleService lifecycleService = new LifecycleService(buildTargetManager, preferenceManager);
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    LifecycleService lifecycleService = new LifecycleService(buildTargetManager,
+        connector, preferenceManager);
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        preferenceManager);
+        connector, preferenceManager);
     gradleBuildServer = new GradleBuildServer(lifecycleService, buildTargetService);
   }
 

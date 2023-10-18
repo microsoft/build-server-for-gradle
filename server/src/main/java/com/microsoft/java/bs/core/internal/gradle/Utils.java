@@ -44,21 +44,21 @@ public class Utils {
   private static final String GRADLE_USER_HOME = "GRADLE_USER_HOME";
 
   /**
-   * Get the Daemon connection for the project.
+   * Get the Gradle connector for the project.
    *
    * @param projectUri The project uri.
    */ 
-  public static ProjectConnection getProjectConnection(URI projectUri,
+  public static GradleConnector getProjectConnector(URI projectUri,
       Preferences preferences) {
-    return getProjectConnection(new File(projectUri), preferences);
+    return getProjectConnector(new File(projectUri), preferences);
   }
 
   /**
-   * Get the Daemon connection for the project.
+   * Get the Gradle connector for the project.
    *
    * @param project The project.
    */
-  public static ProjectConnection getProjectConnection(File project, Preferences preferences) {
+  public static GradleConnector getProjectConnector(File project, Preferences preferences) {
     GradleConnector connector = GradleConnector.newConnector()
         .forProjectDirectory(project);
 
@@ -79,7 +79,7 @@ public class Utils {
         break;
     }
 
-    return connector.connect();
+    return connector;
   }
 
   /**
@@ -135,22 +135,6 @@ public class Utils {
       launcher.withArguments(gradleArguments);
     }
     return launcher;
-  }
-
-  /**
-   * Get the Gradle version of the project.
-   */
-  public static String getGradleVersion(URI projectUri, Preferences preferences) {
-    try (ProjectConnection connection = Utils.getProjectConnection(projectUri, preferences)) {
-      BuildEnvironment model = connection
-          .model(BuildEnvironment.class)
-          .withArguments("--no-daemon")
-          .get();
-      return model.getGradle().getGradleVersion();
-    } catch (BuildException e) {
-      LOGGER.severe("Failed to get Gradle version: " + e.getMessage());
-      return "";
-    }
   }
 
   /**

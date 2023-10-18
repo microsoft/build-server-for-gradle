@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.log.LogHandler;
 import com.microsoft.java.bs.core.internal.log.TelemetryHandler;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
@@ -46,9 +47,11 @@ public class Launcher {
   private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> createLauncher() {
     BuildTargetManager buildTargetManager = new BuildTargetManager();
     PreferenceManager preferenceManager = new PreferenceManager();
-    LifecycleService lifecycleService = new LifecycleService(buildTargetManager, preferenceManager);
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    LifecycleService lifecycleService = new LifecycleService(buildTargetManager,
+        connector, preferenceManager);
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        preferenceManager);
+        connector, preferenceManager);
     GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
         buildTargetService);
     return new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
