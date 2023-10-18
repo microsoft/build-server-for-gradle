@@ -195,15 +195,17 @@ public class Utils {
       // find if there is a gradle executable in PATH
       String path = System.getenv("PATH");
       if (StringUtils.isNotBlank(path)) {
-        Optional<File> gradleBinFolder = Arrays.stream(path.split(File.pathSeparator))
-            .map(p -> new File(p, "gradle"))
-            .filter(File::isFile)
-            .map(File::getParentFile)
-            .filter(parent -> parent != null && "bin".equals(parent.getName()))
-            .findFirst();
-
-        if (gradleBinFolder.isPresent()) {
-          gradleHomeFolder = gradleBinFolder.get().getParentFile();
+        for (String p : path.split(File.pathSeparator)) {
+          File gradle = new File(p, "gradle");
+          if (gradle.exists() && gradle.isFile()) {
+            File parentFile = gradle.getParentFile();
+            if (parentFile != null && parentFile.isDirectory()
+                && parentFile.getName().equals("bin")
+                && new File(parentFile.getParent(), "init.d").isDirectory()) {
+              gradleHomeFolder = parentFile.getParentFile();
+              break;
+            }
+          }
         }
       }
     }
