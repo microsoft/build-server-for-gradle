@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Launcher;
+import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -35,10 +36,20 @@ class GradleApiConnectorTest {
   }
 
   @Test
+  void testGetGradleVersion() {
+    File projectDir = projectPath.resolve("gradle-4.3-with-wrapper").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    assertEquals("4.3", connector.getGradleVersion(projectDir.toURI()));
+  }
+
+  @Test
   void testGetGradleSourceSets() {
     File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
-    Preferences preferences = new Preferences();
-    GradleApiConnector connector = new GradleApiConnector(preferences);
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {

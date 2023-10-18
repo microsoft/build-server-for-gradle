@@ -71,6 +71,8 @@ public class BuildTargetService {
 
   private BuildTargetManager buildTargetManager;
 
+  private GradleApiConnector connector;
+
   private PreferenceManager preferenceManager;
 
   /**
@@ -80,8 +82,9 @@ public class BuildTargetService {
    * @param preferenceManager the preference manager.
    */
   public BuildTargetService(BuildTargetManager buildTargetManager,
-      PreferenceManager preferenceManager) {
+      GradleApiConnector connector, PreferenceManager preferenceManager) {
     this.buildTargetManager = buildTargetManager;
+    this.connector = connector;
     this.preferenceManager = preferenceManager;
   }
 
@@ -241,13 +244,11 @@ public class BuildTargetService {
     Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(
         params.getTargets());
 
-    GradleApiConnector gradleConnector = new GradleApiConnector(
-        preferenceManager.getPreferences());
     StatusCode code = StatusCode.OK;
     for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
       Set<BuildTargetIdentifier> btIds = entry.getValue();
       String[] tasks = btIds.stream().map(this::getBuildTaskName).toArray(String[]::new);
-      code = gradleConnector.runTasks(entry.getKey(), btIds, tasks);
+      code = connector.runTasks(entry.getKey(), btIds, tasks);
       if (code == StatusCode.ERROR) {
         break;
       }
@@ -350,9 +351,7 @@ public class BuildTargetService {
 
     @Override
     public void run() {
-      GradleApiConnector gradleConnector = new GradleApiConnector(
-          preferenceManager.getPreferences());
-      GradleSourceSets sourceSets = gradleConnector.getGradleSourceSets(
+      GradleSourceSets sourceSets = connector.getGradleSourceSets(
           preferenceManager.getRootUri());
       List<BuildTargetIdentifier> changedTargets = buildTargetManager.store(sourceSets);
       if (!changedTargets.isEmpty()) {

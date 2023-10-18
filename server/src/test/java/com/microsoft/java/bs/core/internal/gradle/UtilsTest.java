@@ -38,11 +38,6 @@ class UtilsTest {
   }
 
   @Test
-  void testGetGradleVersion() {
-    assertEquals("4.3", Utils.getGradleVersion(projectDir.toURI(), new Preferences()));
-  }
-
-  @Test
   void testPreferencesPriority_wrapperEnabled() {
     Preferences preferences = mock(Preferences.class);
     when(preferences.isWrapperEnabled()).thenReturn(true);

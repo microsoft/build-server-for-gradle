@@ -20,6 +20,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Constants;
+import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
@@ -69,7 +70,7 @@ class LifecycleServiceTest {
 
     PreferenceManager preferenceManager = new PreferenceManager();
     LifecycleService lifecycleService = new LifecycleService(mock(BuildTargetManager.class),
-        preferenceManager);
+        mock(GradleApiConnector.class), preferenceManager);
     lifecycleService.initializePreferenceManager(params);
 
     assertEquals("8.1", preferenceManager.getPreferences().getGradleVersion());
