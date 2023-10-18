@@ -187,6 +187,10 @@ public class Utils {
     return getFileFromEnvOrProperty(GRADLE_USER_HOME);
   }
 
+  /**
+   * Infer the Gradle Home.
+   * TODO: simplify the method.
+   */
   static File getGradleHome(String gradleHome) {
     File gradleHomeFolder = null;
     if (StringUtils.isNotBlank(gradleHome)) {
@@ -198,12 +202,23 @@ public class Utils {
         for (String p : path.split(File.pathSeparator)) {
           File gradle = new File(p, "gradle");
           if (gradle.exists() && gradle.isFile()) {
-            File parentFile = gradle.getParentFile();
-            if (parentFile != null && parentFile.isDirectory()
-                && parentFile.getName().equals("bin")
-                && new File(parentFile.getParent(), "init.d").isDirectory()) {
-              gradleHomeFolder = parentFile.getParentFile();
-              break;
+            File gradleBinFolder = gradle.getParentFile();
+            if (gradleBinFolder != null && gradleBinFolder.isDirectory()
+                && gradleBinFolder.getName().equals("bin")) {
+              File gradleLibFolder = new File(gradleBinFolder.getParent(), "lib");
+              if (gradleLibFolder.isDirectory()) {
+                File[] files = gradleLibFolder.listFiles();
+                if (files != null) {
+                  Optional<File> gradleLauncherJar = Arrays.stream(files)
+                      .filter(file -> file.isFile() && file.getName().startsWith("gradle-launcher-")
+                          && file.getName().endsWith(".jar"))
+                      .findFirst();
+                  if (gradleLauncherJar.isPresent()) {
+                    gradleHomeFolder = gradleBinFolder.getParentFile();
+                    break;
+                  }
+                }
+              }
             }
           }
         }
