@@ -14,7 +14,7 @@ public class Constants {
   /**
    * The version of the build server.
    */
-  public static final String SERVER_VERSION = "0.1.0";
+  public static final String SERVER_VERSION = "0.1.1";
   /**
    * The version of the BSP specification.
    */
