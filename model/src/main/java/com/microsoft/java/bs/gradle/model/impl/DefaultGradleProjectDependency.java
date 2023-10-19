@@ -15,8 +15,15 @@ public class DefaultGradleProjectDependency implements GradleProjectDependency {
 
   private String projectPath;
 
+  private String file;
+
   public DefaultGradleProjectDependency(String projectPath) {
     this.projectPath = projectPath;
+  }
+
+  public DefaultGradleProjectDependency(String projectPath, String file) {
+    this.projectPath = projectPath;
+    this.file = file;
   }
 
   /**
@@ -36,9 +43,17 @@ public class DefaultGradleProjectDependency implements GradleProjectDependency {
     this.projectPath = projectPath;
   }
 
+  public String getFile() {
+    return file;
+  }
+
+  public void setFile(String file) {
+    this.file = file;
+  }
+
   @Override
   public int hashCode() {
-    return Objects.hash(projectPath);
+    return Objects.hash(projectPath, file);
   }
 
   @Override
@@ -53,6 +68,6 @@ public class DefaultGradleProjectDependency implements GradleProjectDependency {
       return false;
     }
     DefaultGradleProjectDependency other = (DefaultGradleProjectDependency) obj;
-    return Objects.equals(projectPath, other.projectPath);
+    return Objects.equals(projectPath, other.projectPath) && Objects.equals(file, other.file);
   }
 }

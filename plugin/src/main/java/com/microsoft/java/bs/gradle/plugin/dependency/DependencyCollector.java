@@ -22,6 +22,7 @@ import org.gradle.api.artifacts.result.ComponentArtifactsResult;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.composite.internal.CompositeProjectComponentArtifactMetadata;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.internal.component.local.model.ComponentFileArtifactIdentifier;
 import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifier;
@@ -86,7 +87,7 @@ public class DependencyCollector {
       } else if (id instanceof ComponentFileArtifactIdentifier) {
         resolveFileArtifactDependency((ComponentFileArtifactIdentifier) id, artifactResult);
       } else if (id.getComponentIdentifier() instanceof ProjectComponentIdentifier) {
-        resolveProjectDependency((ProjectComponentIdentifier) id.getComponentIdentifier());
+        resolveProjectDependency(id, artifactResult);
       }
     }
   }
@@ -183,13 +184,21 @@ public class DependencyCollector {
     );
   }
 
-  private void resolveProjectDependency(ProjectComponentIdentifier id) {
-    if (Objects.equals(id.getProjectPath(), project.getPath())) {
-      return;
-    }
+  private void resolveProjectDependency(ComponentArtifactIdentifier id,
+      ResolvedArtifactResult artifactResult) {
+    if (id instanceof CompositeProjectComponentArtifactMetadata) {
 
-    projectDependencies.add(new DefaultGradleProjectDependency(
-        id.getProjectPath()
-    ));
+    } else {
+      ProjectComponentIdentifier componentIdentifier =
+          (ProjectComponentIdentifier) id.getComponentIdentifier();
+      if (Objects.equals(componentIdentifier.getProjectPath(), project.getPath())) {
+        return;
+      }
+
+      projectDependencies.add(new DefaultGradleProjectDependency(
+          componentIdentifier.getProjectPath()
+      ));
+    }
+    
   }
 }

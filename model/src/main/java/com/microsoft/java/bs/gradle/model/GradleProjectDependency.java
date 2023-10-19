@@ -10,4 +10,10 @@ import java.io.Serializable;
  */
 public interface GradleProjectDependency extends Serializable {
   public String getProjectPath();
+
+  /**
+   * The file of a {@link CompositeProjectComponentArtifactMetadata}. This field is
+   * only available when the project dependency is introduced by 'includeBuild'
+   */
+  public String getFile();
 }
