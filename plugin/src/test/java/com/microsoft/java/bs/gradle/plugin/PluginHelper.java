@@ -21,16 +21,14 @@ public class PluginHelper {
     File pluginJarFile = Paths.get(System.getProperty("user.dir"),
         "build", "libs", "plugin.jar").toFile();
     String pluginJarUnixPath = pluginJarFile.getAbsolutePath().replace("\\", "/");
-    String initScriptContent = 
+    String initScriptContent =
         "initscript {\n"
         + "  dependencies {\n"
         + "    classpath files('%s')\n"
         + "  }\n"
         + "}\n"
         + "allprojects {\n"
-        + "  afterEvaluate {\n"
-        + "    it.getPlugins().apply(com.microsoft.java.bs.gradle.plugin.GradleBuildServerPlugin)\n"
-        + "  }\n"
+        + "  apply plugin: com.microsoft.java.bs.gradle.plugin.GradleBuildServerPlugin\n"
         + "}\n";
     initScriptContent = String.format(initScriptContent, pluginJarUnixPath);
 

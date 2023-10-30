@@ -41,9 +41,7 @@ task generateInitScript() {
         }
       }
       allprojects {
-        afterEvaluate {
-          it.getPlugins().apply(com.microsoft.java.bs.gradle.plugin.GradleBuildServerPlugin)
-        }
+        apply plugin: com.microsoft.java.bs.gradle.plugin.GradleBuildServerPlugin
       }
       """
   }
