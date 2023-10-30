@@ -22,6 +22,6 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
 
   @Override
   public void apply(Project project) {
-    project.afterEvaluate(p -> registry.register(new SourceSetsModelBuilder()));
+    registry.register(new SourceSetsModelBuilder());
   }
 }
