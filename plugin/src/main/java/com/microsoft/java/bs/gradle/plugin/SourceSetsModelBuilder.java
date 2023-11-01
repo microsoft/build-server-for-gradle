@@ -170,13 +170,12 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
     if (javaCompile != null) {
       CompileOptions options = javaCompile.getOptions();
-      try {
+      if (GradleVersion.current().compareTo(GradleVersion.version("6.3")) >= 0) {
         Directory generatedDir = options.getGeneratedSourceOutputDirectory().getOrNull();
         if (generatedDir != null) {
           generatedSrcDirs.add(generatedDir.getAsFile());
         }
-      } catch (NoSuchMethodError e) {
-        // to be compatible with Gradle < 6.3
+      } else if (GradleVersion.current().compareTo(GradleVersion.version("4.3")) >= 0) {
         File generatedDir = options.getAnnotationProcessorGeneratedSourcesDirectory();
         if (generatedDir != null) {
           generatedSrcDirs.add(generatedDir);

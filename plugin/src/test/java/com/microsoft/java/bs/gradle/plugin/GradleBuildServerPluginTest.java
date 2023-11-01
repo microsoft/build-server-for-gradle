@@ -112,6 +112,24 @@ class GradleBuildServerPluginTest {
   }
 
   @Test
+  @EnabledOnJre({JRE.JAVA_8})
+  void testGetAnnotationProcessorGeneratedLocation() throws IOException {
+    // this test case is to ensure that the plugin won't throw no such method error
+    // for JavaCompile.getAnnotationProcessorGeneratedSourcesDirectory()
+    File projectDir = projectPath.resolve("legacy-gradle").toFile();
+    GradleConnector connector = GradleConnector.newConnector()
+        .forProjectDirectory(projectDir)
+        .useGradleVersion("4.2.1");
+    try (ProjectConnection connect = connector.connect()) {
+      File initScript = PluginHelper.getInitScript();
+      GradleSourceSets gradleSourceSets = connect.model(GradleSourceSets.class)
+          .addArguments("--init-script", initScript.getAbsolutePath())
+          .get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+    }
+  }
+
+  @Test
   void testSourceInference() throws IOException {
     File projectDir = projectPath.resolve("infer-source-roots").toFile();
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
