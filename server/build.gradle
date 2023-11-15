@@ -22,6 +22,12 @@ application {
     mainClass = 'com.microsoft.java.bs.core.Launcher'
 }
 
+jar {
+  metaInf {
+    from 'src/main/resources/NOTICE.txt'
+  }
+}
+
 test {
     useJUnitPlatform()
     testLogging {
@@ -57,4 +63,5 @@ processResources {
   dependsOn copyRuntimeLibs
   dependsOn(':server:generateInitScript')
   duplicatesStrategy = 'include'
+  exclude 'NOTICE.txt'
 }
