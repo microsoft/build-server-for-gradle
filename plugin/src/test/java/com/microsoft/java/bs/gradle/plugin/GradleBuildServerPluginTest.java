@@ -59,6 +59,7 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getCompileClasspath().size() > 0);
         assertNotNull(gradleSourceSet.getSourceOutputDir());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
 
@@ -68,6 +69,7 @@ class GradleBuildServerPluginTest {
         assertNotNull(gradleSourceSet.getTargetCompatibility());
         assertNotNull(gradleSourceSet.getCompilerArgs());
         assertNotNull(gradleSourceSet.getGradleVersion());
+        assertNotNull(gradleSourceSet.getProjectDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
         assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
             dependency -> dependency.getModule().equals("a.jar")

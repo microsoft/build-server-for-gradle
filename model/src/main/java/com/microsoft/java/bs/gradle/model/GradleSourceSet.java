@@ -70,6 +70,11 @@ public interface GradleSourceSet extends Serializable {
   public File getResourceOutputDir();
 
   /**
+   * The compile classpath for this source set.
+   */
+  public List<File> getCompileClasspath();
+
+  /**
    * JDK home file location.
    */
   public File getJavaHome();

@@ -8,7 +8,6 @@ import static com.microsoft.java.bs.core.Launcher.LOGGER;
 import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -277,11 +277,20 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
+      List<String> classpath = sourceSet.getCompileClasspath().stream()
+          .map(file -> file.toURI().toString())
+          .collect(Collectors.toList());
+      String classesDir;
+      if (sourceSet.getSourceOutputDir() != null) {
+        classesDir = sourceSet.getSourceOutputDir().toURI().toString();
+      } else {
+        classesDir = "";
+      }
       items.add(new JavacOptionsItem(
           btId,
           sourceSet.getCompilerArgs(),
-          Collections.emptyList(), // classpath, not support currently 
-          "" // classDirectory, not support currently
+          classpath,
+          classesDir
       ));
     }
     return new JavacOptionsResult(items);
