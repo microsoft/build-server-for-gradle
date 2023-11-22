@@ -19,6 +19,8 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 public class DefaultGradleSourceSet implements GradleSourceSet {
   private static final long serialVersionUID = 1L;
 
+  private String displayName;
+
   private String projectName;
 
   private String projectPath;
@@ -65,6 +67,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
    * @param gradleSourceSet the source set to copy from.
    */
   public DefaultGradleSourceSet(GradleSourceSet gradleSourceSet) {
+    this.displayName = gradleSourceSet.getDisplayName();
     this.projectName = gradleSourceSet.getProjectName();
     this.projectPath = gradleSourceSet.getProjectPath();
     this.projectDir = gradleSourceSet.getProjectDir();
@@ -86,6 +89,14 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
     this.projectDependencies = gradleSourceSet.getProjectDependencies().stream()
         .map(DefaultGradleProjectDependency::new).collect(Collectors.toSet());
+  }
+
+  public String getDisplayName() {
+    return displayName;
+  }
+
+  public void setDisplayName(String displayName) {
+    this.displayName = displayName;
   }
 
   public String getProjectName() {
@@ -242,7 +253,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   @Override
   public int hashCode() {
-    return Objects.hash(projectName, projectPath, projectDir,
+    return Objects.hash(displayName, projectName, projectPath, projectDir,
         rootDir, sourceSetName, classesTaskName, sourceDirs,
         generatedSourceDirs, sourceOutputDir, resourceDirs,
         resourceOutputDir, javaHome, javaVersion, gradleVersion,
@@ -262,7 +273,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
       return false;
     }
     DefaultGradleSourceSet other = (DefaultGradleSourceSet) obj;
-    return Objects.equals(projectName, other.projectName)
+    return Objects.equals(displayName, other.displayName)
+        && Objects.equals(projectName, other.projectName)
         && Objects.equals(projectPath, other.projectPath)
         && Objects.equals(projectDir, other.projectDir)
         && Objects.equals(rootDir, other.rootDir)

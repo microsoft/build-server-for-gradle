@@ -113,7 +113,19 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setCompilerArgs(getCompilerArgs(project, sourceSet));
         gradleSourceSets.add(gradleSourceSet);
       });
+    }
 
+    // run through twice to cope with any name clashes
+    for (DefaultGradleSourceSet sourceSet : sourceSetMap.values()) {
+      if ("main".equals(sourceSet.getSourceSetName())) {
+        sourceSet.setDisplayName(stripPathPrefix(sourceSet.getProjectPath()));
+      }
+    }
+    for (DefaultGradleSourceSet sourceSet : sourceSetMap.values()) {
+      if (!"main".equals(sourceSet.getSourceSetName())) {
+        String uniqueName = createUniqueDisplayName(sourceSet, sourceSetMap);
+        sourceSet.setDisplayName(uniqueName);
+      }
     }
 
     for (Project project : allProject) {
@@ -137,6 +149,34 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
 
     return new DefaultGradleSourceSets(gradleSourceSets);
+  }
+
+  private String stripPathPrefix(String projectPath) {
+    if (projectPath.startsWith(":")) {
+      return projectPath.substring(1);
+    }
+    return projectPath;
+  }
+
+  private String createUniqueDisplayName(DefaultGradleSourceSet sourceSet,
+      Map<SourceSet, DefaultGradleSourceSet> sourceSetMap) {
+
+    String fullName = stripPathPrefix(sourceSet.getProjectPath()) + "-"
+        + sourceSet.getSourceSetName();
+    // has the suffix caused a clash - apply a numbered suffix
+    String usedName = fullName;
+    int i = 2;
+    boolean found = true;
+    while (found) {
+      String nameToTest = usedName;
+      if (sourceSetMap.values().stream().noneMatch(ss -> nameToTest.equals(ss.getDisplayName()))) {
+        found = false;
+      } else {
+        usedName = fullName + i;
+        i++;
+      }
+    }
+    return usedName;
   }
 
   private SourceSetContainer getSourceSetContainer(Project project) {

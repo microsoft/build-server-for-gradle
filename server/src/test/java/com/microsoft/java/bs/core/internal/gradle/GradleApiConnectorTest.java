@@ -4,11 +4,13 @@
 package com.microsoft.java.bs.core.internal.gradle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -60,5 +62,41 @@ class GradleApiConnectorTest {
       assertTrue(gradleSourceSet.getSourceSetName().equals("main")
           || gradleSourceSet.getSourceSetName().equals("test"));
     }
+  }
+
+  private GradleSourceSet findSourceSet(GradleSourceSets gradleSourceSets, String displayName) {
+    GradleSourceSet sourceSet = gradleSourceSets.getGradleSourceSets().stream()
+        .filter(ss -> ss.getDisplayName().equals(displayName))
+        .findFirst()
+        .orElse(null);
+    assertNotNull(sourceSet, () -> {
+      String availableSourceSets = gradleSourceSets.getGradleSourceSets().stream()
+          .map(ss -> ss.getDisplayName())
+          .collect(Collectors.joining(", "));
+      return "SourceSet not found " + displayName + ". Available: " + availableSourceSets;
+    });
+    return sourceSet;
+  }
+
+  @Test
+  void testGetGradleDuplicateNestedProjectNames() {
+    File projectDir = projectPath.resolve("duplicate-nested-project-names").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(12, gradleSourceSets.getGradleSourceSets().size());
+    findSourceSet(gradleSourceSets, "a");
+    findSourceSet(gradleSourceSets, "a-test");
+    findSourceSet(gradleSourceSets, "b");
+    findSourceSet(gradleSourceSets, "b-test2");
+    findSourceSet(gradleSourceSets, "b-test");
+    findSourceSet(gradleSourceSets, "b-test-test");
+    findSourceSet(gradleSourceSets, "c");
+    findSourceSet(gradleSourceSets, "c-test");
+    findSourceSet(gradleSourceSets, "d");
+    findSourceSet(gradleSourceSets, "d-test");
+    findSourceSet(gradleSourceSets, "e");
+    findSourceSet(gradleSourceSets, "e-test");
   }
 }

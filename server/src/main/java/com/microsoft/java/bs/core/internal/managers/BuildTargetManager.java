@@ -65,6 +65,7 @@ public class BuildTargetManager {
           )
       );
       bt.setBaseDirectory(sourceSet.getRootDir().toURI().toString());
+      bt.setDisplayName(sourceSet.getDisplayName());
 
       setJvmBuildTarget(sourceSet, bt);
 
