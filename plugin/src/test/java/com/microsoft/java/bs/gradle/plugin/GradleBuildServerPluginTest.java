@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.gradle.plugin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -151,6 +152,193 @@ class GradleBuildServerPluginTest {
         ));
       }
       assertEquals(4, generatedSourceDirCount);
+    }
+  }
+  
+  @Test
+  void testJavaCompilerArgs1() throws IOException {
+    File projectDir = projectPath.resolve("java-compilerargs-1").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-source|1.8"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-target|9"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
+        assertEquals("1.8", gradleSourceSet.getSourceCompatibility(),
+            () -> "Available args: " + args);
+        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+            () -> "Available args: " + args);
+      }
+    }
+  }
+  
+  @Test
+  void testJavaCompilerArgs2() throws IOException {
+    File projectDir = projectPath.resolve("java-compilerargs-2").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|--release|9"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
+        assertEquals("9", gradleSourceSet.getSourceCompatibility(),
+            () -> "Available args: " + args);
+        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+            () -> "Available args: " + args);
+      }
+    }
+  }
+  
+  @Test
+  void testJavaCompilerArgs3() throws IOException {
+    File projectDir = projectPath.resolve("java-compilerargs-3").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|--release|9"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
+        assertEquals("9", gradleSourceSet.getSourceCompatibility(),
+            () -> "Available args: " + args);
+        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+            () -> "Available args: " + args);
+      }
+    }
+  }
+  
+  @Test
+  void testJavaCompilerArgs4() throws IOException {
+    File projectDir = projectPath.resolve("java-compilerargs-4").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|--source|1.8"), () -> "Available args: " + args);
+        assertTrue(args.contains("|--target|9"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
+        assertEquals("1.8", gradleSourceSet.getSourceCompatibility(),
+            () -> "Available args: " + args);
+        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+            () -> "Available args: " + args);
+      }
+    }
+  }
+  
+  @Test
+  void testJavaCompilerArgs5() throws IOException {
+    File projectDir = projectPath.resolve("java-compilerargs-5").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-source|1.8"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-target|9"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
+        assertEquals("1.8", gradleSourceSet.getSourceCompatibility(),
+            () -> "Available args: " + args);
+        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+            () -> "Available args: " + args);
+      }
+    }
+  }
+  
+  @Test
+  void testJavaCompilerArgs6() throws IOException {
+    File projectDir = projectPath.resolve("java-compilerargs-6").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-source|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-target|"), () -> "Available args: " + args);
+        assertFalse(gradleSourceSet.getSourceCompatibility().isEmpty(),
+            () -> "Available args: " + args);
+        assertFalse(gradleSourceSet.getTargetCompatibility().isEmpty(),
+            () -> "Available args: " + args);
+      }
+    }
+  }
+
+  @Test
+  void testJavaCompilerArgsToolchain() throws IOException {
+    File projectDir = projectPath.resolve("java-compilerargs-toolchain").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-source|17|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|-target|17|"), () -> "Available args: " + args);
+        assertFalse(gradleSourceSet.getSourceCompatibility().isEmpty(),
+            () -> "Available args: " + args);
+        assertFalse(gradleSourceSet.getTargetCompatibility().isEmpty(),
+            () -> "Available args: " + args);
+      }
     }
   }
 }
