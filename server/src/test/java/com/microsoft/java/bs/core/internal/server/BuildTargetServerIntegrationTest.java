@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.core.internal.server;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -25,6 +26,8 @@ import com.microsoft.java.bs.core.internal.services.LifecycleService;
 
 import ch.epfl.scala.bsp4j.BuildClientCapabilities;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.CleanCacheParams;
+import ch.epfl.scala.bsp4j.CleanCacheResult;
 import ch.epfl.scala.bsp4j.CompileParams;
 import ch.epfl.scala.bsp4j.CompileResult;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
@@ -86,8 +89,11 @@ class BuildTargetServerIntegrationTest {
     List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
         .map(target -> target.getId())
         .collect(Collectors.toList());
+    CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+    CleanCacheResult cleanResult = gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+    assertTrue(cleanResult.getCleaned());
     CompileParams compileParams = new CompileParams(btIds);
-    CompileResult result = gradleBuildServer.buildTargetCompile(compileParams).join();
-    assertEquals(StatusCode.OK, result.getStatusCode());
+    CompileResult compileResult = gradleBuildServer.buildTargetCompile(compileParams).join();
+    assertEquals(StatusCode.OK, compileResult.getStatusCode());
   }
 }
