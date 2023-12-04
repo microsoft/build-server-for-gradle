@@ -37,6 +37,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private File sourceOutputDir;
 
+  private List<File> compileClasspath;
+
   private Set<File> resourceDirs;
 
   private File resourceOutputDir;
@@ -74,6 +76,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.sourceDirs = gradleSourceSet.getSourceDirs();
     this.generatedSourceDirs = gradleSourceSet.getGeneratedSourceDirs();
     this.sourceOutputDir = gradleSourceSet.getSourceOutputDir();
+    this.compileClasspath = gradleSourceSet.getCompileClasspath();
     this.resourceDirs = gradleSourceSet.getResourceDirs();
     this.resourceOutputDir = gradleSourceSet.getResourceOutputDir();
     this.javaHome = gradleSourceSet.getJavaHome();
@@ -150,6 +153,14 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   public void setGeneratedSourceDirs(Set<File> generatedSourceDirs) {
     this.generatedSourceDirs = generatedSourceDirs;
+  }
+
+  public List<File> getCompileClasspath() {
+    return compileClasspath;
+  }
+
+  public void setCompileClasspath(List<File> compileClasspath) {
+    this.compileClasspath = compileClasspath;
   }
 
   public File getSourceOutputDir() {
@@ -244,10 +255,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   public int hashCode() {
     return Objects.hash(projectName, projectPath, projectDir,
         rootDir, sourceSetName, classesTaskName, sourceDirs,
-        generatedSourceDirs, sourceOutputDir, resourceDirs,
-        resourceOutputDir, javaHome, javaVersion, gradleVersion,
-        sourceCompatibility, targetCompatibility, compilerArgs,
-        moduleDependencies, projectDependencies);
+        generatedSourceDirs, sourceOutputDir, compileClasspath,
+        resourceDirs, resourceOutputDir, javaHome, javaVersion,
+        gradleVersion, sourceCompatibility, targetCompatibility,
+        compilerArgs, moduleDependencies, projectDependencies);
   }
 
   @Override
@@ -271,6 +282,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(sourceDirs, other.sourceDirs)
         && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
         && Objects.equals(sourceOutputDir, other.sourceOutputDir)
+        && Objects.equals(compileClasspath, other.compileClasspath)
         && Objects.equals(resourceDirs, other.resourceDirs)
         && Objects.equals(resourceOutputDir, other.resourceOutputDir)
         && Objects.equals(javaHome, other.javaHome)

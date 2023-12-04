@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -84,6 +85,10 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         addGeneratedSourceDirs(project, sourceSet, srcDirs, generatedSrcDirs);
         gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
         exclusionFromDependencies.addAll(generatedSrcDirs);
+
+        // classpath
+        List<File> compileClasspath = new LinkedList<>(sourceSet.getCompileClasspath().getFiles());
+        gradleSourceSet.setCompileClasspath(compileClasspath);
 
         // source output dir
         File sourceOutputDir = getSourceOutputDir(sourceSet);
