@@ -18,6 +18,7 @@ Following BSP requests are supported in the current implementation:
 - `buildTarget/outputPaths`
 - `buildTarget/dependencyModules`
 - `buildTarget/compile`
+- `buildTarget/cleanCache`
 - `workspace/buildTargets`
 - `workspace/reload`
 
