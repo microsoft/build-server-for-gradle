@@ -158,8 +158,7 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
 
   @Override
   public CompletableFuture<CleanCacheResult> buildTargetCleanCache(CleanCacheParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetCleanCache'");
+    return handleRequest("buildTarget/cleanCache", cc -> buildTargetService.cleanCache(params));
   }
 
   @Override

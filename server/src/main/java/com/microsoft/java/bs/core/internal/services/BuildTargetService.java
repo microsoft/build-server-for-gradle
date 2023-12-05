@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,6 +35,8 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetEvent;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.CleanCacheParams;
+import ch.epfl.scala.bsp4j.CleanCacheResult;
 import ch.epfl.scala.bsp4j.CompileParams;
 import ch.epfl.scala.bsp4j.CompileResult;
 import ch.epfl.scala.bsp4j.DependencyModule;
@@ -241,18 +244,7 @@ public class BuildTargetService {
    * Compile the build targets.
    */
   public CompileResult compile(CompileParams params) {
-    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(
-        params.getTargets());
-
-    StatusCode code = StatusCode.OK;
-    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
-      Set<BuildTargetIdentifier> btIds = entry.getValue();
-      String[] tasks = btIds.stream().map(this::getBuildTaskName).toArray(String[]::new);
-      code = connector.runTasks(entry.getKey(), btIds, tasks);
-      if (code == StatusCode.ERROR) {
-        break;
-      }
-    }
+    StatusCode code = runTasks(params.getTargets(), this::getBuildTaskName);
     CompileResult result = new CompileResult(code);
     result.setOriginId(params.getOriginId());
 
@@ -261,6 +253,33 @@ public class BuildTargetService {
     // such as Protocol Buffer.
     CompletableFuture.runAsync(new RefetchBuildTargetTask());
     return result;
+  }
+
+  /**
+   * clean the build targets.
+   */
+  public CleanCacheResult cleanCache(CleanCacheParams params) {
+    StatusCode code = runTasks(params.getTargets(), this::getCleanTaskName);
+    return new CleanCacheResult(null, code == StatusCode.OK);
+  }
+
+  /**
+   * group targets by project root and execute the supplied tasks.
+   */
+  private StatusCode runTasks(List<BuildTargetIdentifier> targets,
+      Function<BuildTargetIdentifier, String> taskNameCreator) {
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(targets);
+    StatusCode code = StatusCode.OK;
+    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
+      Set<BuildTargetIdentifier> btIds = entry.getValue();
+      // remove duplicates as some tasks will have the same name for each sourceset e.g. clean.
+      String[] tasks = btIds.stream().map(taskNameCreator).distinct().toArray(String[]::new);
+      code = connector.runTasks(entry.getKey(), btIds, tasks);
+      if (code == StatusCode.ERROR) {
+        break;
+      }
+    }
+    return code;
   }
 
   /**
@@ -348,6 +367,25 @@ public class BuildTargetService {
       throw new IllegalArgumentException("The build target does not have a classes task: "
           + btId.getUri());
     }
+
+    String modulePath = sourceSet.getProjectPath();
+    if (modulePath == null || modulePath.equals(":")) {
+      return classesTaskName;
+    }
+    return modulePath + ":" + classesTaskName;
+  }
+
+  /**
+   * Return the clean task name - [project path]:[task].
+   */
+  private String getCleanTaskName(BuildTargetIdentifier btId) {
+    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
+    if (gradleBuildTarget == null) {
+      // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
+      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
+    }
+    GradleSourceSet sourceSet = gradleBuildTarget.getSourceSet();
+    String classesTaskName = "clean";
 
     String modulePath = sourceSet.getProjectPath();
     if (modulePath == null || modulePath.equals(":")) {
