@@ -1,0 +1,27 @@
+plugins {
+	id 'java'
+	id 'java-gradle-plugin'
+	id 'java-test-fixtures'
+}
+
+sourceSets {
+  intTest {
+    compileClasspath += sourceSets.main.output
+    runtimeClasspath += sourceSets.main.output
+  }
+  noTests {
+    compileClasspath += sourceSets.main.output
+    runtimeClasspath += sourceSets.main.output
+  }
+}
+
+configurations {
+  intTestImplementation.extendsFrom implementation
+  intTestRuntimeOnly.extendsFrom runtimeOnly
+  noTestsImplementation.extendsFrom implementation
+  noTestsRuntimeOnly.extendsFrom runtimeOnly
+}
+
+task integrationTest(type: Test) {
+  testClassesDirs = sourceSets.intTest.output.classesDirs
+}

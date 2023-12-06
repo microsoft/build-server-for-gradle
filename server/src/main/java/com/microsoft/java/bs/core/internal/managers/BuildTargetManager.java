@@ -50,7 +50,7 @@ public class BuildTargetManager {
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
       String sourceSetName = sourceSet.getSourceSetName();
       URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
-      List<String> tags = getBuildTargetTags(sourceSetName);
+      List<String> tags = getBuildTargetTags(sourceSet.hasTests());
       BuildTargetIdentifier btId = new BuildTargetIdentifier(uri.toString());
       BuildTarget bt = new BuildTarget(
           btId,
@@ -101,9 +101,9 @@ public class BuildTargetManager {
     return URI.create(projectUri.toString() + "?sourceset=" + sourceSetName);
   }
 
-  private List<String> getBuildTargetTags(String sourceSetName) {
+  private List<String> getBuildTargetTags(boolean hasTests) {
     List<String> tags = new ArrayList<>();
-    if (sourceSetName.toLowerCase().contains(BuildTargetTag.TEST)) {
+    if (hasTests) {
       tags.add(BuildTargetTag.TEST);
     }
     return tags;

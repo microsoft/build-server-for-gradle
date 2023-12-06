@@ -22,12 +22,15 @@ import java.util.regex.Pattern;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.api.tasks.testing.Test;
 import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.util.GradleVersion;
@@ -117,6 +120,18 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setTargetCompatibility(getTargetCompatibility(project, sourceSet));
         gradleSourceSet.setCompilerArgs(getCompilerArgs(project, sourceSet));
         gradleSourceSets.add(gradleSourceSet);
+
+        // tests
+        if (sourceOutputDir != null) {
+          TaskCollection<Test> testTasks = project.getTasks().withType(Test.class);
+          for (Test testTask : testTasks) {
+            FileCollection files = testTask.getTestClassesDirs();
+            if (files.contains(sourceOutputDir)) {
+              gradleSourceSet.setHasTests(true);
+              break;
+            }
+          }
+        }
       });
     }
 
