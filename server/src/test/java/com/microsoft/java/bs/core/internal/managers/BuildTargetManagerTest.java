@@ -33,6 +33,7 @@ class BuildTargetManagerTest {
     GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
     when(gradleSourceSet.getSourceSetName()).thenReturn("test");
     when(gradleSourceSet.getDisplayName()).thenReturn("test name");
+    when(gradleSourceSet.hasTests()).thenReturn(true);
     GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
     when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
 

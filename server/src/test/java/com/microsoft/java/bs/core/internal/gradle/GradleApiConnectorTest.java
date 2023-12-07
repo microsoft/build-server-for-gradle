@@ -4,8 +4,9 @@
 package com.microsoft.java.bs.core.internal.gradle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -77,6 +78,23 @@ class GradleApiConnectorTest {
     });
     return sourceSet;
   }
+  
+  private GradleSourceSet findSourceSet(GradleSourceSets gradleSourceSets, String projectName,
+      String sourceSetName) {
+    GradleSourceSet sourceSet = gradleSourceSets.getGradleSourceSets().stream()
+        .filter(ss -> ss.getProjectName().equals(projectName)
+                    && ss.getSourceSetName().equals(sourceSetName))
+        .findFirst()
+        .orElse(null);
+    assertNotNull(sourceSet, () -> {
+      String availableSourceSets = gradleSourceSets.getGradleSourceSets().stream()
+          .map(ss -> ss.getProjectName() + ' ' + ss.getSourceSetName())
+          .collect(Collectors.joining(", "));
+      return "SourceSet not found " + projectName + ' ' + sourceSetName + ". Available: "
+        + availableSourceSets;
+    });
+    return sourceSet;
+  }
 
   @Test
   void testGetGradleDuplicateNestedProjectNames() {
@@ -98,5 +116,20 @@ class GradleApiConnectorTest {
     findSourceSet(gradleSourceSets, "d-test");
     findSourceSet(gradleSourceSets, "e");
     findSourceSet(gradleSourceSets, "e-test");
+  }
+
+  @Test
+  void testGetGradleHasTests() {
+    File projectDir = projectPath.resolve("test-tag").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(5, gradleSourceSets.getGradleSourceSets().size());
+    assertFalse(findSourceSet(gradleSourceSets, "test-tag", "main").hasTests());
+    assertTrue(findSourceSet(gradleSourceSets, "test-tag", "test").hasTests());
+    assertFalse(findSourceSet(gradleSourceSets, "test-tag", "noTests").hasTests());
+    assertTrue(findSourceSet(gradleSourceSets, "test-tag", "intTest").hasTests());
+    assertFalse(findSourceSet(gradleSourceSets, "test-tag", "testFixtures").hasTests());
   }
 }

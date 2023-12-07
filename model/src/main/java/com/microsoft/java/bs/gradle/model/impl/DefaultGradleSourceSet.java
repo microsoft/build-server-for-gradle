@@ -61,6 +61,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private Set<GradleProjectDependency> projectDependencies;
 
+  private boolean hasTests;
+
   public DefaultGradleSourceSet() {}
 
   /**
@@ -92,6 +94,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
     this.projectDependencies = gradleSourceSet.getProjectDependencies().stream()
         .map(DefaultGradleProjectDependency::new).collect(Collectors.toSet());
+    this.hasTests = gradleSourceSet.hasTests();
   }
 
   public String getDisplayName() {
@@ -262,6 +265,14 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.projectDependencies = projectDependencies;
   }
 
+  public boolean hasTests() {
+    return hasTests;
+  }
+
+  public void setHasTests(boolean hasTests) {
+    this.hasTests = hasTests;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(displayName, projectName, projectPath, projectDir,
@@ -269,7 +280,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         generatedSourceDirs, sourceOutputDir, compileClasspath,
         resourceDirs, resourceOutputDir, javaHome, javaVersion,
         gradleVersion, sourceCompatibility, targetCompatibility,
-        compilerArgs, moduleDependencies, projectDependencies);
+        compilerArgs, moduleDependencies, projectDependencies,
+        hasTests);
   }
 
   @Override
@@ -304,6 +316,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(targetCompatibility, other.targetCompatibility)
         && Objects.equals(compilerArgs, other.compilerArgs)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
-        && Objects.equals(projectDependencies, other.projectDependencies);
+        && Objects.equals(projectDependencies, other.projectDependencies)
+        && hasTests == other.hasTests;
   }
 }
