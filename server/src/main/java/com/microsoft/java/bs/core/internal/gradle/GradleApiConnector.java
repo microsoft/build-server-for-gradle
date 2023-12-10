@@ -71,11 +71,13 @@ public class GradleApiConnector {
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
-    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
+    DefaultProgressReporter defaultProgressReporter = new DefaultProgressReporter();
+    TaskProgressReporter reporter = new TaskProgressReporter(defaultProgressReporter);
     String summary = "";
     StatusCode statusCode = StatusCode.OK;
+    long startTime = System.currentTimeMillis();
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      reporter.taskStarted("Connect to Gradle Daemon");
+      defaultProgressReporter.taskStarted(null, "Connect to Gradle Daemon", startTime);
       ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
           connection,
           preferenceManager.getPreferences(),
@@ -96,33 +98,35 @@ public class GradleApiConnector {
       statusCode = StatusCode.ERROR;
       throw e;
     } finally {
-      reporter.taskFinished(summary, statusCode);
+      defaultProgressReporter.taskFinished(null, summary, startTime, statusCode);
+      defaultProgressReporter.cleanUp();
     }
   }
 
   /**
    * Request Gradle daemon to run the tasks.
    */
-  public StatusCode runTasks(URI projectUri, Set<BuildTargetIdentifier> btIds, String... tasks) {
-    // Note: this might be anti-sepc, because the spec limits that one compile task report
-    // can only have one build target id. While we aggregate all compile related tasks into one
-    // Gradle call for the perf consideration. So, the build target id passed into the reporter
-    // is not accurate.
-    TaskProgressReporter reporter = new TaskProgressReporter(new CompileProgressReporter(
-        btIds.iterator().next()));
+  public StatusCode runTasks(String originId, URI projectUri, Set<String> tasks,
+      Map<String, Set<BuildTargetIdentifier>> fullTaskPathMap) {
+    // Don't issue a start progress update - the listener will pick that up automatically
+    CompileProgressReporter compileReporter =
+        new CompileProgressReporter(originId, fullTaskPathMap);
+
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     String summary = "BUILD SUCCESSFUL";
     StatusCode statusCode = StatusCode.OK;
+    long startTime = System.currentTimeMillis();
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut;
+        errorOut
     ) {
-      reporter.taskStarted("Start to build: " + String.join(" ", tasks));
+      TaskProgressReporter reporter = new TaskProgressReporter(compileReporter);
+      String[] taskArr = tasks.stream().toArray(String[]::new);
       BuildLauncher launcher = Utils.getBuildLauncher(connection,
           preferenceManager.getPreferences());
       // TODO: consider to use outputstream to capture the output.
       launcher.addProgressListener(reporter, OperationType.TASK)
           .setStandardError(errorOut)
-          .forTasks(tasks)
+          .forTasks(taskArr)
           .run();
     } catch (IOException e) {
       // caused by close the output stream, just simply log the error.
@@ -133,7 +137,11 @@ public class GradleApiConnector {
     } finally {
       // If a build/taskStart notification has been sent,
       // the server must send build/taskFinish on completion of the same task.
-      reporter.taskFinished(summary, statusCode);
+      // The progress listener should send this but this covers Exceptions.
+      for (String task : tasks) {
+        compileReporter.taskFinished(task, summary, startTime, statusCode);
+      }
+      compileReporter.cleanUp();
     }
 
     return statusCode;

@@ -17,7 +17,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -244,7 +243,7 @@ public class BuildTargetService {
    * Compile the build targets.
    */
   public CompileResult compile(CompileParams params) {
-    StatusCode code = runTasks(params.getTargets(), this::getBuildTaskName);
+    StatusCode code = runTasks(params.getOriginId(), params.getTargets(), this::getBuildTaskName);
     CompileResult result = new CompileResult(code);
     result.setOriginId(params.getOriginId());
 
@@ -259,22 +258,47 @@ public class BuildTargetService {
    * clean the build targets.
    */
   public CleanCacheResult cleanCache(CleanCacheParams params) {
-    StatusCode code = runTasks(params.getTargets(), this::getCleanTaskName);
+    StatusCode code = runTasks(null, params.getTargets(), this::getCleanTaskName);
     return new CleanCacheResult(null, code == StatusCode.OK);
+  }
+
+  /**
+   * create a map of all known taskpaths to the build targets they affect.
+   * used to associate progress events to the correct target.
+   */
+  private Map<String, Set<BuildTargetIdentifier>> getFullTaskPathMap() {
+    Map<String, Set<BuildTargetIdentifier>> fullTaskPathMap = new HashMap<>();
+    for (GradleBuildTarget buildTarget : buildTargetManager.getAllGradleBuildTargets()) {
+      Set<String> tasks = buildTarget.getSourceSet().getTaskNames();
+      BuildTargetIdentifier btId = buildTarget.getBuildTarget().getId();
+      for (String taskName : tasks) {
+        Set<BuildTargetIdentifier> btIds = fullTaskPathMap.get(taskName);
+        if (btIds == null) {
+          btIds = new HashSet<>();
+          fullTaskPathMap.put(taskName, btIds);
+        }
+        btIds.add(btId);
+      }
+    }
+    return fullTaskPathMap;
   }
 
   /**
    * group targets by project root and execute the supplied tasks.
    */
-  private StatusCode runTasks(List<BuildTargetIdentifier> targets,
+  private StatusCode runTasks(String originId, List<BuildTargetIdentifier> targets,
       Function<BuildTargetIdentifier, String> taskNameCreator) {
+    // create task name for all build targets to be able to monitor progress
+    Map<String, Set<BuildTargetIdentifier>> fullTaskPathMap = getFullTaskPathMap();
+
     Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(targets);
     StatusCode code = StatusCode.OK;
     for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
-      Set<BuildTargetIdentifier> btIds = entry.getValue();
-      // remove duplicates as some tasks will have the same name for each sourceset e.g. clean.
-      String[] tasks = btIds.stream().map(taskNameCreator).distinct().toArray(String[]::new);
-      code = connector.runTasks(entry.getKey(), btIds, tasks);
+      // use Set to remove duplicates. Some tasks have the same name for each sourceset e.g. clean.
+      Set<String> tasks = entry.getValue().stream()
+          .map(taskNameCreator)
+          .collect(Collectors.toSet());
+      code = connector.runTasks(originId, entry.getKey(), tasks, fullTaskPathMap);
       if (code == StatusCode.ERROR) {
         break;
       }
@@ -353,45 +377,35 @@ public class BuildTargetService {
   }
 
   /**
-   * Return the build task name - [project path]:[task].
+   * Return a source set task name.
    */
-  private String getBuildTaskName(BuildTargetIdentifier btId) {
+  private String getProjectTaskName(BuildTargetIdentifier btId, String title,
+      Function<GradleSourceSet, String> creator) {
     GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
     if (gradleBuildTarget == null) {
       // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
       throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
     }
-    GradleSourceSet sourceSet = gradleBuildTarget.getSourceSet();
-    String classesTaskName = sourceSet.getClassesTaskName();
-    if (StringUtils.isBlank(classesTaskName)) {
-      throw new IllegalArgumentException("The build target does not have a classes task: "
+    String taskName = creator.apply(gradleBuildTarget.getSourceSet());
+    if (StringUtils.isBlank(taskName)) {
+      throw new IllegalArgumentException("The build target does not have a " + title + " task: "
           + btId.getUri());
     }
+    return taskName;
+  }
 
-    String modulePath = sourceSet.getProjectPath();
-    if (modulePath == null || modulePath.equals(":")) {
-      return classesTaskName;
-    }
-    return modulePath + ":" + classesTaskName;
+  /**
+   * Return the build task name - [project path]:[task].
+   */
+  private String getBuildTaskName(BuildTargetIdentifier btId) {
+    return getProjectTaskName(btId, "classes", GradleSourceSet::getClassesTaskName);
   }
 
   /**
    * Return the clean task name - [project path]:[task].
    */
   private String getCleanTaskName(BuildTargetIdentifier btId) {
-    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
-    if (gradleBuildTarget == null) {
-      // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
-      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
-    }
-    GradleSourceSet sourceSet = gradleBuildTarget.getSourceSet();
-    String classesTaskName = "clean";
-
-    String modulePath = sourceSet.getProjectPath();
-    if (modulePath == null || modulePath.equals(":")) {
-      return classesTaskName;
-    }
-    return modulePath + ":" + classesTaskName;
+    return getProjectTaskName(btId, "clean", GradleSourceSet::getCleanTaskName);
   }
 
   class RefetchBuildTargetTask implements Runnable {
