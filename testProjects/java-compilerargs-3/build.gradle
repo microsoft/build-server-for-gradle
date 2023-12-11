@@ -1,0 +1,8 @@
+plugins {
+	id 'java'
+	id 'java-gradle-plugin'
+}
+
+tasks.withType(JavaCompile) {
+	options.compilerArgs << "-Xlint:all" << "--release" << "9"
+}

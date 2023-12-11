@@ -13,17 +13,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
+import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
+import org.gradle.api.internal.tasks.compile.JavaCompilerArgumentsBuilder;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -116,9 +122,11 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setJavaHome(defaultJavaHome);
         gradleSourceSet.setJavaVersion(javaVersion);
         gradleSourceSet.setGradleVersion(gradleVersion);
-        gradleSourceSet.setSourceCompatibility(getSourceCompatibility(project, sourceSet));
-        gradleSourceSet.setTargetCompatibility(getTargetCompatibility(project, sourceSet));
         gradleSourceSet.setCompilerArgs(getCompilerArgs(project, sourceSet));
+        gradleSourceSet.setSourceCompatibility(
+            getSourceCompatibility(gradleSourceSet.getCompilerArgs()));
+        gradleSourceSet.setTargetCompatibility(
+            getTargetCompatibility(gradleSourceSet.getCompilerArgs()));
         gradleSourceSets.add(gradleSourceSet);
 
         // tests
@@ -344,28 +352,75 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     return null;
   }
 
+  private Optional<String> findCompilerArg(List<String> compilerArgs, String arg) {
+    int idx = compilerArgs.indexOf(arg);
+    if (idx >= 0 && idx < compilerArgs.size() - 1) {
+      return Optional.of(compilerArgs.get(idx + 1));
+    }
+    return Optional.empty();
+  }
+
+  private Optional<String> findFirstCompilerArgMatch(List<String> compilerArgs,
+      Stream<String> args) {
+    return args.map(arg -> findCompilerArg(compilerArgs, arg))
+      .filter(Optional::isPresent)
+      .map(Optional::get)
+      .findFirst();
+  }
+
   /**
    * Get the source compatibility level of the source set.
    */
-  private String getSourceCompatibility(Project project, SourceSet sourceSet) {
-    JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
-    if (javaCompile != null) {
-      return javaCompile.getSourceCompatibility();
-    }
-
-    return "";
+  private String getSourceCompatibility(List<String> compilerArgs) {
+    return findFirstCompilerArgMatch(compilerArgs,
+      Stream.of("-source", "--source", "--release"))
+      .orElse("");
   }
 
   /**
    * Get the target compatibility level of the source set.
    */
-  private String getTargetCompatibility(Project project, SourceSet sourceSet) {
-    JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
-    if (javaCompile != null) {
-      return javaCompile.getTargetCompatibility();
+  private String getTargetCompatibility(List<String> compilerArgs) {
+    return findFirstCompilerArgMatch(compilerArgs,
+      Stream.of("-target", "--target", "--release"))
+      .orElse("");
+  }
+
+  private DefaultJavaCompileSpec getJavaCompileSpec(JavaCompile javaCompile) {
+    CompileOptions options = javaCompile.getOptions();
+    
+    DefaultJavaCompileSpec specs = new DefaultJavaCompileSpec();
+    specs.setCompileOptions(options);
+
+    // check the project hasn't already got the target or source defined in the
+    // compiler args so they're not overwritten below
+    List<String> originalArgs = options.getCompilerArgs();
+    String argsSourceCompatibility = getSourceCompatibility(originalArgs);
+    String argsTargetCompatibility = getTargetCompatibility(originalArgs);
+
+    if (!argsSourceCompatibility.isEmpty() && !argsTargetCompatibility.isEmpty()) {
+      return specs;
     }
 
-    return "";
+    if (GradleVersion.current().compareTo(GradleVersion.version("6.6")) >= 0) {
+      if (options.getRelease().isPresent()) {
+        specs.setRelease(options.getRelease().get());
+        return specs;
+      }
+    }
+    if (argsSourceCompatibility.isEmpty() && specs.getSourceCompatibility() == null) {
+      String sourceCompatibility = javaCompile.getSourceCompatibility();
+      if (sourceCompatibility != null) {
+        specs.setSourceCompatibility(sourceCompatibility);
+      }
+    }
+    if (argsTargetCompatibility.isEmpty() && specs.getTargetCompatibility() == null) {
+      String targetCompatibility = javaCompile.getTargetCompatibility();
+      if (targetCompatibility != null) {
+        specs.setTargetCompatibility(targetCompatibility);
+      }
+    }
+    return specs;
   }
 
   /**
@@ -374,7 +429,29 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   private List<String> getCompilerArgs(Project project, SourceSet sourceSet) {
     JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
     if (javaCompile != null) {
-      return javaCompile.getOptions().getCompilerArgs();
+      CompileOptions options = javaCompile.getOptions();
+
+      try {
+        DefaultJavaCompileSpec specs = getJavaCompileSpec(javaCompile);
+
+        JavaCompilerArgumentsBuilder builder = new JavaCompilerArgumentsBuilder(specs)
+                .includeMainOptions(true)
+                .includeClasspath(false)
+                .includeSourceFiles(false)
+                .includeLauncherOptions(false);
+        return builder.build();
+      } catch (Exception e) {
+        // DefaultJavaCompileSpec and JavaCompilerArgumentsBuilder are internal so may not exist.
+        // Fallback to returning just the compiler arguments the build has specified.
+        // This will miss a lot of arguments derived from the CompileOptions e.g. sourceCompatibilty
+        // Arguments must be cast and converted to String because Groovy can use GStringImpl
+        // which then throws IllegalArgumentException when passed back over the tooling connection.
+        List<Object> compilerArgs = new LinkedList<>(options.getCompilerArgs());
+        return compilerArgs
+            .stream()
+            .map(Object::toString)
+            .collect(Collectors.toList());
+      }
     }
 
     return Collections.emptyList();
