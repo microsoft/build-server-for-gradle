@@ -1,0 +1,9 @@
+plugins {
+	id 'java'
+}
+
+sourceSets {
+  main {
+    output.dir("extradir")
+  }
+}

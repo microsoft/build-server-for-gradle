@@ -1,0 +1,19 @@
+plugins {
+	id 'java'
+}
+
+configurations {
+  testArtifacts.extendsFrom testRuntime
+}
+
+task testJar(type: Jar) {
+  if (project.getGradle().getGradleVersion() > "5.0")
+    archiveClassifier = 'tests'
+  else
+    classifier = 'tests'
+  from sourceSets.test.output
+}
+
+artifacts {
+  add("testArtifacts", tasks.named("testJar"))
+}

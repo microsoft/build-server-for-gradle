@@ -132,4 +132,118 @@ class GradleApiConnectorTest {
     assertTrue(findSourceSet(gradleSourceSets, "test-tag", "intTest").hasTests());
     assertFalse(findSourceSet(gradleSourceSets, "test-tag", "testFixtures").hasTests());
   }
+
+  private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,
+      GradleSourceSet dependency) {
+    boolean exists = sourceSet.getBuildTargetDependencies().stream()
+        .anyMatch(dep -> dep.getProjectPath().equals(dependency.getProjectPath())
+                      && dep.getSourceSetName().equals(dependency.getSourceSetName()));
+    assertTrue(exists, () -> {
+      String availableDependencies = sourceSet.getBuildTargetDependencies().stream()
+          .map(ss -> ss.getProjectPath() + ' ' + ss.getSourceSetName())
+          .collect(Collectors.joining(", "));
+      return "Dependency not found " + dependency.getProjectPath() + ' '
+        + dependency.getSourceSetName() + ". Available: " + availableDependencies;
+    });
+  }
+
+  @Test
+  void testGetGradleDependenciesWithTestFixtures() {
+    File projectDir = projectPath.resolve("project-dependency-test-fixtures").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(5, gradleSourceSets.getGradleSourceSets().size());
+    GradleSourceSet mainA = findSourceSet(gradleSourceSets, "a", "main");
+    assertEquals(0, mainA.getBuildTargetDependencies().size());
+    GradleSourceSet testFixturesA = findSourceSet(gradleSourceSets, "a", "testFixtures");
+    assertEquals(1, testFixturesA.getBuildTargetDependencies().size());
+    GradleSourceSet testA = findSourceSet(gradleSourceSets, "a", "test");
+    assertEquals(2, testA.getBuildTargetDependencies().size());
+    GradleSourceSet mainB = findSourceSet(gradleSourceSets, "b", "main");
+    assertEquals(0, mainB.getBuildTargetDependencies().size());
+    GradleSourceSet testB = findSourceSet(gradleSourceSets, "b", "test");
+    assertEquals(3, testB.getBuildTargetDependencies().size());
+    assertHasBuildTargetDependency(testFixturesA, mainA);
+    assertHasBuildTargetDependency(testA, mainA);
+    assertHasBuildTargetDependency(testA, testFixturesA);
+    assertHasBuildTargetDependency(testB, testFixturesA);
+    assertHasBuildTargetDependency(testB, mainA);
+    assertHasBuildTargetDependency(testB, mainB);
+  }
+
+  @Test
+  void testGetGradleDependenciesWithTestToMain() {
+    File projectDir = projectPath.resolve("project-dependency-test-to-main").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+    GradleSourceSet main = findSourceSet(gradleSourceSets,
+        "project-dependency-test-to-main", "main");
+    GradleSourceSet test = findSourceSet(gradleSourceSets,
+        "project-dependency-test-to-main", "test");
+    assertEquals(0, main.getBuildTargetDependencies().size());
+    assertHasBuildTargetDependency(test, main);
+    assertEquals(1, test.getBuildTargetDependencies().size());
+  }
+
+  @Test
+  void testGetGradleDependenciesWithSourceSetOutput() {
+    File projectDir = projectPath.resolve("project-dependency-sourceset-output").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
+    GradleSourceSet testA = findSourceSet(gradleSourceSets, "a", "test");
+    assertEquals(1, testA.getBuildTargetDependencies().size());
+    GradleSourceSet mainB = findSourceSet(gradleSourceSets, "b", "main");
+    assertEquals(0, mainB.getBuildTargetDependencies().size());
+    GradleSourceSet testB = findSourceSet(gradleSourceSets, "b", "test");
+    assertEquals(2, testB.getBuildTargetDependencies().size());
+    assertHasBuildTargetDependency(testB, testA);
+    assertHasBuildTargetDependency(testB, mainB);
+  }
+
+  @Test
+  void testGetGradleDependenciesWithConfiguration() {
+    File projectDir = projectPath.resolve("project-dependency-configuration").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
+    GradleSourceSet mainA = findSourceSet(gradleSourceSets, "a", "main");
+    GradleSourceSet mainB = findSourceSet(gradleSourceSets, "b", "main");
+    assertHasBuildTargetDependency(mainB, mainA);
+  }
+
+  @Test
+  void testGetGradleDependenciesWithTestConfiguration() {
+    File projectDir = projectPath.resolve("project-dependency-test-configuration").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
+    GradleSourceSet testA = findSourceSet(gradleSourceSets, "a", "test");
+    GradleSourceSet testB = findSourceSet(gradleSourceSets, "b", "test");
+    assertHasBuildTargetDependency(testB, testA);
+  }
+
+  @Test
+  void testGetGradleDependenciesWithLazyArchive() {
+    File projectDir = projectPath.resolve("project-dependency-lazy-archive").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
+    GradleSourceSet testA = findSourceSet(gradleSourceSets, "a", "test");
+    GradleSourceSet testB = findSourceSet(gradleSourceSets, "b", "test");
+    assertHasBuildTargetDependency(testB, testA);
+  }
 }

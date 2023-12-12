@@ -117,7 +117,7 @@ public interface GradleSourceSet extends Serializable {
   /**
    * Project dependencies.
    */
-  public Set<GradleProjectDependency> getProjectDependencies();
+  public Set<BuildTargetDependency> getBuildTargetDependencies();
 
   /**
    * has tests defined.

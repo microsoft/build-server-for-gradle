@@ -18,7 +18,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
+import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -94,14 +94,14 @@ class BuildTargetManagerTest {
     when(gradleSourceSetFoo.getProjectDir()).thenReturn(new File("foo"));
 
 
-    GradleProjectDependency gradleProjectDependency = mock(GradleProjectDependency.class);
-    when(gradleProjectDependency.getProjectPath()).thenReturn(":foo");
-    Set<GradleProjectDependency> dependencies = new HashSet<>();
-    dependencies.add(gradleProjectDependency);
+    BuildTargetDependency buildTargetDependency = mock(BuildTargetDependency.class);
+    when(buildTargetDependency.getProjectPath()).thenReturn(":foo");
+    Set<BuildTargetDependency> dependencies = new HashSet<>();
+    dependencies.add(buildTargetDependency);
     GradleSourceSet gradleSourceSetBar = getMockedTestGradleSourceSet();
     when(gradleSourceSetBar.getProjectPath()).thenReturn(":bar");
     when(gradleSourceSetBar.getProjectDir()).thenReturn(new File("bar"));
-    when(gradleSourceSetBar.getProjectDependencies()).thenReturn(dependencies);
+    when(gradleSourceSetBar.getBuildTargetDependencies()).thenReturn(dependencies);
 
     GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
     when(gradleSourceSets.getGradleSourceSets()).thenReturn(
@@ -134,7 +134,7 @@ class BuildTargetManagerTest {
     when(mocked.getGeneratedSourceDirs()).thenReturn(Collections.emptySet());
     when(mocked.getResourceDirs()).thenReturn(Collections.emptySet());
     when(mocked.getModuleDependencies()).thenReturn(Collections.emptySet());
-    when(mocked.getProjectDependencies()).thenReturn(Collections.emptySet());
+    when(mocked.getBuildTargetDependencies()).thenReturn(Collections.emptySet());
     return mocked;
   }
 }

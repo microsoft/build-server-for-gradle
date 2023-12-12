@@ -1,0 +1,3 @@
+rootProject.name = 'project-dependency-lazy-archive'
+include('a')
+include('b')

@@ -1,0 +1,3 @@
+rootProject.name = 'project-dependency-sourceset-output'
+include('a')
+include('b')

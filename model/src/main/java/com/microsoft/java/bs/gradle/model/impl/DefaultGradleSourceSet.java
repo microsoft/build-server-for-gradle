@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
-import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
+import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 
 /**
@@ -59,7 +59,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private Set<GradleModuleDependency> moduleDependencies;
 
-  private Set<GradleProjectDependency> projectDependencies;
+  private Set<BuildTargetDependency> buildTargetDependencies;
 
   private boolean hasTests;
 
@@ -92,8 +92,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.compilerArgs = gradleSourceSet.getCompilerArgs();
     this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
-    this.projectDependencies = gradleSourceSet.getProjectDependencies().stream()
-        .map(DefaultGradleProjectDependency::new).collect(Collectors.toSet());
+    this.buildTargetDependencies = gradleSourceSet.getBuildTargetDependencies().stream()
+        .map(DefaultBuildTargetDependency::new).collect(Collectors.toSet());
     this.hasTests = gradleSourceSet.hasTests();
   }
 
@@ -257,12 +257,12 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.moduleDependencies = moduleDependencies;
   }
 
-  public Set<GradleProjectDependency> getProjectDependencies() {
-    return projectDependencies;
+  public Set<BuildTargetDependency> getBuildTargetDependencies() {
+    return buildTargetDependencies;
   }
 
-  public void setProjectDependencies(Set<GradleProjectDependency> projectDependencies) {
-    this.projectDependencies = projectDependencies;
+  public void setBuildTargetDependencies(Set<BuildTargetDependency> buildTargetDependencies) {
+    this.buildTargetDependencies = buildTargetDependencies;
   }
 
   public boolean hasTests() {
@@ -280,7 +280,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         generatedSourceDirs, sourceOutputDir, compileClasspath,
         resourceDirs, resourceOutputDir, javaHome, javaVersion,
         gradleVersion, sourceCompatibility, targetCompatibility,
-        compilerArgs, moduleDependencies, projectDependencies,
+        compilerArgs, moduleDependencies, buildTargetDependencies,
         hasTests);
   }
 
@@ -316,7 +316,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(targetCompatibility, other.targetCompatibility)
         && Objects.equals(compilerArgs, other.compilerArgs)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
-        && Objects.equals(projectDependencies, other.projectDependencies)
+        && Objects.equals(buildTargetDependencies, other.buildTargetDependencies)
         && hasTests == other.hasTests;
   }
 }

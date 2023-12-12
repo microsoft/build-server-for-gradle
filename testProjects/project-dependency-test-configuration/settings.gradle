@@ -1,0 +1,3 @@
+rootProject.name = 'project-dependency-test-configuration'
+include('a')
+include('b')
