@@ -58,6 +58,8 @@ class GradleApiConnectorTest {
     for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
       assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
       assertEquals(":", gradleSourceSet.getProjectPath());
+      assertTrue(gradleSourceSet.isJava());
+      assertFalse(gradleSourceSet.isKotlin());
       assertEquals(projectDir, gradleSourceSet.getProjectDir());
       assertEquals(projectDir, gradleSourceSet.getRootDir());
       assertTrue(gradleSourceSet.getSourceSetName().equals("main")
@@ -78,7 +80,7 @@ class GradleApiConnectorTest {
     });
     return sourceSet;
   }
-  
+
   private GradleSourceSet findSourceSet(GradleSourceSets gradleSourceSets, String projectName,
       String sourceSetName) {
     GradleSourceSet sourceSet = gradleSourceSets.getGradleSourceSets().stream()
@@ -131,5 +133,31 @@ class GradleApiConnectorTest {
     assertFalse(findSourceSet(gradleSourceSets, "test-tag", "noTests").hasTests());
     assertTrue(findSourceSet(gradleSourceSets, "test-tag", "intTest").hasTests());
     assertFalse(findSourceSet(gradleSourceSets, "test-tag", "testFixtures").hasTests());
+  }
+
+  @Test
+  void testGetGradleHasKotlin() {
+    File projectDir = projectPath.resolve("kotlin").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+    GradleSourceSet main = findSourceSet(gradleSourceSets, "kotlin", "main");
+    assertTrue(main.isKotlin());
+    
+    assertTrue(main.isKotlin());
+    assertEquals("1.2", main.getKotlinApiVersion());
+    assertEquals("1.3", main.getKotlinLanguageVersion());
+
+    
+    assertTrue(main.getCompileClasspath().size() > 0);
+    assertTrue(main.getCompileClasspath().stream().anyMatch(
+        file -> file.getName().equals("kotlin-stdlib-1.9.21.jar")));
+    assertTrue(main.getKotlincOptions().size() > 0);
+    assertTrue(main.getKotlincOptions().stream()
+        .anyMatch(arg -> arg.equals("-opt-in=org.mylibrary.OptInAnnotation")));
+
+    // TODO test getKotlinAssociates
   }
 }

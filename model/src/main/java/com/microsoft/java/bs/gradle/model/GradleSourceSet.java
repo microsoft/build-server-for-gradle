@@ -105,11 +105,6 @@ public interface GradleSourceSet extends Serializable {
   public String getTargetCompatibility();
 
   /**
-   * The list of compiler arguments.
-   */
-  public List<String> getCompilerArgs();
-
-  /**
    * Module dependencies.
    */
   public Set<GradleModuleDependency> getModuleDependencies();
@@ -123,4 +118,39 @@ public interface GradleSourceSet extends Serializable {
    * has tests defined.
    */
   public boolean hasTests();
+
+  /**
+   * Is the source set language Java.
+   */
+  public boolean isJava();
+
+  /**
+   * The list of Java compiler arguments.
+   */
+  public List<String> getJavaCompilerArgs();
+
+  /**
+   * Is the source set language Kotlin.
+   */
+  public boolean isKotlin();
+
+  /**
+   * The list of Kotlin compiler options.
+   */
+  public List<String> getKotlincOptions();
+  
+  /**
+   * The Kotlin language version.
+   */
+  public String getKotlinLanguageVersion();
+  
+  /**
+   * The Kotlin API version.
+   */
+  public String getKotlinApiVersion();
+
+  /**
+   * The list of Kotlin associates.
+   */
+  public List<String> getKotlinAssociates();
 }

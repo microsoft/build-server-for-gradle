@@ -64,11 +64,12 @@ class GradleBuildServerPluginTest {
         assertNotNull(gradleSourceSet.getSourceOutputDir());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
 
+        assertTrue(gradleSourceSet.isJava());
         assertNotNull(gradleSourceSet.getJavaHome());
         assertNotNull(gradleSourceSet.getJavaVersion());
         assertNotNull(gradleSourceSet.getSourceCompatibility());
         assertNotNull(gradleSourceSet.getTargetCompatibility());
-        assertNotNull(gradleSourceSet.getCompilerArgs());
+        assertNotNull(gradleSourceSet.getJavaCompilerArgs());
         assertNotNull(gradleSourceSet.getGradleVersion());
         assertNotNull(gradleSourceSet.getProjectDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
@@ -169,7 +170,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = modelBuilder.get();
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        String args = "|" + String.join("|", gradleSourceSet.getJavaCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
@@ -196,7 +197,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = modelBuilder.get();
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        String args = "|" + String.join("|", gradleSourceSet.getJavaCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
@@ -223,7 +224,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = modelBuilder.get();
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        String args = "|" + String.join("|", gradleSourceSet.getJavaCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
@@ -250,7 +251,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = modelBuilder.get();
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        String args = "|" + String.join("|", gradleSourceSet.getJavaCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
@@ -277,7 +278,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = modelBuilder.get();
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        String args = "|" + String.join("|", gradleSourceSet.getJavaCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
@@ -304,7 +305,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = modelBuilder.get();
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        String args = "|" + String.join("|", gradleSourceSet.getJavaCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
@@ -330,7 +331,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = modelBuilder.get();
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        String args = "|" + String.join("|", gradleSourceSet.getJavaCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
@@ -340,6 +341,56 @@ class GradleBuildServerPluginTest {
             () -> "Available args: " + args);
         assertFalse(gradleSourceSet.getTargetCompatibility().isEmpty(),
             () -> "Available args: " + args);
+      }
+    }
+  }
+
+  @Test
+  void testKotlinModelBuilder() throws IOException {
+    File projectDir = projectPath.resolve("kotlin").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+      File initScript = PluginHelper.getInitScript();
+      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        assertEquals("kotlin", gradleSourceSet.getProjectName());
+        assertEquals(":", gradleSourceSet.getProjectPath());
+        assertEquals(projectDir, gradleSourceSet.getProjectDir());
+        assertEquals(projectDir, gradleSourceSet.getRootDir());
+        assertTrue(gradleSourceSet.getSourceSetName().equals("main")
+            || gradleSourceSet.getSourceSetName().equals("test"));
+        assertTrue(gradleSourceSet.getClassesTaskName().equals("classes")
+            || gradleSourceSet.getClassesTaskName().equals("testClasses"));
+        assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
+        assertNotNull(gradleSourceSet.getSourceOutputDir());
+        assertNotNull(gradleSourceSet.getResourceOutputDir());
+
+        assertNotNull(gradleSourceSet.getJavaHome());
+        assertNotNull(gradleSourceSet.getJavaVersion());
+        assertNotNull(gradleSourceSet.getProjectDependencies());
+        assertNotNull(gradleSourceSet.getModuleDependencies());
+
+        assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
+            dependency -> dependency.getModule().contains("kotlin-stdlib")
+        ));
+        assertTrue(gradleSourceSet.isKotlin());
+        assertEquals("1.2", gradleSourceSet.getKotlinApiVersion());
+        assertEquals("1.3", gradleSourceSet.getKotlinLanguageVersion());
+    
+        assertTrue(gradleSourceSet.getCompileClasspath().size() > 0);
+        assertTrue(gradleSourceSet.getCompileClasspath().stream().anyMatch(
+            file -> file.getName().equals("kotlin-stdlib-1.9.21.jar")));
+        assertTrue(gradleSourceSet.getKotlincOptions().size() > 0);
+        assertTrue(gradleSourceSet.getKotlincOptions().stream()
+            .anyMatch(arg -> arg.equals("-opt-in=org.mylibrary.OptInAnnotation")));
+
+        // TODO test getKotlinAssociates
       }
     }
   }

@@ -50,7 +50,8 @@ class BuildTargetManagerTest {
   @Test
   void testJvmExtension() {
     GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
-    when(gradleSourceSet.getJavaVersion()).thenReturn("17");
+    when(gradleSourceSet.getJavaVersion()).thenReturn("17");    
+    when(gradleSourceSet.isJava()).thenReturn(true);
     GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
     when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
     
@@ -71,6 +72,7 @@ class BuildTargetManagerTest {
     when(gradleSourceSet.getGradleVersion()).thenReturn("8.0");
     when(gradleSourceSet.getSourceCompatibility()).thenReturn("17");
     when(gradleSourceSet.getTargetCompatibility()).thenReturn("17");
+    when(gradleSourceSet.isJava()).thenReturn(true);
     GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
     when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
     

@@ -307,7 +307,7 @@ public class BuildTargetService {
       }
       items.add(new JavacOptionsItem(
           btId,
-          sourceSet.getCompilerArgs(),
+          sourceSet.getJavaCompilerArgs(),
           classpath,
           classesDir
       ));

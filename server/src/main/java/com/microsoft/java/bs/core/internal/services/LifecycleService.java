@@ -104,7 +104,8 @@ public class LifecycleService {
     capabilities.setDependencyModulesProvider(true);
     capabilities.setCanReload(true);
     capabilities.setBuildTargetChangedProvider(true);
-    capabilities.setCompileProvider(new CompileProvider(Arrays.asList("java")));
+    capabilities.setCompileProvider(new CompileProvider(
+        Arrays.asList("java", "kotlin")));
     return capabilities;
   }
 

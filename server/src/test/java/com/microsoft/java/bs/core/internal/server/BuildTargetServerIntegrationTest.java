@@ -71,7 +71,8 @@ class BuildTargetServerIntegrationTest {
         "testProjects",
         "junit5-jupiter-starter-gradle").toFile();
     
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList("java"));
+    BuildClientCapabilities capabilities = new BuildClientCapabilities(
+        Arrays.asList("java", "kotlin"));
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",
