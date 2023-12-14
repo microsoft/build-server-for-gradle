@@ -33,7 +33,8 @@ class LifecycleServiceTest {
 
   @Test
   void testInitializeServer() {
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList("java"));
+    BuildClientCapabilities capabilities = new BuildClientCapabilities(
+        Arrays.asList("java", "kotlin"));
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",

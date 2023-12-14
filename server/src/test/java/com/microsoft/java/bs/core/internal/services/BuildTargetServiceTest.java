@@ -36,6 +36,7 @@ import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.JvmBuildTarget;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.OutputPathsParams;
@@ -45,6 +46,8 @@ import ch.epfl.scala.bsp4j.ResourcesResult;
 import ch.epfl.scala.bsp4j.SourcesParams;
 import ch.epfl.scala.bsp4j.SourcesResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
+
+import ch.epfl.scala.bsp4j.extended.KotlinBuildTarget;
 
 class BuildTargetServiceTest {
 
@@ -62,9 +65,11 @@ class BuildTargetServiceTest {
   }
 
   @Test
-  void testWorkspaceBuildTargets() {
+  void testWorkspaceJvmBuildTargets() {
     BuildTarget target = mock(BuildTarget.class);
     when(target.getBaseDirectory()).thenReturn("foo/bar");
+    when(target.getDataKind()).thenReturn("jvm");
+    when(target.getData()).thenReturn(new JvmBuildTarget(null, null));
     GradleBuildTarget gradleBuildTarget = new GradleBuildTarget(target,
         mock(GradleSourceSet.class));
     when(buildTargetManager.getAllGradleBuildTargets())
@@ -77,6 +82,30 @@ class BuildTargetServiceTest {
 
     assertEquals(1, response.getTargets().size());
     assertEquals("foo/bar", response.getTargets().get(0).getBaseDirectory());
+    assertEquals("jvm", response.getTargets().get(0).getDataKind());
+    assertTrue(response.getTargets().get(0).getData() instanceof JvmBuildTarget);
+  }
+  
+  @Test
+  void testWorkspaceKotlinBuildTargets() {
+    BuildTarget target = mock(BuildTarget.class);
+    when(target.getBaseDirectory()).thenReturn("foo/bar");
+    when(target.getDataKind()).thenReturn("kotlin");
+    when(target.getData()).thenReturn(new KotlinBuildTarget(null, null, null, null, null));
+    GradleBuildTarget gradleBuildTarget = new GradleBuildTarget(target,
+        mock(GradleSourceSet.class));
+    when(buildTargetManager.getAllGradleBuildTargets())
+        .thenReturn(Arrays.asList(gradleBuildTarget));
+    
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        connector, preferenceManager);
+
+    WorkspaceBuildTargetsResult response = buildTargetService.getWorkspaceBuildTargets();
+
+    assertEquals(1, response.getTargets().size());
+    assertEquals("foo/bar", response.getTargets().get(0).getBaseDirectory());
+    assertEquals("kotlin", response.getTargets().get(0).getDataKind());
+    assertTrue(response.getTargets().get(0).getData() instanceof KotlinBuildTarget);
   }
 
   @Test
@@ -233,7 +262,7 @@ class BuildTargetServiceTest {
 
     compilerArgs.add("--add-opens");
     compilerArgs.add("java.base/java.lang=ALL-UNNAMED");
-    when(gradleSourceSet.getCompilerArgs()).thenReturn(compilerArgs);
+    when(gradleSourceSet.getJavaCompilerArgs()).thenReturn(compilerArgs);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
         connector, preferenceManager);

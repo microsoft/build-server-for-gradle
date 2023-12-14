@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -25,18 +24,20 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.gradle.api.Project;
+import org.gradle.api.Task;
+import org.gradle.api.UnknownTaskException;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
 import org.gradle.api.internal.tasks.compile.JavaCompilerArgumentsBuilder;
-import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
+import org.gradle.api.provider.Provider;
 import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.util.GradleVersion;
@@ -85,15 +86,38 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setSourceSetName(sourceSet.getName());
         gradleSourceSet.setClassesTaskName(sourceSet.getClassesTaskName());
 
-        // source
-        Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
+        // source - gets kotlin and java sources
+        Set<File> srcDirs = sourceSet.getAllJava().getSrcDirs();
         gradleSourceSet.setSourceDirs(srcDirs);
         exclusionFromDependencies.addAll(srcDirs);
-        Set<File> generatedSrcDirs = new HashSet<>();
-        addAnnotationProcessingDir(project, sourceSet, generatedSrcDirs);
-        addGeneratedSourceDirs(project, sourceSet, srcDirs, generatedSrcDirs);
-        gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
-        exclusionFromDependencies.addAll(generatedSrcDirs);
+
+        // java
+        JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
+        if (javaCompile != null) {
+          gradleSourceSet.setIsJava(true);            
+          gradleSourceSet.setJavaCompilerArgs(getJavaCompilerArgs(javaCompile));
+          gradleSourceSet.setSourceCompatibility(
+              getSourceCompatibility(gradleSourceSet.getJavaCompilerArgs()));
+          gradleSourceSet.setTargetCompatibility(
+              getTargetCompatibility(gradleSourceSet.getJavaCompilerArgs()));
+
+          Set<File> generatedSrcDirs = new HashSet<>();
+          addAnnotationProcessingDir(javaCompile, generatedSrcDirs);
+          addGeneratedSourceDirs(javaCompile, srcDirs, generatedSrcDirs);
+          gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
+          exclusionFromDependencies.addAll(generatedSrcDirs);
+        }
+
+        // kotlin
+        Task kotlinCompile = getKotlinCompileTask(project, sourceSet);
+        if (kotlinCompile != null) {
+          gradleSourceSet.setIsKotlin(true);            
+          gradleSourceSet.setKotlinApiVersion(getKotlinApiVersion(kotlinCompile));
+          gradleSourceSet.setKotlinLanguageVersion(getKotlinLanguageVersion(kotlinCompile));
+          gradleSourceSet.setKotlincOptions(getKotlinOptions(kotlinCompile));
+          // TODO - how to set this?
+          // gradleSourceSet.setKotlinAssociates(null);
+        }
 
         // classpath
         List<File> compileClasspath = new LinkedList<>(sourceSet.getCompileClasspath().getFiles());
@@ -122,11 +146,6 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setJavaHome(defaultJavaHome);
         gradleSourceSet.setJavaVersion(javaVersion);
         gradleSourceSet.setGradleVersion(gradleVersion);
-        gradleSourceSet.setCompilerArgs(getCompilerArgs(project, sourceSet));
-        gradleSourceSet.setSourceCompatibility(
-            getSourceCompatibility(gradleSourceSet.getCompilerArgs()));
-        gradleSourceSet.setTargetCompatibility(
-            getTargetCompatibility(gradleSourceSet.getCompilerArgs()));
         gradleSourceSets.add(gradleSourceSet);
 
         // tests
@@ -208,71 +227,54 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   }
 
   private SourceSetContainer getSourceSetContainer(Project project) {
-    if (!project.getPlugins().hasPlugin("java")) {
-      return null;
-    }
-
-    if (GradleVersion.current().compareTo(GradleVersion.version("7.1")) >= 0) {
-      JavaPluginExtension javaPlugin = project.getExtensions()
-          .findByType(JavaPluginExtension.class);
-      if (javaPlugin != null) {
-        return javaPlugin.getSourceSets();
-      }
-    } else {
-      Object javaPluginConvention = project.getConvention().getPlugins().get("java");
-      if (javaPluginConvention != null) {
-        try {
-          Method getSourceSetsMethod = javaPluginConvention.getClass().getMethod("getSourceSets");
-          return (SourceSetContainer) getSourceSetsMethod.invoke(javaPluginConvention);
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-          | IllegalArgumentException | InvocationTargetException e) {
-        // ignore
-        }
-      }
-    }
-    return null;
+    return project.getExtensions().findByType(SourceSetContainer.class);
   }
 
-  private void addAnnotationProcessingDir(Project project, SourceSet sourceSet,
-      Set<File> generatedSrcDirs) {
-    JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
-    if (javaCompile != null) {
-      CompileOptions options = javaCompile.getOptions();
-      if (GradleVersion.current().compareTo(GradleVersion.version("6.3")) >= 0) {
-        Directory generatedDir = options.getGeneratedSourceOutputDirectory().getOrNull();
-        if (generatedDir != null) {
-          generatedSrcDirs.add(generatedDir.getAsFile());
-        }
-      } else if (GradleVersion.current().compareTo(GradleVersion.version("4.3")) >= 0) {
-        File generatedDir = options.getAnnotationProcessorGeneratedSourcesDirectory();
-        if (generatedDir != null) {
-          generatedSrcDirs.add(generatedDir);
-        }
+  private void addAnnotationProcessingDir(JavaCompile javaCompile, Set<File> generatedSrcDirs) {
+    CompileOptions options = javaCompile.getOptions();
+    if (GradleVersion.current().compareTo(GradleVersion.version("6.3")) >= 0) {
+      Directory generatedDir = options.getGeneratedSourceOutputDirectory().getOrNull();
+      if (generatedDir != null) {
+        generatedSrcDirs.add(generatedDir.getAsFile());
+      }
+    } else if (GradleVersion.current().compareTo(GradleVersion.version("4.3")) >= 0) {
+      File generatedDir = options.getAnnotationProcessorGeneratedSourcesDirectory();
+      if (generatedDir != null) {
+        generatedSrcDirs.add(generatedDir);
       }
     }
   }
 
   private JavaCompile getJavaCompileTask(Project project, SourceSet sourceSet) {
-    String taskName = sourceSet.getCompileJavaTaskName();
-    return (JavaCompile) project.getTasks().getByName(taskName);
+    return (JavaCompile) getLanguageCompileTask("java", project, sourceSet);
   }
 
-  private void addGeneratedSourceDirs(Project project, SourceSet sourceSet,
-      Set<File> srcDirs, Set<File> generatedSrcDirs) {
-    JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
-    if (javaCompile != null) {
-      Set<File> filesToCompile = javaCompile.getSource().getFiles();
-      for (File file : filesToCompile) {
-        if (canSkipInferSourceRoot(file, srcDirs, generatedSrcDirs)) {
-          continue;
-        }
+  private Task getKotlinCompileTask(Project project, SourceSet sourceSet) {
+    return getLanguageCompileTask("kotlin", project, sourceSet);
+  }
 
-        // the file is not in the source directories, so it must be a generated file.
-        // we need to find the source directory for the generated file.
-        File srcDir = findSourceDirForGeneratedFile(file);
-        if (srcDir != null) {
-          generatedSrcDirs.add(srcDir);
-        }
+  private Task getLanguageCompileTask(String language, Project project, SourceSet sourceSet) {
+    String taskName = sourceSet.getCompileTaskName(language);
+    try {
+      return project.getTasks().getByName(taskName);
+    } catch (UnknownTaskException e) {
+      return null;
+    }
+  }
+
+  private void addGeneratedSourceDirs(JavaCompile javaCompile, Set<File> srcDirs,
+      Set<File> generatedSrcDirs) {
+    Set<File> filesToCompile = javaCompile.getSource().getFiles();
+    for (File file : filesToCompile) {
+      if (canSkipInferSourceRoot(file, srcDirs, generatedSrcDirs)) {
+        continue;
+      }
+
+      // the file is not in the source directories, so it must be a generated file.
+      // we need to find the source directory for the generated file.
+      File srcDir = findSourceDirForGeneratedFile(file);
+      if (srcDir != null) {
+        generatedSrcDirs.add(srcDir);
       }
     }
   }
@@ -426,35 +428,30 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   /**
    * Get the compilation arguments of the source set.
    */
-  private List<String> getCompilerArgs(Project project, SourceSet sourceSet) {
-    JavaCompile javaCompile = getJavaCompileTask(project, sourceSet);
-    if (javaCompile != null) {
-      CompileOptions options = javaCompile.getOptions();
+  private List<String> getJavaCompilerArgs(JavaCompile javaCompile) {
+    CompileOptions options = javaCompile.getOptions();
 
-      try {
-        DefaultJavaCompileSpec specs = getJavaCompileSpec(javaCompile);
+    try {
+      DefaultJavaCompileSpec specs = getJavaCompileSpec(javaCompile);
 
-        JavaCompilerArgumentsBuilder builder = new JavaCompilerArgumentsBuilder(specs)
-                .includeMainOptions(true)
-                .includeClasspath(false)
-                .includeSourceFiles(false)
-                .includeLauncherOptions(false);
-        return builder.build();
-      } catch (Exception e) {
-        // DefaultJavaCompileSpec and JavaCompilerArgumentsBuilder are internal so may not exist.
-        // Fallback to returning just the compiler arguments the build has specified.
-        // This will miss a lot of arguments derived from the CompileOptions e.g. sourceCompatibilty
-        // Arguments must be cast and converted to String because Groovy can use GStringImpl
-        // which then throws IllegalArgumentException when passed back over the tooling connection.
-        List<Object> compilerArgs = new LinkedList<>(options.getCompilerArgs());
-        return compilerArgs
-            .stream()
-            .map(Object::toString)
-            .collect(Collectors.toList());
-      }
+      JavaCompilerArgumentsBuilder builder = new JavaCompilerArgumentsBuilder(specs)
+              .includeMainOptions(true)
+              .includeClasspath(false)
+              .includeSourceFiles(false)
+              .includeLauncherOptions(false);
+      return builder.build();
+    } catch (Exception e) {
+      // DefaultJavaCompileSpec and JavaCompilerArgumentsBuilder are internal so may not exist.
+      // Fallback to returning just the compiler arguments the build has specified.
+      // This will miss a lot of arguments derived from the CompileOptions e.g. sourceCompatibilty
+      // Arguments must be cast and converted to String because Groovy can use GStringImpl
+      // which then throws IllegalArgumentException when passed back over the tooling connection.
+      List<Object> compilerArgs = new LinkedList<>(options.getCompilerArgs());
+      return compilerArgs
+          .stream()
+          .map(Object::toString)
+          .collect(Collectors.toList());
     }
-
-    return Collections.emptyList();
   }
 
   private Set<String> getClasspathConfigurationNames(SourceSet sourceSet) {
@@ -462,5 +459,85 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     configurationNames.add(sourceSet.getCompileClasspathConfigurationName());
     configurationNames.add(sourceSet.getRuntimeClasspathConfigurationName());
     return configurationNames;
+  }
+
+  private String getKotlinApiVersion(Task kotlinCompile) {
+    // https://github.com/JetBrains/kotlin/blob/master/libraries/tools/kotlin-gradle-plugin/src/common/kotlin/org/jetbrains/kotlin/gradle/tasks/KotlinCompile.kt
+    // https://github.com/JetBrains/kotlin/blob/master/libraries/tools/kotlin-gradle-plugin-api/src/common/kotlin/org/jetbrains/kotlin/gradle/dsl/KotlinCommonCompilerOptions.kt
+    try {
+      Method getCompilerOptionsMethod = kotlinCompile.getClass().getMethod("getCompilerOptions");
+      Object compilerOptions = getCompilerOptionsMethod.invoke(kotlinCompile);
+      Method getApiVersionMethod = compilerOptions.getClass().getMethod("getApiVersion");
+      Object apiVersionProviderObject = getApiVersionMethod.invoke(compilerOptions);
+      if (apiVersionProviderObject instanceof Provider) {
+        Provider<?> apiVersionProvider = (Provider<?>) apiVersionProviderObject;
+        if (apiVersionProvider.isPresent()) {
+          Object apiVersion = apiVersionProvider.get();
+          if (apiVersion != null) {
+            Method versionMethod = apiVersion.getClass().getMethod("getVersion");
+            Object versionMethodObject = versionMethod.invoke(apiVersion);
+            if (versionMethodObject != null) {
+              return versionMethodObject.toString();
+            }
+          }
+        }
+      }
+    } catch (NoSuchMethodException | SecurityException | IllegalAccessException
+        | IllegalArgumentException | InvocationTargetException e) {
+      // ignore
+    }
+    return "";
+  }
+
+  private String getKotlinLanguageVersion(Task kotlinCompile) {
+    // https://github.com/JetBrains/kotlin/blob/master/libraries/tools/kotlin-gradle-plugin/src/common/kotlin/org/jetbrains/kotlin/gradle/tasks/KotlinCompile.kt
+    // https://github.com/JetBrains/kotlin/blob/master/libraries/tools/kotlin-gradle-plugin-api/src/common/kotlin/org/jetbrains/kotlin/gradle/dsl/KotlinCommonCompilerOptions.kt
+    try {
+      Method getCompilerOptionsMethod = kotlinCompile.getClass().getMethod("getCompilerOptions");
+      Object compilerOptions = getCompilerOptionsMethod.invoke(kotlinCompile);
+      Method getLanguageVersionMethod = compilerOptions.getClass().getMethod("getLanguageVersion");
+      Object languageVersionProviderObject = getLanguageVersionMethod.invoke(compilerOptions);
+      if (languageVersionProviderObject instanceof Provider) {
+        Provider<?> languageVersionProvider = (Provider<?>) languageVersionProviderObject;
+        if (languageVersionProvider.isPresent()) {
+          Object languageVersion = languageVersionProvider.get();
+          if (languageVersion != null) {
+            Method versionMethod = languageVersion.getClass().getMethod("getVersion");
+            Object versionMethodObject = versionMethod.invoke(languageVersion);
+            if (versionMethodObject != null) {
+              return versionMethodObject.toString();
+            }
+          }
+        }
+      }
+    } catch (NoSuchMethodException | SecurityException | IllegalAccessException
+        | IllegalArgumentException | InvocationTargetException e) {
+      // ignore
+    }
+    return "";
+  }
+
+  private List<String> getKotlinOptions(Task kotlinCompile) {
+    // https://github.com/JetBrains/kotlin/blob/master/libraries/tools/kotlin-gradle-plugin/src/common/kotlin/org/jetbrains/kotlin/gradle/tasks/KotlinCompile.kt
+    // https://github.com/JetBrains/kotlin/blob/master/libraries/tools/kotlin-gradle-plugin-api/src/common/kotlin/org/jetbrains/kotlin/gradle/dsl/KotlinCommonCompilerOptions.kt
+    try {
+      Method getCompilerOptionsMethod = kotlinCompile.getClass().getMethod("getCompilerOptions");
+      Object compilerOptions = getCompilerOptionsMethod.invoke(kotlinCompile);
+      Method getLanguageVersionMethod = compilerOptions.getClass().getMethod("getFreeCompilerArgs");
+      Object freeCompilerArgsProviderObject = getLanguageVersionMethod.invoke(compilerOptions);
+      if (freeCompilerArgsProviderObject instanceof Provider) {
+        Provider<?> freeCompilerArgsProvider = (Provider<?>) freeCompilerArgsProviderObject;
+        if (freeCompilerArgsProvider.isPresent()) {
+          Object freeCompilerArgs = freeCompilerArgsProvider.get();
+          if (freeCompilerArgs instanceof List) {
+            return ((List<?>) freeCompilerArgs).stream().map(Object::toString).collect(Collectors.toList());
+          }
+        }
+      }
+    } catch (NoSuchMethodException | SecurityException | IllegalAccessException
+        | IllegalArgumentException | InvocationTargetException e) {
+      // ignore
+    }
+    return null;
   }
 }

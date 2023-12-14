@@ -25,7 +25,9 @@ import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.BuildTargetTag;
+import ch.epfl.scala.bsp4j.JvmBuildTarget;
 import ch.epfl.scala.bsp4j.extended.JvmBuildTargetEx;
+import ch.epfl.scala.bsp4j.extended.KotlinBuildTarget;
 
 /**
  * Build targets manager.
@@ -48,14 +50,19 @@ public class BuildTargetManager {
     Map<String, BuildTargetIdentifier> projectPathToBuildTargetId = new HashMap<>();
     List<BuildTargetIdentifier> changedTargets = new LinkedList<>();
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
-      String sourceSetName = sourceSet.getSourceSetName();
-      URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
       List<String> tags = getBuildTargetTags(sourceSet.hasTests());
-      BuildTargetIdentifier btId = new BuildTargetIdentifier(uri.toString());
+      BuildTargetIdentifier btId = getBuildTargetIdentifier(sourceSet);
+      List<String> languages = new LinkedList<>();
+      if (sourceSet.isJava()) {
+        languages.add("java");
+      }
+      if (sourceSet.isKotlin()) {
+        languages.add("kotlin");
+      }
       BuildTarget bt = new BuildTarget(
           btId,
           tags,
-          Arrays.asList("java"),
+          languages,
           Collections.emptyList(),
           new BuildTargetCapabilities(
             true /* canCompile */,
@@ -67,7 +74,7 @@ public class BuildTargetManager {
       bt.setBaseDirectory(sourceSet.getRootDir().toURI().toString());
       bt.setDisplayName(sourceSet.getDisplayName());
 
-      setJvmBuildTarget(sourceSet, bt);
+      setBuildTarget(sourceSet, bt);
 
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
       GradleBuildTarget existingTarget = cache.get(btId);
@@ -87,6 +94,12 @@ public class BuildTargetManager {
     updateBuildTargetDependencies(newCache.values(), projectPathToBuildTargetId);
     this.cache = newCache;
     return changedTargets;
+  }
+
+  private BuildTargetIdentifier getBuildTargetIdentifier(GradleSourceSet sourceSet) {
+    String sourceSetName = sourceSet.getSourceSetName();
+    URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
+    return new BuildTargetIdentifier(uri.toString());
   }
 
   public GradleBuildTarget getGradleBuildTarget(BuildTargetIdentifier buildTargetId) {
@@ -109,17 +122,49 @@ public class BuildTargetManager {
     return tags;
   }
 
-  private void setJvmBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
+  private void setBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
+    if (sourceSet.isKotlin()) {
+      setKotlinBuildTarget(sourceSet, bt);
+    } else if (sourceSet.isJava()) {
+      setJvmBuildTarget(sourceSet, bt);
+    }
+  }
+
+  private JvmBuildTarget getJvmBuildTarget(GradleSourceSet sourceSet) {
     // See: https://build-server-protocol.github.io/docs/extensions/jvm#jvmbuildtarget
-    JvmBuildTargetEx jvmBuildTarget = new JvmBuildTargetEx(
+    return new JvmBuildTargetEx(
         sourceSet.getJavaHome() == null ? "" : sourceSet.getJavaHome().toURI().toString(),
         sourceSet.getJavaVersion() == null ? "" : sourceSet.getJavaVersion(),
         sourceSet.getGradleVersion() == null ? "" : sourceSet.getGradleVersion(),
         sourceSet.getSourceCompatibility() == null ? "" : sourceSet.getSourceCompatibility(),
         sourceSet.getTargetCompatibility() == null ? "" : sourceSet.getTargetCompatibility()
     );
+  }
+
+  private void setJvmBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
     bt.setDataKind("jvm");
-    bt.setData(jvmBuildTarget);
+    bt.setData(getJvmBuildTarget(sourceSet));
+  }
+  
+  private KotlinBuildTarget getKotlinBuildTarget(GradleSourceSet sourceSet) {
+    // Not in spec yet
+    JvmBuildTarget jvmBuildTarget = getJvmBuildTarget(sourceSet);
+    // TODO set associates from sourceSet.getKotlinAssociates() once it is know how to populate it.
+    List<BuildTargetIdentifier> associates = Collections.emptyList();
+
+    KotlinBuildTarget kotlinBuildTarget = new KotlinBuildTarget(
+        sourceSet.getKotlinLanguageVersion() == null ? "" : sourceSet.getKotlinLanguageVersion(),
+        sourceSet.getKotlinApiVersion() == null ? "" : sourceSet.getKotlinApiVersion(),
+        sourceSet.getKotlincOptions(),
+        associates,
+        jvmBuildTarget
+    );
+    return kotlinBuildTarget;
+  }
+
+  private void setKotlinBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
+    bt.setDataKind("kotlin");
+    bt.setData(getKotlinBuildTarget(sourceSet));
   }
 
   /**

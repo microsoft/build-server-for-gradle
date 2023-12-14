@@ -55,13 +55,25 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private String targetCompatibility;
 
-  private List<String> compilerArgs;
-
   private Set<GradleModuleDependency> moduleDependencies;
 
   private Set<GradleProjectDependency> projectDependencies;
 
   private boolean hasTests;
+
+  private boolean isJava;
+
+  private List<String> javaCompilerArgs;
+
+  private boolean isKotlin;
+
+  private String kotlinLanguageVersion;
+
+  private String kotlinApiVersion;
+
+  private List<String> kotlincOptions;
+
+  private List<String> kotlinAssociates;
 
   public DefaultGradleSourceSet() {}
 
@@ -89,12 +101,18 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.gradleVersion = gradleSourceSet.getGradleVersion();
     this.sourceCompatibility = gradleSourceSet.getSourceCompatibility();
     this.targetCompatibility = gradleSourceSet.getTargetCompatibility();
-    this.compilerArgs = gradleSourceSet.getCompilerArgs();
     this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
     this.projectDependencies = gradleSourceSet.getProjectDependencies().stream()
         .map(DefaultGradleProjectDependency::new).collect(Collectors.toSet());
     this.hasTests = gradleSourceSet.hasTests();
+    this.isJava = gradleSourceSet.isJava();
+    this.javaCompilerArgs = gradleSourceSet.getJavaCompilerArgs();
+    this.isKotlin = gradleSourceSet.isKotlin();
+    this.kotlinLanguageVersion = gradleSourceSet.getKotlinLanguageVersion();
+    this.kotlinApiVersion = gradleSourceSet.getKotlinApiVersion();
+    this.kotlincOptions = gradleSourceSet.getKotlincOptions();
+    this.kotlinAssociates = gradleSourceSet.getKotlinAssociates();
   }
 
   public String getDisplayName() {
@@ -241,14 +259,6 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.targetCompatibility = targetCompatibility;
   }
 
-  public List<String> getCompilerArgs() {
-    return compilerArgs;
-  }
-
-  public void setCompilerArgs(List<String> compilerArgs) {
-    this.compilerArgs = compilerArgs;
-  }
-
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -272,6 +282,64 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   public void setHasTests(boolean hasTests) {
     this.hasTests = hasTests;
   }
+  
+  @Override
+  public boolean isJava() {
+    return isJava;
+  }
+
+  public void setIsJava(boolean isJava) {
+    this.isJava = isJava;
+  }
+
+  public List<String> getJavaCompilerArgs() {
+    return javaCompilerArgs;
+  }
+
+  public void setJavaCompilerArgs(List<String> javaCompilerArgs) {
+    this.javaCompilerArgs = javaCompilerArgs;
+  }
+  
+  @Override
+  public boolean isKotlin() {
+    return isJava;
+  }
+
+  public void setIsKotlin(boolean isKotlin) {
+    this.isKotlin = isKotlin;
+  }
+
+  public String getKotlinLanguageVersion() {
+    return kotlinLanguageVersion;
+  }
+
+  public void setKotlinLanguageVersion(String kotlinLanguageVersion) {
+    this.kotlinLanguageVersion = kotlinLanguageVersion;
+  }
+
+  public String getKotlinApiVersion() {
+    return kotlinApiVersion;
+  }
+
+  public void setKotlinApiVersion(String kotlinApiVersion) {
+    this.kotlinApiVersion = kotlinApiVersion;
+  }
+
+  public List<String> getKotlincOptions() {
+    return kotlincOptions;
+  }
+
+  public void setKotlincOptions(List<String> kotlincOptions) {
+    this.kotlincOptions = kotlincOptions;
+  }
+
+  public List<String> getKotlinAssociates() {
+    return kotlinAssociates;
+  }
+
+  public void setKotlinAssociates(List<String> kotlinAssociates) {
+    this.kotlinAssociates = kotlinAssociates;
+  }
 
   @Override
   public int hashCode() {
@@ -280,8 +348,9 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         generatedSourceDirs, sourceOutputDir, compileClasspath,
         resourceDirs, resourceOutputDir, javaHome, javaVersion,
         gradleVersion, sourceCompatibility, targetCompatibility,
-        compilerArgs, moduleDependencies, projectDependencies,
-        hasTests);
+        moduleDependencies, projectDependencies, hasTests,
+        isJava, javaCompilerArgs, isKotlin, kotlinLanguageVersion,
+        kotlinApiVersion, kotlincOptions, kotlinAssociates);
   }
 
   @Override
@@ -314,9 +383,15 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(gradleVersion, other.gradleVersion)
         && Objects.equals(sourceCompatibility, other.sourceCompatibility)
         && Objects.equals(targetCompatibility, other.targetCompatibility)
-        && Objects.equals(compilerArgs, other.compilerArgs)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(projectDependencies, other.projectDependencies)
-        && hasTests == other.hasTests;
+        && hasTests == other.hasTests
+        && isJava == other.isJava
+        && Objects.equals(javaCompilerArgs, other.javaCompilerArgs)
+        && isKotlin == other.isKotlin
+        && Objects.equals(kotlinLanguageVersion, other.kotlinLanguageVersion)
+        && Objects.equals(kotlinApiVersion, other.kotlinApiVersion)
+        && Objects.equals(kotlincOptions, other.kotlincOptions)
+        && Objects.equals(kotlinAssociates, other.kotlinAssociates);
   }
 }
