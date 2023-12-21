@@ -27,31 +27,41 @@ public class DefaultProgressReporter implements ProgressReporter {
     client = Launcher.client;
   }
 
-  @Override
-  public void taskStarted(String message) {
-    TaskStartParams startParam = new TaskStartParams(taskId);
-    startParam.setMessage(message);
-    if (client != null) {
-      client.onBuildTaskStart(startParam);
-    }
-  }
-
-  @Override
-  public void taskInProgress(String message) {
-    TaskProgressParams progressParam = new TaskProgressParams(taskId);
-    progressParam.setMessage(message);
-    if (client != null) {
-      client.onBuildTaskProgress(progressParam);
-    }
-  }
-
-  @Override
-  public void taskFinished(String message, StatusCode statusCode) {
-    TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
-    endParam.setMessage(message);
-    if (client != null) {
-      client.onBuildTaskFinish(endParam);
-    }
+  public void cleanUp() {
     client = null;
+  }
+
+  @Override
+  public void taskStarted(String taskPath, String message, long startTime) {
+    BuildClient localClient = client;
+    if (localClient != null) {
+      TaskStartParams startParam = new TaskStartParams(taskId);
+      startParam.setEventTime(startTime);
+      startParam.setMessage(message);
+      localClient.onBuildTaskStart(startParam);
+    }
+  }
+
+  @Override
+  public void taskInProgress(String taskPath, String message, long startTime) {
+    BuildClient localClient = client;
+    if (localClient != null) {
+      TaskProgressParams progressParam = new TaskProgressParams(taskId);
+      progressParam.setEventTime(startTime);
+      progressParam.setMessage(message);
+      localClient.onBuildTaskProgress(progressParam);
+    }
+  }
+
+  @Override
+  public void taskFinished(String taskPath, String message,
+      long startTime, StatusCode statusCode) {
+    BuildClient localClient = client;
+    if (localClient != null) {
+      TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
+      endParam.setEventTime(startTime);
+      endParam.setMessage(message);
+      localClient.onBuildTaskFinish(endParam);
+    }
   }
 }

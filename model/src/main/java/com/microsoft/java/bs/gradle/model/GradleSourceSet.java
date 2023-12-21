@@ -49,6 +49,16 @@ public interface GradleSourceSet extends Serializable {
   public String getClassesTaskName();
 
   /**
+   * The name of the clean task.
+   */
+  public String getCleanTaskName();
+
+  /**
+   * All the tasks relevant to compiling this source set.
+   */
+  public Set<String> getTaskNames();
+
+  /**
    * The source directories of this source set.
    */
   public Set<File> getSourceDirs();

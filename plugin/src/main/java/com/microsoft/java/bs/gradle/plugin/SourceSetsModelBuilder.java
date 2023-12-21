@@ -82,12 +82,26 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       sourceSets.forEach(sourceSet -> {
         DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
         gradleSourceSet.setProjectName(project.getName());
-        gradleSourceSet.setProjectPath(project.getPath());
+        String projectPath = project.getPath();
+        gradleSourceSet.setProjectPath(projectPath);
         gradleSourceSet.setProjectDir(project.getProjectDir());
         gradleSourceSet.setRootDir(project.getRootDir());
         sourceSetMap.put(sourceSet, gradleSourceSet);
         gradleSourceSet.setSourceSetName(sourceSet.getName());
-        gradleSourceSet.setClassesTaskName(sourceSet.getClassesTaskName());
+        String classesTaskName = getFullTaskName(projectPath, sourceSet.getClassesTaskName());
+        gradleSourceSet.setClassesTaskName(classesTaskName);
+        String cleanTaskName = getFullTaskName(projectPath, "clean");
+        gradleSourceSet.setCleanTaskName(cleanTaskName);
+        Set<String> taskNames = new HashSet<>();
+        taskNames.add(classesTaskName);
+        taskNames.add(cleanTaskName);
+        taskNames.add(getFullTaskName(projectPath, sourceSet.getProcessResourcesTaskName()));
+        taskNames.add(getFullTaskName(projectPath, sourceSet.getCompileJavaTaskName()));
+        taskNames.add(getFullTaskName(projectPath, sourceSet.getJavadocTaskName()));
+        taskNames.add(getFullTaskName(projectPath, sourceSet.getJarTaskName()));
+        taskNames.add(getFullTaskName(projectPath, sourceSet.getJavadocJarTaskName()));
+        taskNames.add(getFullTaskName(projectPath, sourceSet.getSourcesJarTaskName()));
+        gradleSourceSet.setTaskNames(taskNames);
 
         // source
         Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
@@ -236,6 +250,23 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
 
     return new DefaultGradleSourceSets(gradleSourceSets);
+  }
+
+  /**
+   * Return a project task name - [project path]:[task].
+   */
+  private String getFullTaskName(String modulePath, String taskName) {
+    if (taskName == null) {
+      return null;
+    }
+    if (taskName.isEmpty()) {
+      return taskName;
+    }
+
+    if (modulePath == null || modulePath.equals(":")) {
+      return taskName;
+    }
+    return modulePath + ":" + taskName;
   }
 
   private String stripPathPrefix(String projectPath) {
