@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
+import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
@@ -131,12 +131,12 @@ public class BuildTargetManager {
       Map<String, BuildTargetIdentifier> projectPathToBuildTargetId
   ) {
     for (GradleBuildTarget gradleBuildTarget : gradleBuildTargets) {
-      Set<GradleProjectDependency> projectDependencies =
-          gradleBuildTarget.getSourceSet().getProjectDependencies();
-      if (projectDependencies != null) {
-        List<BuildTargetIdentifier> btDependencies = projectDependencies.stream()
-            .map(projectDependency -> {
-              String path = projectDependency.getProjectPath();
+      Set<BuildTargetDependency> buildTargetDependencies =
+          gradleBuildTarget.getSourceSet().getBuildTargetDependencies();
+      if (buildTargetDependencies != null) {
+        List<BuildTargetIdentifier> btDependencies = buildTargetDependencies.stream()
+            .map(btDependency -> {
+              String path = btDependency.getProjectPath();
               return projectPathToBuildTargetId.get(path);
             })
             .filter(Objects::nonNull)

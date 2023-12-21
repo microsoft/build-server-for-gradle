@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -25,15 +24,18 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.gradle.api.Project;
+import org.gradle.api.file.CopySpec;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
 import org.gradle.api.internal.tasks.compile.JavaCompilerArgumentsBuilder;
+import org.gradle.api.internal.file.copy.DefaultCopySpec;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskCollection;
+import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
@@ -41,8 +43,10 @@ import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.util.GradleVersion;
 
+import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
@@ -156,13 +160,69 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       }
     }
 
+    // map all output dirs to their source sets
+    Map<File, DefaultGradleSourceSet> outputsToSourceSet = new HashMap<>();
+    for (DefaultGradleSourceSet sourceSet : sourceSetMap.values()) {
+      if (sourceSet.getSourceOutputDir() != null) {
+        outputsToSourceSet.put(sourceSet.getSourceOutputDir(), sourceSet);
+      }
+      if (sourceSet.getResourceOutputDir() != null) {
+        outputsToSourceSet.put(sourceSet.getResourceOutputDir(), sourceSet);
+      }
+    }
+    // map all output jars to their source sets
+    for (Project project : allProject) {
+
+      SourceSetContainer sourceSets = getSourceSetContainer(project);
+      if (sourceSets == null || sourceSets.isEmpty()) {
+        continue;
+      }
+
+      // get all archive tasks for this project and find the dirs that are included in the archive
+      TaskCollection<AbstractArchiveTask> archiveTasks =
+          project.getTasks().withType(AbstractArchiveTask.class);
+      for (AbstractArchiveTask archiveTask : archiveTasks) {
+        Set<Object> archiveSourcePaths = getArchiveSourcePaths(archiveTask.getRootSpec());
+        for (Object sourcePath : archiveSourcePaths) {
+          sourceSets.forEach(sourceSet -> {
+            DefaultGradleSourceSet gradleSourceSet = sourceSetMap.get(sourceSet);
+            if (gradleSourceSet == null) {
+              return;
+            }
+
+            if (sourceSet.getOutput().equals(sourcePath)) {
+              File archiveFile;
+              if (GradleVersion.current().compareTo(GradleVersion.version("5.1")) >= 0) {
+                archiveFile = archiveTask.getArchiveFile().get().getAsFile();
+              } else {
+                archiveFile = archiveTask.getArchivePath();
+              }
+              outputsToSourceSet.put(archiveFile, gradleSourceSet);
+            }
+          });
+        }
+      }
+    }
+
+    // match any classpath entries to other project's output dirs/jars to create dependencies
+    for (DefaultGradleSourceSet sourceSet : sourceSetMap.values()) {
+      Set<BuildTargetDependency> dependencies = new HashSet<>();
+      for (File file : sourceSet.getCompileClasspath()) {
+        DefaultGradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
+        if (otherSourceSet != null) {
+          dependencies.add(new DefaultBuildTargetDependency(otherSourceSet));
+        }
+      }
+      sourceSet.setBuildTargetDependencies(dependencies);
+    }
+
     for (Project project : allProject) {
       SourceSetContainer sourceSets = getSourceSetContainer(project);
       if (sourceSets == null || sourceSets.isEmpty()) {
         continue;
       }
 
-      // dependencies
+      // module dependencies
       sourceSets.forEach(sourceSet -> {
         DefaultGradleSourceSet gradleSourceSet = sourceSetMap.get(sourceSet);
         if (gradleSourceSet == null) {
@@ -172,7 +232,6 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
             exclusionFromDependencies);
         collector.collectByConfigurationNames(getClasspathConfigurationNames(sourceSet));
         gradleSourceSet.setModuleDependencies(collector.getModuleDependencies());
-        gradleSourceSet.setProjectDependencies(collector.getProjectDependencies());
       });
     }
 
@@ -205,6 +264,36 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       }
     }
     return usedName;
+  }
+
+  private Set<Object> getArchiveSourcePaths(CopySpec copySpec) {
+    Set<Object> sourcePaths = new HashSet<>();
+    if (copySpec instanceof DefaultCopySpec) {
+      DefaultCopySpec defaultCopySpec = (DefaultCopySpec) copySpec;
+      sourcePaths.addAll(defaultCopySpec.getSourcePaths());
+      // DefaultCopySpec#getChildren changed from Iterable to Collection
+      if (GradleVersion.current().compareTo(GradleVersion.version("6.2")) >= 0) {
+        for (CopySpec child : defaultCopySpec.getChildren()) {
+          sourcePaths.addAll(getArchiveSourcePaths(child));
+        }
+      } else {
+        try {
+          Method getChildren = defaultCopySpec.getClass().getMethod("getChildren");
+          Object children = getChildren.invoke(defaultCopySpec);
+          if (children instanceof Iterable) {
+            for (Object child : (Iterable<?>) children) {
+              if (child instanceof CopySpec) {
+                sourcePaths.addAll(getArchiveSourcePaths((CopySpec) child));
+              }
+            }
+          }
+        } catch (NoSuchMethodException | IllegalAccessException
+          | IllegalArgumentException | InvocationTargetException e) {
+          // cannot get archive information
+        }
+      }
+    }
+    return sourcePaths;
   }
 
   private SourceSetContainer getSourceSetContainer(Project project) {

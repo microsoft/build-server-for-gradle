@@ -6,8 +6,11 @@ package com.microsoft.java.bs.gradle.model;
 import java.io.Serializable;
 
 /**
- * Represents a project dependency.
+ * Represents a build target dependency.
+ * In Java this is a project:sourceset dependency on a project:sourceset.
  */
-public interface GradleProjectDependency extends Serializable {
+public interface BuildTargetDependency extends Serializable {
   public String getProjectPath();
+
+  public String getSourceSetName();
 }

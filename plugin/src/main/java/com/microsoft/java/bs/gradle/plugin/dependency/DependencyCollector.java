@@ -7,7 +7,6 @@ import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,7 +14,6 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
-import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ArtifactResolutionResult;
 import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
@@ -31,10 +29,8 @@ import org.gradle.language.java.artifact.JavadocArtifact;
 
 import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
-import com.microsoft.java.bs.gradle.model.GradleProjectDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultArtifact;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleModuleDependency;
-import com.microsoft.java.bs.gradle.model.impl.DefaultGradleProjectDependency;
 
 /**
  * Collects dependencies from a {@link SourceSet}.
@@ -46,7 +42,6 @@ public class DependencyCollector {
   private Project project;
   private Set<File> exclusionFromDependencies;
   private Set<GradleModuleDependency> moduleDependencies;
-  private Set<GradleProjectDependency> projectDependencies;
 
   /**
    * Instantiates a new dependency collector.
@@ -55,15 +50,10 @@ public class DependencyCollector {
     this.project = project;
     this.exclusionFromDependencies = exclusionFromDependencies;
     this.moduleDependencies = new LinkedHashSet<>();
-    this.projectDependencies = new LinkedHashSet<>();
   }
 
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
-  }
-
-  public Set<GradleProjectDependency> getProjectDependencies() {
-    return projectDependencies;
   }
 
   /**
@@ -85,8 +75,6 @@ public class DependencyCollector {
         resolveFileArtifactDependency((OpaqueComponentArtifactIdentifier) id, artifactResult);
       } else if (id instanceof ComponentFileArtifactIdentifier) {
         resolveFileArtifactDependency((ComponentFileArtifactIdentifier) id, artifactResult);
-      } else if (id.getComponentIdentifier() instanceof ProjectComponentIdentifier) {
-        resolveProjectDependency((ProjectComponentIdentifier) id.getComponentIdentifier());
       }
     }
   }
@@ -181,15 +169,5 @@ public class DependencyCollector {
         UNKNOWN,
         artifacts
     );
-  }
-
-  private void resolveProjectDependency(ProjectComponentIdentifier id) {
-    if (Objects.equals(id.getProjectPath(), project.getPath())) {
-      return;
-    }
-
-    projectDependencies.add(new DefaultGradleProjectDependency(
-        id.getProjectPath()
-    ));
   }
 }
