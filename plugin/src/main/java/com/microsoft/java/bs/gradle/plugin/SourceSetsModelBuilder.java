@@ -88,6 +88,12 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         sourceSetMap.put(sourceSet, gradleSourceSet);
         gradleSourceSet.setSourceSetName(sourceSet.getName());
         gradleSourceSet.setClassesTaskName(sourceSet.getClassesTaskName());
+        String projectName = stripPathPrefix(gradleSourceSet.getProjectPath());
+        if (projectName == null || projectName.length() == 0) {
+          projectName = gradleSourceSet.getProjectName();
+        }
+        String displayName = projectName + " [" + gradleSourceSet.getSourceSetName() + ']';
+        gradleSourceSet.setDisplayName(displayName);
 
         // source
         Set<File> srcDirs = sourceSet.getJava().getSrcDirs();
@@ -145,19 +151,6 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
           }
         }
       });
-    }
-
-    // run through twice to cope with any name clashes
-    for (DefaultGradleSourceSet sourceSet : sourceSetMap.values()) {
-      if ("main".equals(sourceSet.getSourceSetName())) {
-        sourceSet.setDisplayName(stripPathPrefix(sourceSet.getProjectPath()));
-      }
-    }
-    for (DefaultGradleSourceSet sourceSet : sourceSetMap.values()) {
-      if (!"main".equals(sourceSet.getSourceSetName())) {
-        String uniqueName = createUniqueDisplayName(sourceSet, sourceSetMap);
-        sourceSet.setDisplayName(uniqueName);
-      }
     }
 
     // map all output dirs to their source sets
@@ -243,27 +236,6 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       return projectPath.substring(1);
     }
     return projectPath;
-  }
-
-  private String createUniqueDisplayName(DefaultGradleSourceSet sourceSet,
-      Map<SourceSet, DefaultGradleSourceSet> sourceSetMap) {
-
-    String fullName = stripPathPrefix(sourceSet.getProjectPath()) + "-"
-        + sourceSet.getSourceSetName();
-    // has the suffix caused a clash - apply a numbered suffix
-    String usedName = fullName;
-    int i = 2;
-    boolean found = true;
-    while (found) {
-      String nameToTest = usedName;
-      if (sourceSetMap.values().stream().noneMatch(ss -> nameToTest.equals(ss.getDisplayName()))) {
-        found = false;
-      } else {
-        usedName = fullName + i;
-        i++;
-      }
-    }
-    return usedName;
   }
 
   private Set<Object> getArchiveSourcePaths(CopySpec copySpec) {
