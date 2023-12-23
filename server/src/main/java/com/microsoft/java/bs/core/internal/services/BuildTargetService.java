@@ -8,6 +8,7 @@ import static com.microsoft.java.bs.core.Launcher.LOGGER;
 import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,11 +26,13 @@ import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
+import com.microsoft.java.bs.core.internal.model.GradleTestEntity;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleTestTask;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetEvent;
@@ -45,6 +48,10 @@ import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsItem;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.JvmEnvironmentItem;
+import ch.epfl.scala.bsp4j.JvmMainClass;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentResult;
 import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
@@ -312,6 +319,57 @@ public class BuildTargetService {
       ));
     }
     return new JavacOptionsResult(items);
+  }
+
+  /**
+   * get the test classes.
+   */
+  public JvmTestEnvironmentResult getBuildTargetJvmTestEnvironment(
+      JvmTestEnvironmentParams params) {
+    Map<BuildTargetIdentifier, List<GradleTestEntity>> mainClassesMap = new HashMap<>();
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets =
+        groupBuildTargetsByRootDir(params.getTargets());
+    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
+      Set<BuildTargetIdentifier> btIds = entry.getValue();
+      Map<BuildTargetIdentifier, Set<GradleTestTask>> testTaskMap = new HashMap<>();
+      for (BuildTargetIdentifier btId : btIds) {
+        GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+        if (target == null) {
+          LOGGER.warning("Skip test collection for the build target: " + btId.getUri()
+              + ". Because it cannot be found in the cache.");
+          continue;
+        }
+        testTaskMap.put(btId, target.getSourceSet().getTestTasks());
+      }
+      URI projectUri = entry.getKey();
+      Map<BuildTargetIdentifier, List<GradleTestEntity>> partialMainClassesMap =
+          connector.getTestClasses(projectUri, testTaskMap);
+      mainClassesMap.putAll(partialMainClassesMap);
+    }
+    List<JvmEnvironmentItem> items = new ArrayList<>();
+    for (Map.Entry<BuildTargetIdentifier, List<GradleTestEntity>> entry :
+        mainClassesMap.entrySet()) {
+      for (GradleTestEntity gradleTestEntity : entry.getValue()) {
+        GradleTestTask gradleTestTask = gradleTestEntity.getGradleTestTask();
+        List<String> classpath = gradleTestTask.getClasspath()
+            .stream()
+            .map(file -> file.toURI().toString())
+            .collect(Collectors.toList());
+        List<String> jvmOptions = gradleTestTask.getJvmOptions();
+        String workingDirectory = gradleTestTask.getWorkingDirectory().toURI().toString();
+        Map<String, String> environmentVariables = gradleTestTask.getEnvironmentVariables();
+        List<JvmMainClass> mainClasses = gradleTestEntity.getTestClasses()
+            .stream()
+            .map(mainClass -> new JvmMainClass(mainClass, Collections.emptyList()))
+            .collect(Collectors.toList());
+        JvmEnvironmentItem item = new JvmEnvironmentItem(entry.getKey(),
+            classpath, jvmOptions, workingDirectory, environmentVariables);
+        item.setMainClasses(mainClasses);
+        items.add(item);
+      }
+    }    
+    JvmTestEnvironmentResult result = new JvmTestEnvironmentResult(items);
+    return result;
   }
 
   /**

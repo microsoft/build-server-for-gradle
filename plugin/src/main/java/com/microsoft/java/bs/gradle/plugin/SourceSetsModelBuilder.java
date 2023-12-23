@@ -46,9 +46,11 @@ import org.gradle.util.GradleVersion;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleTestTask;
 import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleTestTask;
 import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
 
 /**
@@ -140,16 +142,27 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSets.add(gradleSourceSet);
 
         // tests
+        Set<GradleTestTask> testTasks = new HashSet<>();
         if (sourceOutputDir != null) {
-          TaskCollection<Test> testTasks = project.getTasks().withType(Test.class);
-          for (Test testTask : testTasks) {
-            FileCollection files = testTask.getTestClassesDirs();
+          TaskCollection<Test> tasks = project.getTasks().withType(Test.class);
+          for (Test task : tasks) {
+            FileCollection files = task.getTestClassesDirs();
             if (files.contains(sourceOutputDir)) {
-              gradleSourceSet.setHasTests(true);
-              break;
+              String taskPath = task.getPath();
+              List<File> classpath = new LinkedList<>(task.getClasspath().getFiles());
+              List<String> jvmOptions = task.getAllJvmArgs();
+              File workingDirectory = task.getWorkingDir();
+              Map<String, String> environmentVariables = task.getEnvironment().entrySet()
+                  .stream()
+                  .collect(Collectors.toMap(Map.Entry::getKey, Object::toString));
+              GradleTestTask testTask = new DefaultGradleTestTask(taskPath, classpath,
+                  jvmOptions, workingDirectory, environmentVariables);
+              testTasks.add(testTask);
             }
           }
         }
+        
+        gradleSourceSet.setTestTasks(testTasks);
       });
     }
 

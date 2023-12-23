@@ -10,9 +10,13 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnectionException;
@@ -21,12 +25,16 @@ import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.events.OperationType;
 import org.gradle.tooling.model.build.BuildEnvironment;
+import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
+import com.microsoft.java.bs.core.internal.model.GradleTestEntity;
 import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TaskProgressReporter;
+import com.microsoft.java.bs.core.internal.reporter.TestNameRecorder;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleTestTask;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
@@ -49,15 +57,19 @@ public class GradleApiConnector {
    */
   public String getGradleVersion(URI projectUri) {
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      BuildEnvironment model = connection
-          .model(BuildEnvironment.class)
-          .withArguments("--no-daemon")
-          .get();
-      return model.getGradle().getGradleVersion();
+      return getGradleVersion(connection);
     } catch (BuildException e) {
       LOGGER.severe("Failed to get Gradle version: " + e.getMessage());
       return "";
     }
+  }
+
+  private String getGradleVersion(ProjectConnection connection) {
+    BuildEnvironment model = connection
+        .model(BuildEnvironment.class)
+        .withArguments("--no-daemon")
+        .get();
+    return model.getGradle().getGradleVersion();
   }
 
   /**
@@ -137,6 +149,74 @@ public class GradleApiConnector {
     }
 
     return statusCode;
+  }
+
+  /**
+   * request Gradle to return test classes.
+   */
+  public Map<BuildTargetIdentifier, List<GradleTestEntity>> getTestClasses(URI projectUri,
+      Map<BuildTargetIdentifier, Set<GradleTestTask>> testTaskMap) {
+ 
+    Map<BuildTargetIdentifier, List<GradleTestEntity>> results = new HashMap<>();
+    DefaultProgressReporter reporter = new DefaultProgressReporter();
+
+    reporter.taskStarted("Search for test classes");
+    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
+      String gradleVersion = getGradleVersion(connection);
+      // use --test-dry-run to discover tests.  Gradle version must be 8.3 or higher.
+      if (GradleVersion.version(gradleVersion).compareTo(GradleVersion.version("8.3")) < 0) {
+        reporter.taskFinished("Error searching for test classes: Gradle version "
+            + gradleVersion + " must be >= 8.3", StatusCode.ERROR);
+      } else {
+        for (Map.Entry<BuildTargetIdentifier, Set<GradleTestTask>> entry :
+            testTaskMap.entrySet()) {
+          List<GradleTestEntity> gradleTestEntities = new LinkedList<>();
+          for (GradleTestTask gradleTestTask : entry.getValue()) {
+            // can't pass arguments to tasks e.g. "--test-dry-run"
+            // so manipulate test task using init script.
+            File initScript = Utils.createInitScriptFile("gradle.projectsLoaded {"
+                + "   rootProject {"
+                + "    tasks.getByPath('" + gradleTestTask.getTaskPath() + "')?.setDryRun(true)"
+                + "   }"
+                + " }");
+            try {
+              DefaultProgressReporter taskReporter = new DefaultProgressReporter();
+              taskReporter.taskStarted("Search for test classes in "
+                  + gradleTestTask.getTaskPath());
+              TestNameRecorder testNameRecorder = new TestNameRecorder();
+              try {
+                Utils.getTestLauncher(connection, preferenceManager.getPreferences())
+                    .forTasks(gradleTestTask.getTaskPath())
+                    .addArguments("--init-script", initScript.getAbsolutePath())
+                    .addProgressListener(testNameRecorder, OperationType.TEST)
+                    .run();
+                taskReporter.taskFinished("Finished test classes search in " 
+                    + gradleTestTask.getTaskPath(), StatusCode.OK);
+              } catch (GradleConnectionException | IllegalStateException e) {
+                String message = ExceptionUtils.getRootCauseStackTraceList(e).stream()
+                    .collect(Collectors.joining("\n"));
+                taskReporter.taskFinished("Error searching for test classes in " 
+                    + gradleTestTask.getTaskPath() + " "
+                    + message, StatusCode.ERROR);
+              }
+              Set<String> mainClasses = testNameRecorder.getMainClasses();
+              GradleTestEntity gradleTestEntity = new GradleTestEntity(gradleTestTask, mainClasses);
+              gradleTestEntities.add(gradleTestEntity);
+            } finally {
+              initScript.delete();
+            }
+          }
+
+          results.put(entry.getKey(), gradleTestEntities);
+        }
+        reporter.taskFinished("Finished test classes search", StatusCode.OK);
+      }
+    } catch (GradleConnectionException | IllegalStateException e) {
+      reporter.taskFinished("Error searching for test classes: "
+          + e.getMessage(), StatusCode.ERROR);
+    }
+
+    return results;
   }
 
   public void shutdown() {

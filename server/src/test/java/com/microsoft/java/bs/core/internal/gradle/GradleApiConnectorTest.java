@@ -11,6 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -18,9 +22,13 @@ import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
+import com.microsoft.java.bs.core.internal.model.GradleTestEntity;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleTestTask;
+
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 
 class GradleApiConnectorTest {
 
@@ -82,6 +90,14 @@ class GradleApiConnectorTest {
     return sourceSet;
   }
 
+  private void assertHasTaskPath(Set<GradleTestTask> paths, String path) {
+    assertTrue(paths.stream().anyMatch(task -> task.getTaskPath().equals(path)), () -> {
+      String pathsAsStr = paths.stream().map(task -> task.getTaskPath())
+          .collect(Collectors.joining(", "));
+      return "Task path not found [" + path + "] in [" + pathsAsStr + ']';
+    });
+  }
+
   @Test
   void testGetGradleDuplicateNestedProjectNames() {
     File projectDir = projectPath.resolve("duplicate-nested-project-names").toFile();
@@ -112,11 +128,21 @@ class GradleApiConnectorTest {
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(5, gradleSourceSets.getGradleSourceSets().size());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [main]").hasTests());
-    assertTrue(findSourceSet(gradleSourceSets, "test-tag [test]").hasTests());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [noTests]").hasTests());
-    assertTrue(findSourceSet(gradleSourceSets, "test-tag [intTest]").hasTests());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [testFixtures]").hasTests());
+
+    GradleSourceSet main = findSourceSet(gradleSourceSets, "test-tag [main]");
+    assertFalse(main.hasTests());
+    GradleSourceSet test = findSourceSet(gradleSourceSets, "test-tag [test]");
+    assertTrue(test.hasTests());
+    assertEquals(1, test.getTestTasks().size());
+    assertHasTaskPath(test.getTestTasks(), ":test");
+    GradleSourceSet noTests = findSourceSet(gradleSourceSets, "test-tag [noTests]");
+    assertFalse(noTests.hasTests());
+    GradleSourceSet intTest = findSourceSet(gradleSourceSets, "test-tag [intTest]");
+    assertTrue(intTest.hasTests());
+    assertEquals(1, intTest.getTestTasks().size());
+    assertHasTaskPath(intTest.getTestTasks(), ":integrationTest");
+    GradleSourceSet testFixtures = findSourceSet(gradleSourceSets, "test-tag [testFixtures]");
+    assertFalse(testFixtures.hasTests());
   }
 
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,
@@ -231,5 +257,47 @@ class GradleApiConnectorTest {
     GradleSourceSet testA = findSourceSet(gradleSourceSets, "a [test]");
     GradleSourceSet testB = findSourceSet(gradleSourceSets, "b [test]");
     assertHasBuildTargetDependency(testB, testA);
+  }
+
+  @Test
+  void testGetJvmTestEnviroment() {
+    File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
+    Preferences preferences = new Preferences();
+    // test discovery uses --test-dry-run which was added in 8.3
+    preferences.setGradleVersion("8.3");
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(preferences);
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+
+    Map<BuildTargetIdentifier, Set<GradleTestTask>> testTaskMap = new HashMap<>();
+    for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+      BuildTargetIdentifier fakeBt = new BuildTargetIdentifier(gradleSourceSet.getDisplayName());
+      testTaskMap.put(fakeBt, gradleSourceSet.getTestTasks());
+    }
+    Map<BuildTargetIdentifier, List<GradleTestEntity>> tests =
+          connector.getTestClasses(projectDir.toURI(), testTaskMap);
+    assertHasTestClass(tests, "junit5-jupiter-starter-gradle [test]",
+        "com.example.project.CalculatorTests");
+  }
+
+  private void assertHasTestClass(Map<BuildTargetIdentifier, List<GradleTestEntity>> tests,
+      String sourceSetDisplayName, String className) {
+    List<GradleTestEntity> btTests = tests.entrySet().stream()
+        .filter(entry -> entry.getKey().getUri().equals(sourceSetDisplayName))
+        .flatMap(entry -> entry.getValue().stream())
+        .collect(Collectors.toList());
+    assertTrue(btTests.size() > 0,
+        () -> "SourceSet " + sourceSetDisplayName + " not found in "
+        + tests.keySet().stream()
+          .map(bt -> bt.getUri())
+          .collect(Collectors.joining(", ")));
+
+    List<String> btTestClasses = btTests.stream()
+        .flatMap(entity -> entity.getTestClasses().stream())
+        .collect(Collectors.toList());
+    assertTrue(btTestClasses.contains(className),
+        () -> "Test class " + className + " not found in "
+        + String.join(", ", btTestClasses));
   }
 }

@@ -41,6 +41,11 @@ import ch.epfl.scala.bsp4j.InverseSourcesResult;
 import ch.epfl.scala.bsp4j.JavaBuildServer;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.JvmBuildServer;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentResult;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentResult;
 import ch.epfl.scala.bsp4j.OutputPathsParams;
 import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesParams;
@@ -56,7 +61,7 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 /**
  * The implementation of the Build Server Protocol.
  */
-public class GradleBuildServer implements BuildServer, JavaBuildServer {
+public class GradleBuildServer implements BuildServer, JavaBuildServer, JvmBuildServer {
 
   private LifecycleService lifecycleService;
 
@@ -172,6 +177,21 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
   public CompletableFuture<JavacOptionsResult> buildTargetJavacOptions(JavacOptionsParams params) {
     return handleRequest("buildTarget/javacOptions", cc ->
         buildTargetService.getBuildTargetJavacOptions(params));
+  }
+
+  @Override
+  public CompletableFuture<JvmRunEnvironmentResult> jvmRunEnvironment(
+      JvmRunEnvironmentParams params) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException(
+      "Unimplemented method 'buildTarget/jvmRunEnvironment'");
+  }
+
+  @Override
+  public CompletableFuture<JvmTestEnvironmentResult> jvmTestEnvironment(
+      JvmTestEnvironmentParams params) {
+    return handleRequest("buildTarget/jvmTestEnvironment", cc ->
+        buildTargetService.getBuildTargetJvmTestEnvironment(params));
   }
 
   private void handleNotification(String methodName, Runnable runnable, boolean async) {
