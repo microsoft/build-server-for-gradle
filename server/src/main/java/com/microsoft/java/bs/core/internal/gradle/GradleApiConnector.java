@@ -14,8 +14,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+import ch.epfl.scala.bsp4j.BuildClient;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
@@ -31,8 +31,11 @@ import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.GradleTestEntity;
 import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
+import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TaskProgressReporter;
+import com.microsoft.java.bs.core.internal.reporter.TestFinishReporter;
 import com.microsoft.java.bs.core.internal.reporter.TestNameRecorder;
+import com.microsoft.java.bs.core.internal.reporter.TestReportReporter;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.GradleTestTask;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
@@ -44,12 +47,17 @@ import ch.epfl.scala.bsp4j.StatusCode;
  * Connect to Gradle Daemon via Gradle Tooling API.
  */
 public class GradleApiConnector {
-  private Map<File, GradleConnector> connectors;
-  private PreferenceManager preferenceManager;
+  private final Map<File, GradleConnector> connectors;
+  private final PreferenceManager preferenceManager;
+  private BuildClient client;
 
   public GradleApiConnector(PreferenceManager preferenceManager) {
     this.preferenceManager = preferenceManager;
     connectors = new HashMap<>();
+  }
+
+  public void setClient(BuildClient client) {
+    this.client = client;
   }
 
   /**
@@ -83,8 +91,8 @@ public class GradleApiConnector {
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
-    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
-    String summary = "";
+    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter(client));
+    String summary = "Source sets retrieved";
     StatusCode statusCode = StatusCode.OK;
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
       reporter.taskStarted("Connect to Gradle Daemon");
@@ -121,7 +129,7 @@ public class GradleApiConnector {
     // Gradle call for the perf consideration. So, the build target id passed into the reporter
     // is not accurate.
     TaskProgressReporter reporter = new TaskProgressReporter(new CompileProgressReporter(
-        btIds.iterator().next()));
+        btIds.iterator().next(), client));
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     String summary = "BUILD SUCCESSFUL";
     StatusCode statusCode = StatusCode.OK;
@@ -158,7 +166,7 @@ public class GradleApiConnector {
       Map<BuildTargetIdentifier, Set<GradleTestTask>> testTaskMap) {
  
     Map<BuildTargetIdentifier, List<GradleTestEntity>> results = new HashMap<>();
-    DefaultProgressReporter reporter = new DefaultProgressReporter();
+    DefaultProgressReporter reporter = new DefaultProgressReporter(client);
 
     reporter.taskStarted("Search for test classes");
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
@@ -180,7 +188,7 @@ public class GradleApiConnector {
                 + "   }"
                 + " }");
             try {
-              DefaultProgressReporter taskReporter = new DefaultProgressReporter();
+              DefaultProgressReporter taskReporter = new DefaultProgressReporter(client);
               taskReporter.taskStarted("Search for test classes in "
                   + gradleTestTask.getTaskPath());
               TestNameRecorder testNameRecorder = new TestNameRecorder();
@@ -193,8 +201,7 @@ public class GradleApiConnector {
                 taskReporter.taskFinished("Finished test classes search in " 
                     + gradleTestTask.getTaskPath(), StatusCode.OK);
               } catch (GradleConnectionException | IllegalStateException e) {
-                String message = ExceptionUtils.getRootCauseStackTraceList(e).stream()
-                    .collect(Collectors.joining("\n"));
+                String message = String.join("\n", ExceptionUtils.getRootCauseStackTraceList(e));
                 taskReporter.taskFinished("Error searching for test classes in " 
                     + gradleTestTask.getTaskPath() + " "
                     + message, StatusCode.ERROR);
@@ -217,6 +224,42 @@ public class GradleApiConnector {
     }
 
     return results;
+  }
+
+  /**
+   * request Gradle to run test classes.
+   */
+  public StatusCode runTestClasses(URI projectUri,
+      Map<BuildTargetIdentifier, Set<String>> testClassesMap) {
+
+    StatusCode statusCode = StatusCode.OK;
+    ProgressReporter reporter = new DefaultProgressReporter(client);
+    reporter.taskStarted("Start tests");
+    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
+      for (Map.Entry<BuildTargetIdentifier, Set<String>> entry : testClassesMap.entrySet()) {
+        reporter.taskInProgress("Run tests for " + entry.getKey());
+        TestReportReporter testReportReporter = new TestReportReporter(entry.getKey(), client);
+        TestFinishReporter testFinishReporter = new TestFinishReporter(client);
+        try {
+          Utils.getTestLauncher(connection, preferenceManager.getPreferences())
+              .withJvmTestClasses(entry.getValue())
+              .addProgressListener(testReportReporter, OperationType.TEST)
+              .addProgressListener(testFinishReporter, OperationType.TEST)
+              .run();
+        } catch (GradleConnectionException | IllegalStateException e) {
+          testReportReporter.addException(e);
+          statusCode = StatusCode.ERROR;
+        } finally {
+          testReportReporter.sendResult();
+        }
+      }
+      reporter.taskFinished("Finished tests", StatusCode.OK);
+    } catch (GradleConnectionException | IllegalStateException e) {
+      reporter.taskFinished("Error running test classes: " + e.getMessage(), StatusCode.ERROR);
+      statusCode = StatusCode.ERROR;
+    }
+
+    return statusCode;
   }
 
   public void shutdown() {

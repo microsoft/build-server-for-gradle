@@ -46,7 +46,7 @@ public class Utils {
    */
   private static final String GRADLE_USER_HOME = "GRADLE_USER_HOME";
 
-  private static final String DEFAULT_BUILDSHIP_GRADLE_VERSION = "7.4.2";
+  private static final String DEFAULT_BUILDSHIP_GRADLE_VERSION = "8.5";
 
   /**
    * Get the Gradle connector for the project.

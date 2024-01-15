@@ -5,8 +5,6 @@ package com.microsoft.java.bs.core.internal.reporter;
 
 import java.util.UUID;
 
-import com.microsoft.java.bs.core.Launcher;
-
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.CompileReport;
@@ -23,19 +21,19 @@ import ch.epfl.scala.bsp4j.TaskStartParams;
  */
 public class CompileProgressReporter implements ProgressReporter {
 
-  private BuildTargetIdentifier btId;
+  private final BuildTargetIdentifier btId;
   private final TaskId taskId;
-  private BuildClient client;
+  private final BuildClient client;
 
   /**
    * Instantiates a {@link CompileProgressReporter}.
    *
    * @param btId Build target identifier
    */
-  public CompileProgressReporter(BuildTargetIdentifier btId) {
+  public CompileProgressReporter(BuildTargetIdentifier btId, BuildClient client) {
     this.btId = btId;
     this.taskId = new TaskId(UUID.randomUUID().toString());
-    client = Launcher.client;
+    this.client = client;
   }
 
   @Override
@@ -44,9 +42,7 @@ public class CompileProgressReporter implements ProgressReporter {
     startParam.setMessage(message);
     startParam.setDataKind(TaskDataKind.COMPILE_TASK);
     startParam.setData(new CompileTask(this.btId));
-    if (client != null) {
-      client.onBuildTaskStart(startParam);
-    }
+    client.onBuildTaskStart(startParam);
   }
 
   @Override
@@ -54,9 +50,7 @@ public class CompileProgressReporter implements ProgressReporter {
     TaskProgressParams progressParam = new TaskProgressParams(taskId);
     progressParam.setMessage(message);
     progressParam.setDataKind(TaskDataKind.COMPILE_TASK);
-    if (client != null) {
-      client.onBuildTaskProgress(progressParam);
-    }
+    client.onBuildTaskProgress(progressParam);
   }
 
   @Override
@@ -65,10 +59,7 @@ public class CompileProgressReporter implements ProgressReporter {
     endParam.setMessage(message);
     endParam.setDataKind(TaskDataKind.COMPILE_REPORT);
     endParam.setData(new CompileReport(this.btId, 0, 0)); // TODO: parse the errors and warnings
-    if (client != null) {
-      client.onBuildTaskFinish(endParam);
-    }
-    client = null;
+    client.onBuildTaskFinish(endParam);
   }
 }
 

@@ -59,7 +59,7 @@ public class BuildTargetManager {
           Collections.emptyList(),
           new BuildTargetCapabilities(
             true /* canCompile */,
-            false /* canTest */,
+            true /* canTest */,
             false /* canRun */,
             false /* canDebug */
           )

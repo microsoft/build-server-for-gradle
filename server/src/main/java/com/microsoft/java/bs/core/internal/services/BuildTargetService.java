@@ -19,9 +19,11 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import ch.epfl.scala.bsp4j.BuildClient;
+import ch.epfl.scala.bsp4j.ScalaTestClassesItem;
+import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
@@ -63,12 +65,16 @@ import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesItem;
 import ch.epfl.scala.bsp4j.ResourcesParams;
 import ch.epfl.scala.bsp4j.ResourcesResult;
+import ch.epfl.scala.bsp4j.ScalaTestParams;
 import ch.epfl.scala.bsp4j.SourceItem;
 import ch.epfl.scala.bsp4j.SourceItemKind;
 import ch.epfl.scala.bsp4j.SourcesItem;
 import ch.epfl.scala.bsp4j.SourcesParams;
 import ch.epfl.scala.bsp4j.SourcesResult;
 import ch.epfl.scala.bsp4j.StatusCode;
+import ch.epfl.scala.bsp4j.TestParams;
+import ch.epfl.scala.bsp4j.TestParamsDataKind;
+import ch.epfl.scala.bsp4j.TestResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 
 /**
@@ -78,11 +84,13 @@ public class BuildTargetService {
 
   private static final String MAVEN_DATA_KIND = "maven";
 
-  private BuildTargetManager buildTargetManager;
+  private final BuildTargetManager buildTargetManager;
 
-  private GradleApiConnector connector;
+  private final GradleApiConnector connector;
 
-  private PreferenceManager preferenceManager;
+  private final PreferenceManager preferenceManager;
+
+  private BuildClient client;
 
   /**
    * Initialize the build target service.
@@ -95,6 +103,11 @@ public class BuildTargetService {
     this.buildTargetManager = buildTargetManager;
     this.connector = connector;
     this.preferenceManager = preferenceManager;
+  }
+
+  public void setClient(BuildClient client) {
+    this.client = client;
+    connector.setClient(client);
   }
 
   /**
@@ -367,9 +380,39 @@ public class BuildTargetService {
         item.setMainClasses(mainClasses);
         items.add(item);
       }
-    }    
-    JvmTestEnvironmentResult result = new JvmTestEnvironmentResult(items);
-    return result;
+    }
+    return new JvmTestEnvironmentResult(items);
+  }
+
+  /**
+   * Run the test classes.
+   */
+  public TestResult buildTargetTest(TestParams params) {
+    TestResult testResult = new TestResult(StatusCode.OK);
+    testResult.setOriginId(params.getOriginId());
+    if (!TestParamsDataKind.SCALA_TEST.equals(params.getDataKind())) {
+      LOGGER.warning("Test Data Kind " + params.getDataKind() + " not supported");
+      testResult.setStatusCode(StatusCode.ERROR);
+    } else {
+      Map<URI, Set<BuildTargetIdentifier>> groupedTargets =
+          groupBuildTargetsByRootDir(params.getTargets());
+      for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
+        // ideally BSP would have a jvmTestEnv style testkind for executing tests, not scala.
+        ScalaTestParams testParams = JsonUtils.toModel(params.getData(), ScalaTestParams.class);
+        Map<BuildTargetIdentifier, Set<String>> testClasses =
+            testParams.getTestClasses().stream()
+              .collect(Collectors.toMap(ScalaTestClassesItem::getTarget,
+                item -> item.getClasses().stream().collect(Collectors.toSet())));
+
+        StatusCode statusCode = connector.runTestClasses(entry.getKey(), testClasses);
+
+        // TODO send back TestFinish + TestReport messages???
+        if (statusCode != StatusCode.OK) {
+          testResult.setStatusCode(statusCode);
+        }
+      }
+    }
+    return testResult;    
   }
 
   /**
@@ -468,7 +511,7 @@ public class BuildTargetService {
           .map(BuildTargetEvent::new)
           .collect(Collectors.toList());
       DidChangeBuildTarget param = new DidChangeBuildTarget(events);
-      Launcher.client.onBuildTargetDidChange(param);
+      client.onBuildTargetDidChange(param);
     }
   }
 }
