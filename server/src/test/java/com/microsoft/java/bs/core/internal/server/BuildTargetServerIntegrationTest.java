@@ -6,7 +6,6 @@ package com.microsoft.java.bs.core.internal.server;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,10 +14,13 @@ import java.io.PipedOutputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
 
 import ch.epfl.scala.bsp4j.BuildClient;
@@ -29,6 +31,10 @@ import ch.epfl.scala.bsp4j.JavaBuildServer;
 import ch.epfl.scala.bsp4j.JvmBuildServer;
 import ch.epfl.scala.bsp4j.LogMessageParams;
 import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
+import ch.epfl.scala.bsp4j.RunParams;
+import ch.epfl.scala.bsp4j.RunParamsDataKind;
+import ch.epfl.scala.bsp4j.RunResult;
+import ch.epfl.scala.bsp4j.ScalaMainClass;
 import ch.epfl.scala.bsp4j.ShowMessageParams;
 import ch.epfl.scala.bsp4j.TaskFinishParams;
 import ch.epfl.scala.bsp4j.TaskProgressParams;
@@ -84,39 +90,46 @@ class BuildTargetServerIntegrationTest {
   }
 
   private static class TestClient implements BuildClient {
-
     private final List<CompileReport> compileReports = new ArrayList<>();
     private final List<CompileResult> compileResults = new ArrayList<>();
     private final List<TestReport> testReports = new ArrayList<>();
     private final List<TestFinish> testFinishes = new ArrayList<>();
+    private final List<String> genericReports = new ArrayList<>();
 
     void clearMessages() {
       compileReports.clear();
       compileResults.clear();
       testReports.clear();
       testFinishes.clear();
+      genericReports.clear();
     }
 
-    void waitOnMessages(int compileReportsSize,
-                        int compileResultsSize,
-                        int testReportsSize,
-                        int testFinishesSize) {
+    void waitOnCompileReports(int size) {
+      waitOnMessages("Compile Reports", size, compileReports::size);
+    }
+
+    void waitOnCompileResults(int size) {
+      waitOnMessages("Compile Results", size, compileResults::size);
+    }
+
+    void waitOnTestReports(int size) {
+      waitOnMessages("Test Reports", size, testReports::size);
+    }
+
+    void waitOnTestFinishes(int size) {
+      waitOnMessages("Test Finishes", size, testFinishes::size);
+    }
+
+    void waitOnGenericReports(int size) {
+      waitOnMessages("Generic Reports", size, genericReports::size);
+    }
+
+    private void waitOnMessages(String message,
+                        int size,
+                        IntSupplier sizeSupplier) {
       long defaultTimeout = 10000;
-      waitOnMessages(defaultTimeout,
-          compileReportsSize, compileResultsSize, 
-          testReportsSize, testFinishesSize);
-    }
-
-    void waitOnMessages(long timeout,
-                        int compileReportsSize,
-                        int compileResultsSize,
-                        int testReportsSize,
-                        int testFinishesSize) {
-      long endTime = System.currentTimeMillis() + timeout;
-      while ((compileReports.size() < compileReportsSize
-              || compileResults.size() < compileResultsSize
-              || testReports.size() < testReportsSize
-              || testFinishes.size() < testFinishesSize)
+      long endTime = System.currentTimeMillis() + defaultTimeout;
+      while (sizeSupplier.getAsInt() != size
               && System.currentTimeMillis() < endTime) {
         synchronized (this) {
           long waitTime = endTime - System.currentTimeMillis();
@@ -129,10 +142,7 @@ class BuildTargetServerIntegrationTest {
           }
         }
       }
-      assertEquals(compileReportsSize, compileReports.size(), "Compile report count error");
-      assertEquals(compileResultsSize, compileResults.size(), "Compile result count error");
-      assertEquals(testReportsSize, testReports.size(), "Test report count error");
-      assertEquals(testFinishesSize, testFinishes.size(), "Test finish count error");
+      assertEquals(size, sizeSupplier.getAsInt(), message + " count error");
     }
 
     @Override
@@ -166,10 +176,14 @@ class BuildTargetServerIntegrationTest {
           testReports.add(JsonUtils.toModel(params.getData(), TestReport.class));
         } else if (params.getDataKind().equals("test-finish")) {
           testFinishes.add(JsonUtils.toModel(params.getData(), TestFinish.class));
+        } else {
+          genericReports.add(params.getMessage());
         }
-        synchronized (this) {
-          notify();
-        }
+      } else {
+        genericReports.add(params.getMessage());
+      }
+      synchronized (this) {
+        notify();
       }
     }
 
@@ -288,7 +302,7 @@ class BuildTargetServerIntegrationTest {
     CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
     CleanCacheResult cleanResult = gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
     // a clean will result in a single CompileReport because of GradleApiConnector#runTasks
-    client.waitOnMessages(1, 0, 0, 0);
+    client.waitOnCompileReports(1);
     assertTrue(cleanResult.getCleaned());
     client.clearMessages();
 
@@ -297,7 +311,7 @@ class BuildTargetServerIntegrationTest {
     CompileResult compileResult = gradleBuildServer.buildTargetCompile(compileParams).join();
     assertEquals(StatusCode.OK, compileResult.getStatusCode());
     // compiling will result in a single CompileReport because of GradleApiConnector#runTasks
-    client.waitOnMessages(1, 0, 0, 0);
+    client.waitOnCompileReports(1);
     client.clearMessages();
 
     // RETRIEVE TEST NAMES
@@ -320,12 +334,43 @@ class BuildTargetServerIntegrationTest {
     testParams.setDataKind(TestParamsDataKind.SCALA_TEST);
     testParams.setData(scalaTestParams);
     TestResult testResult = gradleBuildServer.buildTargetTest(testParams).join();
-    client.waitOnMessages(0, 0, 1, 5);
+    client.waitOnTestFinishes(5);
+    client.waitOnTestReports(1);
     assertEquals(StatusCode.OK, testResult.getStatusCode());
+    client.clearMessages();
+
+    // RUN MAIN
+    ScalaMainClass mainClass = new ScalaMainClass("com.example.project.Calculator",
+        Collections.emptyList(), Collections.emptyList());
+    BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(),
+        "junit5-jupiter-starter-gradle [main]");
+    RunParams runParams = new RunParams(btId);
+    runParams.setDataKind(RunParamsDataKind.SCALA_MAIN_CLASS);
+    runParams.setData(mainClass);
+    RunResult runResult = gradleBuildServer.buildTargetRun(runParams).join();
+    client.waitOnGenericReports(1);
+    assertEquals(StatusCode.OK, runResult.getStatusCode(),
+            () -> client.genericReports.stream()
+                    .collect(Collectors.joining("\n")));
     client.clearMessages();
   }
 
-  private JvmEnvironmentItem findTest(JvmTestEnvironmentResult testEnvResult, String mainClass) {
+  private static BuildTargetIdentifier findTarget(List<BuildTarget> targets,
+      String displayName) {
+    Optional<BuildTarget> matchingTargets = targets.stream()
+            .filter(res -> displayName.equals(res.getDisplayName()))
+            .findAny();
+    assertFalse(matchingTargets.isEmpty(), () -> {
+      List<String> targetNames = targets.stream()
+              .map(BuildTarget::getDisplayName)
+              .collect(Collectors.toList());
+      return "Target " + displayName + " not found in " + targetNames;
+    });
+    return matchingTargets.get().getId();
+  }
+
+  private static JvmEnvironmentItem findTest(
+      JvmTestEnvironmentResult testEnvResult, String mainClass) {
     List<JvmEnvironmentItem> tests = testEnvResult.getItems().stream()
             .filter(res -> res.getMainClasses().stream()
                 .anyMatch(main -> main.getClassName().equals(mainClass)))

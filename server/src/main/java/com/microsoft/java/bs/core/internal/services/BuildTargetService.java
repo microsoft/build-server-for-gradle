@@ -20,6 +20,10 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import ch.epfl.scala.bsp4j.BuildClient;
+import ch.epfl.scala.bsp4j.RunParams;
+import ch.epfl.scala.bsp4j.RunParamsDataKind;
+import ch.epfl.scala.bsp4j.RunResult;
+import ch.epfl.scala.bsp4j.ScalaMainClass;
 import ch.epfl.scala.bsp4j.ScalaTestClassesItem;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -406,13 +410,51 @@ public class BuildTargetService {
 
         StatusCode statusCode = connector.runTestClasses(entry.getKey(), testClasses);
 
-        // TODO send back TestFinish + TestReport messages???
         if (statusCode != StatusCode.OK) {
           testResult.setStatusCode(statusCode);
         }
       }
     }
     return testResult;    
+  }
+
+  /**
+   * Run the main class.
+   */
+  public RunResult buildTargetRun(RunParams params) {
+    RunResult runResult = new RunResult(StatusCode.OK);
+    runResult.setOriginId(params.getOriginId());
+    if (!RunParamsDataKind.SCALA_MAIN_CLASS.equals(params.getDataKind())) {
+      LOGGER.warning("Run Data Kind " + params.getDataKind() + " not supported");
+      runResult.setStatusCode(StatusCode.ERROR);
+    } else {
+      GradleBuildTarget buildTarget = getBuildTarget(params.getTarget());
+      URI projectUri = getRootProjectUri(params.getTarget());
+      // ideally BSP would have a jvmRunEnv style runkind for executing tests, not scala.
+      ScalaMainClass mainClass = JsonUtils.toModel(params.getData(), ScalaMainClass.class);
+      // TODO it's not clear which argument set takes precedence
+      List<String> arguments1 = params.getArguments();
+      List<String> arguments2 = mainClass.getArguments();
+      List<String> argumentsToUse;
+      if (arguments1 == null || arguments1.isEmpty()) {
+        argumentsToUse = arguments2;
+      } else {
+        argumentsToUse = arguments1;
+      }
+      // TODO upgrade to later BSP version and then env vars can be passed to runMainClass
+      StatusCode statusCode = connector.runMainClass(projectUri,
+              buildTarget.getSourceSet().getProjectPath(),
+              buildTarget.getSourceSet().getSourceSetName(),
+              mainClass.getClassName(),
+              null,
+              mainClass.getJvmOptions(),
+              argumentsToUse);
+
+      if (statusCode != StatusCode.OK) {
+        runResult.setStatusCode(statusCode);
+      }
+    }
+    return runResult;
   }
 
   /**
@@ -439,11 +481,7 @@ public class BuildTargetService {
    * return the uri of the build target.
    */
   private URI getRootProjectUri(BuildTargetIdentifier btId) {
-    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
-    if (gradleBuildTarget == null) {
-      // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
-      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
-    }
+    GradleBuildTarget gradleBuildTarget = getBuildTarget(btId);
     BuildTarget buildTarget = gradleBuildTarget.getBuildTarget();
     if (buildTarget.getBaseDirectory() != null) {
       return UriUtils.getUriFromString(buildTarget.getBaseDirectory());
@@ -456,11 +494,7 @@ public class BuildTargetService {
    * Return the build task name - [project path]:[task].
    */
   private String getBuildTaskName(BuildTargetIdentifier btId) {
-    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
-    if (gradleBuildTarget == null) {
-      // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
-      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
-    }
+    GradleBuildTarget gradleBuildTarget = getBuildTarget(btId);
     GradleSourceSet sourceSet = gradleBuildTarget.getSourceSet();
     String classesTaskName = sourceSet.getClassesTaskName();
     if (StringUtils.isBlank(classesTaskName)) {
@@ -479,11 +513,7 @@ public class BuildTargetService {
    * Return the clean task name - [project path]:[task].
    */
   private String getCleanTaskName(BuildTargetIdentifier btId) {
-    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
-    if (gradleBuildTarget == null) {
-      // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
-      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
-    }
+    GradleBuildTarget gradleBuildTarget = getBuildTarget(btId);
     GradleSourceSet sourceSet = gradleBuildTarget.getSourceSet();
     String classesTaskName = "clean";
 
@@ -492,6 +522,15 @@ public class BuildTargetService {
       return classesTaskName;
     }
     return modulePath + ":" + classesTaskName;
+  }
+
+  private GradleBuildTarget getBuildTarget(BuildTargetIdentifier btId) {
+    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
+    if (gradleBuildTarget == null) {
+      // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
+      throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
+    }
+    return gradleBuildTarget;
   }
 
   class RefetchBuildTargetTask implements Runnable {

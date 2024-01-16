@@ -63,9 +63,9 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
  */
 public class GradleBuildServer implements BuildServer, JavaBuildServer, JvmBuildServer {
 
-  private LifecycleService lifecycleService;
+  private final LifecycleService lifecycleService;
 
-  private BuildTargetService buildTargetService;
+  private final BuildTargetService buildTargetService;
 
   public GradleBuildServer(LifecycleService lifecycleService,
       BuildTargetService buildTargetService) {
@@ -150,8 +150,7 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer, JvmBuild
 
   @Override
   public CompletableFuture<RunResult> buildTargetRun(RunParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetRun'");
+    return handleRequest("buildTarget/run", cc -> buildTargetService.buildTargetRun(params));
   }
 
   @Override

@@ -14,6 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import ch.epfl.scala.bsp4j.BuildClient;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -256,6 +257,60 @@ public class GradleApiConnector {
       reporter.taskFinished("Finished tests", StatusCode.OK);
     } catch (GradleConnectionException | IllegalStateException e) {
       reporter.taskFinished("Error running test classes: " + e.getMessage(), StatusCode.ERROR);
+      statusCode = StatusCode.ERROR;
+    }
+
+    return statusCode;
+  }
+
+  /**
+   * request Gradle to run main class.
+   */
+  public StatusCode runMainClass(URI projectUri, String projectPath, String sourceSetName,
+      String className,
+      Map<String, String> environmentVariables, List<String> jvmOptions, List<String> arguments) {
+
+    StatusCode statusCode = StatusCode.OK;
+    ProgressReporter reporter = new DefaultProgressReporter(client);
+    reporter.taskStarted("Start run");
+    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
+      reporter.taskInProgress("Run " + className);
+      String execTask = "gradle.projectsEvaluated {\n"
+          + "  def proj = rootProject.findProject('" + projectPath + "')\n"
+          + "  if (proj != null) {\n"
+          + "    proj.getTasks().create('buildServerRunApp', JavaExec.class, {\n"
+          + "      classpath = proj.sourceSets." + sourceSetName + ".runtimeClasspath\n"
+          + "      mainClass = '" + className + "'\n";
+      if (arguments != null && !arguments.isEmpty()) {
+        String args = arguments.stream().collect(Collectors.joining("','", "['", "']"));
+        execTask += "      args = " + args + "\n";
+      }
+      if (environmentVariables != null && !environmentVariables.isEmpty()) {
+        String envVars = environmentVariables.entrySet().stream()
+            .map(entry -> "'" + entry.getKey() + "':'" + entry.getValue() + "'")
+            .collect(Collectors.joining(",", "[", "]"));
+        execTask += "      environment = " + envVars + "\n";
+      }
+      if (jvmOptions != null && !jvmOptions.isEmpty()) {
+        String jvmArgs = jvmOptions.stream().collect(Collectors.joining("','", "['", "']"));
+        execTask += "      jvmArgs = " + jvmArgs + "\n";
+      }
+      execTask += "    })\n"
+           + "  }\n"
+           + "}\n";
+      File initScript = Utils.createInitScriptFile(execTask);
+      try {
+        Utils.getBuildLauncher(connection, preferenceManager.getPreferences())
+            .forTasks("buildServerRunApp")
+            .addArguments("--init-script", initScript.getAbsolutePath())
+            .run();
+      } finally {
+        initScript.delete();
+      }
+      reporter.taskFinished("Finished run", StatusCode.OK);
+    } catch (GradleConnectionException | IllegalStateException e) {
+      String message = String.join("\n", ExceptionUtils.getRootCauseStackTraceList(e));
+      reporter.taskFinished("Error running main class: " + message, StatusCode.ERROR);
       statusCode = StatusCode.ERROR;
     }
 
