@@ -1,0 +1,60 @@
+name: $(Date:yyyyMMdd).$(Rev:r)
+resources:
+  repositories:
+    - repository: self
+      type: git
+      ref: refs/heads/develop
+    - repository: 1esPipelines
+      type: git
+      name: 1ESPipelineTemplates/1ESPipelineTemplates
+      ref: refs/tags/release
+trigger:
+  branches:
+    include:
+      - develop
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1esPipelines
+  parameters:
+    pool:
+      os: linux
+      name: 1ES_JavaTooling_Pool
+      image: 1ES_JavaTooling_Ubuntu-2004
+    sdl:
+      sourceAnalysisPool:
+        name: 1ES_JavaTooling_Pool
+        image: 1ES_JavaTooling_Windows_2022
+        os: windows
+    customBuildTags:
+      - MigrationTooling-mseng-VSJava-15023-Tool
+    stages:
+      - stage: Build
+        jobs:
+          - job: Job_1
+            displayName: Gradle-Build-Server-CI
+            templateContext:
+              outputs:
+                - output: pipelineArtifact
+                  artifactName: build-server
+                  targetPath: $(Build.ArtifactStagingDirectory)
+                  displayName: "Publish Artifact: build-server"
+            steps:
+              - checkout: self
+                clean: true
+                fetchTags: true
+              - task: JavaToolInstaller@0
+                displayName: Use Java 17
+                inputs:
+                  versionSpec: "17"
+                  jdkArchitectureOption: x64
+                  jdkSourceOption: PreInstalled
+              - task: Gradle@3
+                displayName: gradlew build
+                inputs:
+                  publishJUnitResults: false
+              - task: CopyFiles@2
+                displayName: Copy jars
+                inputs:
+                  Contents: |-
+                    server/build/libs/**/*.jar
+                    server/build/libs/**/init.gradle
+                  TargetFolder: $(Build.ArtifactStagingDirectory)
