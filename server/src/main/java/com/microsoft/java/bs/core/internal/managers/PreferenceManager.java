@@ -4,6 +4,8 @@
 package com.microsoft.java.bs.core.internal.managers;
 
 import java.net.URI;
+import java.util.LinkedList;
+import java.util.List;
 
 import com.microsoft.java.bs.core.internal.model.Preferences;
 
@@ -17,6 +19,12 @@ public class PreferenceManager {
   * The root URI of the workspace.
   */
   private URI rootUri;
+
+  private List<String> clientSupportedLanguages;
+
+  public PreferenceManager() {
+    this.clientSupportedLanguages = new LinkedList<>();
+  }
 
   public void setPreferences(Preferences preferences) {
     this.preferences = preferences;
@@ -32,5 +40,13 @@ public class PreferenceManager {
 
   public void setRootUri(URI rootUri) {
     this.rootUri = rootUri;
+  }
+
+  public List<String> getClientSupportedLanguages() {
+    return clientSupportedLanguages;
+  }
+
+  public void setClientSupportedLanguages(List<String> clientSupportedLanguages) {
+    this.clientSupportedLanguages = clientSupportedLanguages;
   }
 }

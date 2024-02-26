@@ -11,8 +11,10 @@ import static org.mockito.Mockito.when;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,7 @@ import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.JavaExtension;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.JvmBuildTarget;
@@ -50,7 +53,6 @@ class BuildTargetManagerTest {
   @Test
   void testJvmExtension() {
     GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
-    when(gradleSourceSet.getJavaVersion()).thenReturn("17");
     GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
     when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
     
@@ -68,9 +70,6 @@ class BuildTargetManagerTest {
   @Test
   void testJvmExtensionEx() {
     GradleSourceSet gradleSourceSet = getMockedTestGradleSourceSet();
-    when(gradleSourceSet.getGradleVersion()).thenReturn("8.0");
-    when(gradleSourceSet.getSourceCompatibility()).thenReturn("17");
-    when(gradleSourceSet.getTargetCompatibility()).thenReturn("17");
     GradleSourceSets gradleSourceSets = mock(GradleSourceSets.class);
     when(gradleSourceSets.getGradleSourceSets()).thenReturn(Arrays.asList(gradleSourceSet));
     
@@ -135,6 +134,14 @@ class BuildTargetManagerTest {
     when(mocked.getResourceDirs()).thenReturn(Collections.emptySet());
     when(mocked.getModuleDependencies()).thenReturn(Collections.emptySet());
     when(mocked.getBuildTargetDependencies()).thenReturn(Collections.emptySet());
+    JavaExtension mockedJavaExtension = mock(JavaExtension.class);
+    when(mockedJavaExtension.getJavaVersion()).thenReturn("17");
+    when(mockedJavaExtension.getGradleVersion()).thenReturn("8.0");
+    when(mockedJavaExtension.getSourceCompatibility()).thenReturn("17");
+    when(mockedJavaExtension.getTargetCompatibility()).thenReturn("17");
+    Map<String, Object> extensions = new HashMap<>();
+    extensions.put("java", mockedJavaExtension);
+    when(mocked.getExtensions()).thenReturn(extensions);
     return mocked;
   }
 }

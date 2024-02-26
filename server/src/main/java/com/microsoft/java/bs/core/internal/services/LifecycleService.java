@@ -80,6 +80,7 @@ public class LifecycleService {
   void initializePreferenceManager(InitializeBuildParams params) {
     URI rootUri = UriUtils.getUriFromString(params.getRootUri());
     preferenceManager.setRootUri(rootUri);
+    preferenceManager.setClientSupportedLanguages(params.getCapabilities().getLanguageIds());
 
     Preferences preferences = JsonUtils.toModel(params.getData(), Preferences.class);
     if (preferences == null) {
