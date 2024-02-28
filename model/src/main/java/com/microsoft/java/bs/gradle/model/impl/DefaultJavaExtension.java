@@ -21,8 +21,6 @@ public class DefaultJavaExtension implements JavaExtension {
 
   private String javaVersion;
 
-  private String gradleVersion;
-
   private String sourceCompatibility;
 
   private String targetCompatibility;
@@ -57,15 +55,6 @@ public class DefaultJavaExtension implements JavaExtension {
   }
 
   @Override
-  public String getGradleVersion() {
-    return gradleVersion;
-  }
-
-  public void setGradleVersion(String gradleVersion) {
-    this.gradleVersion = gradleVersion;
-  }
-
-  @Override
   public String getSourceCompatibility() {
     return sourceCompatibility;
   }
@@ -94,7 +83,7 @@ public class DefaultJavaExtension implements JavaExtension {
 
   @Override
   public int hashCode() {
-    return Objects.hash(compileClasspath, javaHome, javaVersion, gradleVersion,
+    return Objects.hash(compileClasspath, javaHome, javaVersion,
         sourceCompatibility, targetCompatibility, compilerArgs
     );
   }
@@ -114,7 +103,6 @@ public class DefaultJavaExtension implements JavaExtension {
     return Objects.equals(compileClasspath, other.compileClasspath)
         && Objects.equals(javaHome, other.javaHome)
         && Objects.equals(javaVersion, other.javaVersion)
-        && Objects.equals(gradleVersion, other.gradleVersion)
         && Objects.equals(sourceCompatibility, other.sourceCompatibility)
         && Objects.equals(targetCompatibility, other.targetCompatibility)
         && Objects.equals(compilerArgs, other.compilerArgs);

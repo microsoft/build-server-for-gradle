@@ -26,8 +26,6 @@ public class Conversions {
       result.setJavaHome((File) object.getClass().getDeclaredMethod("getJavaHome").invoke(object));
       result.setJavaVersion(
           (String) object.getClass().getDeclaredMethod("getJavaVersion").invoke(object));
-      result.setGradleVersion(
-          (String) object.getClass().getDeclaredMethod("getGradleVersion").invoke(object));
       result.setSourceCompatibility(
           (String) object.getClass().getDeclaredMethod("getSourceCompatibility").invoke(object));
       result.setTargetCompatibility(

@@ -29,7 +29,6 @@ import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.util.GradleVersion;
 
-import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
 
 /**
@@ -63,7 +62,7 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   @Override
-  public JavaExtension getExtensionsFor(Project project, SourceSet sourceSet) {
+  public Object getExtensionsFor(Project project, SourceSet sourceSet) {
     DefaultJavaExtension extension = new DefaultJavaExtension();
     // classpath
     List<File> compileClasspath = new LinkedList<>(sourceSet.getCompileClasspath().getFiles());
@@ -72,7 +71,6 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
     // jdk
     extension.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
     extension.setJavaVersion(DefaultInstalledJdk.current().getJavaVersion().getMajorVersion());
-    extension.setGradleVersion(project.getGradle().getGradleVersion());
     List<String> compilerArgs = getCompilerArgs(project, sourceSet);
     extension.setCompilerArgs(compilerArgs);
     extension.setSourceCompatibility(

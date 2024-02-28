@@ -27,11 +27,6 @@ public interface JavaExtension extends Serializable {
   public String getJavaVersion();
 
   /**
-   * The Gradle version of the project.
-   */
-  public String getGradleVersion();
-
-  /**
    * The source compatibility of the source set.
    */
   public String getSourceCompatibility();

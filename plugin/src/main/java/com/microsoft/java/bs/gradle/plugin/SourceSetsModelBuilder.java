@@ -60,6 +60,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
         cache.addGradleSourceSet(sourceSet, gradleSourceSet);
         cache.addProject(sourceSet, project);
+        gradleSourceSet.setGradleVersion(project.getGradle().getGradleVersion());
         gradleSourceSet.setProjectName(project.getName());
         gradleSourceSet.setProjectPath(project.getPath());
         gradleSourceSet.setProjectDir(project.getProjectDir());

@@ -5,6 +5,7 @@ package com.microsoft.java.bs.gradle.plugin;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.gradle.api.Project;
@@ -50,6 +51,6 @@ public class SourceSetCache {
   }
 
   public Collection<Project> getAllProjects() {
-    return this.projectMapping.values();
+    return new HashSet<>(this.projectMapping.values());
   }
 }

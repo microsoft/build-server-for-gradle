@@ -14,6 +14,11 @@ import java.util.Set;
 public interface GradleSourceSet extends Serializable {
 
   /**
+   * The Gradle version of the project.
+   */
+  public String getGradleVersion();
+
+  /**
    * A unique name for this project/sourceSet combination.
    */
   public String getDisplayName();

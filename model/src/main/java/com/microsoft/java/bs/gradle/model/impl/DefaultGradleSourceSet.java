@@ -19,6 +19,8 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 public class DefaultGradleSourceSet implements GradleSourceSet {
   private static final long serialVersionUID = 1L;
 
+  private String gradleVersion;
+
   private String displayName;
 
   private String projectName;
@@ -59,6 +61,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
    * @param gradleSourceSet the source set to copy from.
    */
   public DefaultGradleSourceSet(GradleSourceSet gradleSourceSet) {
+    this.gradleVersion = gradleSourceSet.getGradleVersion();
     this.displayName = gradleSourceSet.getDisplayName();
     this.projectName = gradleSourceSet.getProjectName();
     this.projectPath = gradleSourceSet.getProjectPath();
@@ -77,6 +80,14 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         .map(DefaultBuildTargetDependency::new).collect(Collectors.toSet());
     this.hasTests = gradleSourceSet.hasTests();
     this.extensions = gradleSourceSet.getExtensions();
+  }
+
+  public String getGradleVersion() {
+    return gradleVersion;
+  }
+
+  public void setGradleVersion(String gradleVersion) {
+    this.gradleVersion = gradleVersion;
   }
 
   public String getDisplayName() {
@@ -209,8 +220,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   @Override
   public int hashCode() {
-    return Objects.hash(displayName, projectName, projectPath, projectDir,
-        rootDir, sourceSetName, classesTaskName, sourceDirs,
+    return Objects.hash(gradleVersion, displayName, projectName, projectPath,
+        projectDir, rootDir, sourceSetName, classesTaskName, sourceDirs,
         generatedSourceDirs, sourceOutputDir, moduleDependencies,
         buildTargetDependencies, hasTests, extensions);
   }
@@ -227,7 +238,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
       return false;
     }
     DefaultGradleSourceSet other = (DefaultGradleSourceSet) obj;
-    return Objects.equals(displayName, other.displayName)
+    return Objects.equals(gradleVersion, other.gradleVersion)
+        && Objects.equals(displayName, other.displayName)
         && Objects.equals(projectName, other.projectName)
         && Objects.equals(projectPath, other.projectPath)
         && Objects.equals(projectDir, other.projectDir)

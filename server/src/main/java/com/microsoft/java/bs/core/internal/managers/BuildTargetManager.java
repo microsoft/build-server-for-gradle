@@ -122,7 +122,7 @@ public class BuildTargetManager {
     JvmBuildTargetEx jvmBuildTarget = new JvmBuildTargetEx(
         javaExtension.getJavaHome() == null ? "" : javaExtension.getJavaHome().toURI().toString(),
         javaExtension.getJavaVersion() == null ? "" : javaExtension.getJavaVersion(),
-        javaExtension.getGradleVersion() == null ? "" : javaExtension.getGradleVersion(),
+        sourceSet.getGradleVersion() == null ? "" : sourceSet.getGradleVersion(),
         javaExtension.getSourceCompatibility() == null ? ""
             : javaExtension.getSourceCompatibility(),
         javaExtension.getTargetCompatibility() == null ? ""

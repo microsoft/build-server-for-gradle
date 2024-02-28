@@ -47,6 +47,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        assertNotNull(gradleSourceSet.getGradleVersion());
         assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
         assertEquals(":", gradleSourceSet.getProjectPath());
         assertEquals(projectDir, gradleSourceSet.getProjectDir());
@@ -79,7 +80,6 @@ class GradleBuildServerPluginTest {
         assertNotNull(javaExtension.getSourceCompatibility());
         assertNotNull(javaExtension.getTargetCompatibility());
         assertNotNull(javaExtension.getCompilerArgs());
-        assertNotNull(javaExtension.getGradleVersion());
       }
     }
   }

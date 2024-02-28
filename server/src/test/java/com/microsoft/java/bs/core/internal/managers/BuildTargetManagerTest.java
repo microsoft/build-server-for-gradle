@@ -126,6 +126,7 @@ class BuildTargetManagerTest {
 
   private GradleSourceSet getMockedTestGradleSourceSet() {
     GradleSourceSet mocked = mock(GradleSourceSet.class);
+    when(mocked.getGradleVersion()).thenReturn("8.0");
     when(mocked.getProjectDir()).thenReturn(new File("test"));
     when(mocked.getRootDir()).thenReturn(new File("test"));
     when(mocked.getSourceSetName()).thenReturn("main");
@@ -136,7 +137,6 @@ class BuildTargetManagerTest {
     when(mocked.getBuildTargetDependencies()).thenReturn(Collections.emptySet());
     JavaExtension mockedJavaExtension = mock(JavaExtension.class);
     when(mockedJavaExtension.getJavaVersion()).thenReturn("17");
-    when(mockedJavaExtension.getGradleVersion()).thenReturn("8.0");
     when(mockedJavaExtension.getSourceCompatibility()).thenReturn("17");
     when(mockedJavaExtension.getTargetCompatibility()).thenReturn("17");
     Map<String, Object> extensions = new HashMap<>();
