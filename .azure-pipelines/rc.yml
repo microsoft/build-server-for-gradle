@@ -14,14 +14,16 @@ extends:
   template: v1/1ES.Official.PipelineTemplate.yml@1esPipelines
   parameters:
     pool:
-      os: linux
       name: 1ES_JavaTooling_Pool
-      image: 1ES_JavaTooling_Ubuntu-2004
+      image: 1ES_JavaTooling_Windows_2022
+      os: windows
     sdl:
       sourceAnalysisPool:
         name: 1ES_JavaTooling_Pool
         image: 1ES_JavaTooling_Windows_2022
         os: windows
+      spotBugs:
+        enabled: false
     customBuildTags:
       - MigrationTooling-mseng-VSJava-15024-Tool
     stages:
@@ -52,7 +54,7 @@ extends:
               - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
                 displayName: ESRP CodeSigning
                 inputs:
-                  ConnectedServiceName: vscjavaci_codesign
+                  ConnectedServiceName: vscjavaci_esrp_codesign
                   FolderPath: server/build/libs
                   Pattern: plugin.jar,server.jar
                   signConfigType: inlineSignParams
@@ -76,6 +78,27 @@ extends:
                         "ToolVersion" : "1.0"
                       }
                     ]
+              ### Copy files for APIScan
+              - task: CopyFiles@2
+                displayName: "Copy Files for APIScan"
+                inputs:
+                  Contents: |-
+                    server/build/libs/**/*.jar
+                    server/build/libs/**/init.gradle
+                  TargetFolder: $(Agent.TempDirectory)/APIScanFiles
+                condition: and(succeeded(), ne(variables['DisableAPIScan'], 'true'))
+              ### Run latest version of APIScan listed at https://www.1eswiki.com/wiki/APIScan_Build_Task
+              - task: APIScan@2
+                displayName: Run APIScan
+                inputs:
+                  softwareFolder: $(Agent.TempDirectory)/APIScanFiles
+                  softwareName: "gradle-build-server"
+                  softwareVersionNum: "$(Build.BuildId)"
+                  isLargeApp: false
+                  toolVersion: "Latest"
+                condition: and(succeeded(), ne(variables['DisableAPIScan'], 'true'))
+                env:
+                  AzureServicesAuthConnectionString: runAs=App;AppId=$(ApiScanClientId);TenantId=$(ApiScanTenant);AppKey=$(ApiScanSecret)
               - task: CopyFiles@2
                 displayName: Copy jars
                 inputs:
