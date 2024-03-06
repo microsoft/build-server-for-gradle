@@ -30,6 +30,7 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
 import org.gradle.api.internal.tasks.compile.JavaCompilerArgumentsBuilder;
+import org.gradle.api.invocation.Gradle;
 import org.gradle.api.internal.file.copy.DefaultCopySpec;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
@@ -43,9 +44,11 @@ import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.util.GradleVersion;
 
+import com.microsoft.java.bs.gradle.model.GradleIncludedBuild;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleIncludedBuild;
 import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
@@ -64,6 +67,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   @Override
   public Object buildAll(String modelName, Project rootProject) {
     Set<Project> allProject = rootProject.getAllprojects();
+    List<GradleIncludedBuild> includedBuilds = new ArrayList<>();
     List<GradleSourceSet> gradleSourceSets = new ArrayList<>();
     // mapping Gradle source set to our customized model.
     Map<SourceSet, DefaultGradleSourceSet> sourceSetMap = new HashMap<>();
@@ -71,6 +75,14 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     // directories from the module dependencies.
     Set<File> exclusionFromDependencies = new HashSet<>();
     for (Project project : allProject) {
+      // lookup included builds regardless of sourcesets existing
+      Gradle gradle = project.getGradle();
+      includedBuilds.addAll(
+          gradle.getIncludedBuilds()
+          .stream().map(includedBuild ->
+            new DefaultGradleIncludedBuild(includedBuild.getName(), includedBuild.getProjectDir()))
+          .collect(Collectors.toList()));
+
       SourceSetContainer sourceSets = getSourceSetContainer(project);
       if (sourceSets == null || sourceSets.isEmpty()) {
         continue;
@@ -78,7 +90,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
 
       File defaultJavaHome = DefaultInstalledJdk.current().getJavaHome();
       String javaVersion = DefaultInstalledJdk.current().getJavaVersion().getMajorVersion();
-      String gradleVersion = project.getGradle().getGradleVersion();
+      String gradleVersion = gradle.getGradleVersion();
       sourceSets.forEach(sourceSet -> {
         DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
         gradleSourceSet.setProjectName(project.getName());
@@ -228,7 +240,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       });
     }
 
-    return new DefaultGradleSourceSets(gradleSourceSets);
+    return new DefaultGradleSourceSets(includedBuilds, gradleSourceSets);
   }
 
   private String stripPathPrefix(String projectPath) {

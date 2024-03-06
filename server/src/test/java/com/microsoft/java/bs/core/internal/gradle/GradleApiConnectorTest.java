@@ -119,6 +119,20 @@ class GradleApiConnectorTest {
     assertFalse(findSourceSet(gradleSourceSets, "test-tag [testFixtures]").hasTests());
   }
 
+  @Test
+  void testCompositeBuild() {
+    File projectDir = projectPath.resolve("composite-build").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
+    findSourceSet(gradleSourceSets, "projectA [main]");
+    findSourceSet(gradleSourceSets, "projectA [test]");
+    findSourceSet(gradleSourceSets, "projectB [main]");
+    findSourceSet(gradleSourceSets, "projectB [test]");
+  }
+
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,
       GradleSourceSet dependency) {
     boolean exists = sourceSet.getBuildTargetDependencies().stream()
