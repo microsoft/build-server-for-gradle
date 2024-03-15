@@ -10,13 +10,13 @@
 
 package com.example.project;
 
-public class Calculator {
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-  public int add(int a, int b) {
-    return a + b;
-  }
+import org.junit.jupiter.api.Test;
 
-  public static void main(String[] args) {
-    System.out.println("Test app");
-  }
+class PassingTests {
+    @Test
+    void passingTest() {
+        assertTrue(true);
+    }
 }

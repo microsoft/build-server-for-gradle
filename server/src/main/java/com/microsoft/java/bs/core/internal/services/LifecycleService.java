@@ -105,6 +105,7 @@ public class LifecycleService {
     capabilities.setCanReload(true);
     capabilities.setBuildTargetChangedProvider(true);
     capabilities.setCompileProvider(new CompileProvider(Arrays.asList("java")));
+    capabilities.setJvmTestEnvironmentProvider(true);
     return capabilities;
   }
 

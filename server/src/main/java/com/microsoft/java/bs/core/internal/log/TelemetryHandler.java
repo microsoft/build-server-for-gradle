@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
+import ch.epfl.scala.bsp4j.BuildClient;
 import com.google.gson.Gson;
-import com.microsoft.java.bs.core.Launcher;
 
 import ch.epfl.scala.bsp4j.LogMessageParams;
 import ch.epfl.scala.bsp4j.MessageType;
@@ -17,6 +17,12 @@ import ch.epfl.scala.bsp4j.MessageType;
  * The log appender to send bi data.
  */
 public class TelemetryHandler extends Handler {
+
+  private final BuildClient client;
+
+  public TelemetryHandler(BuildClient client) {
+    this.client = client;
+  }
 
   @Override
   public void publish(LogRecord logRecord) {
@@ -27,7 +33,7 @@ public class TelemetryHandler extends Handler {
     }
 
     String jsonStr = new Gson().toJson(property[0]);
-    Launcher.client.onBuildLogMessage(new LogMessageParams(MessageType.LOG, jsonStr));
+    client.onBuildLogMessage(new LogMessageParams(MessageType.LOG, jsonStr));
   }
 
   @Override

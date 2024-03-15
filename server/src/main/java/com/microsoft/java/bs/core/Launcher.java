@@ -23,8 +23,6 @@ import ch.epfl.scala.bsp4j.BuildClient;
  */
 public class Launcher {
 
-  public static BuildClient client;
-
   public static final Logger LOGGER = Logger.getLogger("GradleBuildServerLogger");
 
   /**
@@ -37,10 +35,9 @@ public class Launcher {
    */
   public static void main(String[] args) {
     checkRequiredProperties();
-    setupLoggers();
 
     org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher = createLauncher();
-    client = launcher.getRemoteProxy();
+    setupLoggers(launcher.getRemoteProxy());
     launcher.startListening();
   }
 
@@ -54,13 +51,16 @@ public class Launcher {
         connector, preferenceManager);
     GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
         buildTargetService);
-    return new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
-      .setOutput(System.out)
-      .setInput(System.in)
-      .setLocalService(gradleBuildServer)
-      .setRemoteInterface(BuildClient.class)
-      .setExecutorService(Executors.newCachedThreadPool())
-      .create();
+    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher =
+        new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
+          .setOutput(System.out)
+          .setInput(System.in)
+          .setLocalService(gradleBuildServer)
+          .setRemoteInterface(BuildClient.class)
+          .setExecutorService(Executors.newCachedThreadPool())
+          .create();
+    buildTargetService.setClient(launcher.getRemoteProxy());
+    return launcher;
   }
 
   private static void checkRequiredProperties() {
@@ -69,14 +69,14 @@ public class Launcher {
     }
   }
 
-  private static void setupLoggers() {
+  private static void setupLoggers(BuildClient client) {
     LOGGER.setUseParentHandlers(false);
-    LogHandler logHandler = new LogHandler();
+    LogHandler logHandler = new LogHandler(client);
     logHandler.setLevel(Level.FINE);
     LOGGER.addHandler(logHandler);
 
     if (System.getProperty("disableServerTelemetry") == null) {
-      TelemetryHandler telemetryHandler = new TelemetryHandler();
+      TelemetryHandler telemetryHandler = new TelemetryHandler(client);
       telemetryHandler.setLevel(Level.INFO);
       LOGGER.addHandler(telemetryHandler);
     }

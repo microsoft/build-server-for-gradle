@@ -10,7 +10,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import com.microsoft.java.bs.core.Launcher;
+import ch.epfl.scala.bsp4j.BuildClient;
 
 import ch.epfl.scala.bsp4j.LogMessageParams;
 import ch.epfl.scala.bsp4j.MessageType;
@@ -20,13 +20,19 @@ import ch.epfl.scala.bsp4j.MessageType;
  */
 public class LogHandler extends Handler {
 
+  private final BuildClient client;
+
+  public LogHandler(BuildClient client) {
+    this.client = client;
+  }
+
   @Override
   public void publish(LogRecord logRecord) {
     Format formatter = new SimpleDateFormat("HH:mm:ss");
     String timestamp = formatter.format(new Date());
     String logMessage = String.format("[%s - %s] %s", logRecord.getLevel().getName(),
         timestamp, logRecord.getMessage());
-    Launcher.client.onBuildLogMessage(new LogMessageParams(
+    client.onBuildLogMessage(new LogMessageParams(
         convertLevelToMessageType(logRecord.getLevel()), logMessage));
   }
 

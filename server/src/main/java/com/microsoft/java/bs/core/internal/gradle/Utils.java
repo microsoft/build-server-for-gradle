@@ -5,7 +5,9 @@ package com.microsoft.java.bs.core.internal.gradle;
 
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
@@ -13,9 +15,11 @@ import java.util.Optional;
 
 import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
 import org.gradle.tooling.BuildLauncher;
+import org.gradle.tooling.ConfigurableLauncher;
 import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
+import org.gradle.tooling.TestLauncher;
 import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.core.Launcher;
@@ -42,7 +46,7 @@ public class Utils {
    */
   private static final String GRADLE_USER_HOME = "GRADLE_USER_HOME";
 
-  private static final String DEFAULT_BUILDSHIP_GRADLE_VERSION = "7.4.2";
+  private static final String DEFAULT_BUILDSHIP_GRADLE_VERSION = "8.5";
 
   /**
    * Get the Gradle connector for the project.
@@ -95,23 +99,7 @@ public class Utils {
    */
   public static <T> ModelBuilder<T> getModelBuilder(ProjectConnection connection,
       Preferences preferences, Class<T> clazz) {
-    ModelBuilder<T> modelBuilder = connection.model(clazz);
-
-    File gradleJavaHomeFile = getGradleJavaHomeFile(preferences.getGradleJavaHome());
-    if (gradleJavaHomeFile != null && gradleJavaHomeFile.exists()) {
-      modelBuilder.setJavaHome(gradleJavaHomeFile);
-    }
-
-    List<String> gradleJvmArguments = preferences.getGradleJvmArguments();
-    if (gradleJvmArguments != null && !gradleJvmArguments.isEmpty()) {
-      modelBuilder.setJvmArguments(gradleJvmArguments);
-    }
-
-    List<String> gradleArguments = preferences.getGradleArguments();
-    if (gradleArguments != null && !gradleArguments.isEmpty()) {
-      modelBuilder.withArguments(gradleArguments);
-    }
-    return modelBuilder;
+    return setLauncherProperties(connection.model(clazz), preferences);
   }
 
   /**
@@ -122,7 +110,28 @@ public class Utils {
    */
   public static BuildLauncher getBuildLauncher(ProjectConnection connection,
       Preferences preferences) {
-    BuildLauncher launcher = connection.newBuild();
+    return setLauncherProperties(connection.newBuild(), preferences);
+  }
+
+  /**
+   * Get the Test Launcher.
+   *
+   * @param connection The project connection.
+   * @param preferences The preferences.
+   */
+  public static TestLauncher getTestLauncher(ProjectConnection connection,
+      Preferences preferences) {
+    return setLauncherProperties(connection.newTestLauncher(), preferences);
+  }
+  
+  /**
+   * Set the Launcher properties.
+   *
+   * @param launcher The launcher.
+   * @param preferences The preferences.
+   */
+  public static <T extends ConfigurableLauncher<T>> T setLauncherProperties(T launcher,
+      Preferences preferences) {
 
     File gradleJavaHomeFile = getGradleJavaHomeFile(preferences.getGradleJavaHome());
     if (gradleJavaHomeFile != null && gradleJavaHomeFile.exists()) {
@@ -297,5 +306,25 @@ public class Utils {
     // TODO: Once we figure out why TAPI fails a lot, we can enable it.
     // return GradleBuildKind.TAPI;
     return GradleBuildKind.FALLBACK;
+  }
+
+  /**
+   * Create a temporary init.gradle script.
+   * Caller is responsible for file deletion.
+   *
+   * @param contents contents of script.
+   * @return the init.gradle file.
+   */
+  public static File createInitScriptFile(String contents) {
+    try {
+      File initScriptFile = File.createTempFile("init", ".gradle");
+      if (!initScriptFile.getParentFile().exists()) {
+        initScriptFile.getParentFile().mkdirs();
+      }
+      Files.write(initScriptFile.toPath(), contents.getBytes());
+      return initScriptFile;
+    } catch (IOException e) {
+      throw new IllegalStateException("Error creating init file", e);
+    }
   }
 }

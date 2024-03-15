@@ -123,4 +123,9 @@ public interface GradleSourceSet extends Serializable {
    * has tests defined.
    */
   public boolean hasTests();
+
+  /**
+   * list of test tasks that are associated with this source set.
+   */
+  public Set<GradleTestTask> getTestTasks();
 }

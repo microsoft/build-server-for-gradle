@@ -11,16 +11,34 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import ch.epfl.scala.bsp4j.BuildClient;
+import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
+import ch.epfl.scala.bsp4j.LogMessageParams;
+import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
+import ch.epfl.scala.bsp4j.ShowMessageParams;
+import ch.epfl.scala.bsp4j.TaskFinishParams;
+import ch.epfl.scala.bsp4j.TaskProgressParams;
+import ch.epfl.scala.bsp4j.TaskStartParams;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
+import com.microsoft.java.bs.core.internal.model.GradleTestEntity;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleTestTask;
+
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.StatusCode;
 
 class GradleApiConnectorTest {
 
@@ -37,22 +55,68 @@ class GradleApiConnectorTest {
         "build", "libs", "plugins").toString();
     System.setProperty(Launcher.PROP_PLUGIN_DIR, pluginDir);
   }
+  
+  private static class TestClient implements BuildClient {
+
+    @Override
+    public void onBuildShowMessage(ShowMessageParams params) {
+      // do nothing
+    }
+
+    @Override
+    public void onBuildLogMessage(LogMessageParams params) {
+      // do nothing
+    }
+
+    @Override
+    public void onBuildTaskStart(TaskStartParams params) {
+      // do nothing
+    }
+
+    @Override
+    public void onBuildTaskProgress(TaskProgressParams params) {
+      // do nothing
+    }
+
+    @Override
+    public void onBuildTaskFinish(TaskFinishParams params) {
+      // do nothing
+    }
+
+    @Override
+    public void onBuildPublishDiagnostics(PublishDiagnosticsParams params) {
+      // do nothing
+    }
+
+    @Override
+    public void onBuildTargetDidChange(DidChangeBuildTarget params) {
+      // do nothing
+    }
+  }
+
+  private GradleApiConnector getApiConnector(Preferences preferences) {
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(preferences);
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    connector.setClient(new TestClient());
+    return connector;
+  }
+
+  private GradleApiConnector getApiConnector() {
+    return getApiConnector(new Preferences());
+  }
 
   @Test
   void testGetGradleVersion() {
     File projectDir = projectPath.resolve("gradle-4.3-with-wrapper").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     assertEquals("4.3", connector.getGradleVersion(projectDir.toURI()));
   }
 
   @Test
   void testGetGradleSourceSets() {
     File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
@@ -82,12 +146,18 @@ class GradleApiConnectorTest {
     return sourceSet;
   }
 
+  private void assertHasTaskPath(Set<GradleTestTask> paths, String path) {
+    assertTrue(paths.stream().anyMatch(task -> task.getTaskPath().equals(path)), () -> {
+      String pathsAsStr = paths.stream().map(task -> task.getTaskPath())
+          .collect(Collectors.joining(", "));
+      return "Task path not found [" + path + "] in [" + pathsAsStr + ']';
+    });
+  }
+
   @Test
   void testGetGradleDuplicateNestedProjectNames() {
     File projectDir = projectPath.resolve("duplicate-nested-project-names").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(12, gradleSourceSets.getGradleSourceSets().size());
     findSourceSet(gradleSourceSets, "a [main]");
@@ -107,16 +177,24 @@ class GradleApiConnectorTest {
   @Test
   void testGetGradleHasTests() {
     File projectDir = projectPath.resolve("test-tag").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(5, gradleSourceSets.getGradleSourceSets().size());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [main]").hasTests());
-    assertTrue(findSourceSet(gradleSourceSets, "test-tag [test]").hasTests());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [noTests]").hasTests());
-    assertTrue(findSourceSet(gradleSourceSets, "test-tag [intTest]").hasTests());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [testFixtures]").hasTests());
+
+    GradleSourceSet main = findSourceSet(gradleSourceSets, "test-tag [main]");
+    assertFalse(main.hasTests());
+    GradleSourceSet test = findSourceSet(gradleSourceSets, "test-tag [test]");
+    assertTrue(test.hasTests());
+    assertEquals(1, test.getTestTasks().size());
+    assertHasTaskPath(test.getTestTasks(), ":test");
+    GradleSourceSet noTests = findSourceSet(gradleSourceSets, "test-tag [noTests]");
+    assertFalse(noTests.hasTests());
+    GradleSourceSet intTest = findSourceSet(gradleSourceSets, "test-tag [intTest]");
+    assertTrue(intTest.hasTests());
+    assertEquals(1, intTest.getTestTasks().size());
+    assertHasTaskPath(intTest.getTestTasks(), ":integrationTest");
+    GradleSourceSet testFixtures = findSourceSet(gradleSourceSets, "test-tag [testFixtures]");
+    assertFalse(testFixtures.hasTests());
   }
 
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,
@@ -136,9 +214,7 @@ class GradleApiConnectorTest {
   @Test
   void testGetGradleDependenciesWithTestFixtures() {
     File projectDir = projectPath.resolve("project-dependency-test-fixtures").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(5, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet mainA = findSourceSet(gradleSourceSets, "a [main]");
@@ -162,9 +238,7 @@ class GradleApiConnectorTest {
   @Test
   void testGetGradleDependenciesWithTestToMain() {
     File projectDir = projectPath.resolve("project-dependency-test-to-main").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet main = findSourceSet(gradleSourceSets,
@@ -179,9 +253,7 @@ class GradleApiConnectorTest {
   @Test
   void testGetGradleDependenciesWithSourceSetOutput() {
     File projectDir = projectPath.resolve("project-dependency-sourceset-output").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet testA = findSourceSet(gradleSourceSets, "a [test]");
@@ -197,9 +269,7 @@ class GradleApiConnectorTest {
   @Test
   void testGetGradleDependenciesWithConfiguration() {
     File projectDir = projectPath.resolve("project-dependency-configuration").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet mainA = findSourceSet(gradleSourceSets, "a [main]");
@@ -210,9 +280,7 @@ class GradleApiConnectorTest {
   @Test
   void testGetGradleDependenciesWithTestConfiguration() {
     File projectDir = projectPath.resolve("project-dependency-test-configuration").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet testA = findSourceSet(gradleSourceSets, "a [test]");
@@ -223,13 +291,71 @@ class GradleApiConnectorTest {
   @Test
   void testGetGradleDependenciesWithLazyArchive() {
     File projectDir = projectPath.resolve("project-dependency-lazy-archive").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleApiConnector connector = getApiConnector();
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet testA = findSourceSet(gradleSourceSets, "a [test]");
     GradleSourceSet testB = findSourceSet(gradleSourceSets, "b [test]");
     assertHasBuildTargetDependency(testB, testA);
+  }
+
+  @Test
+  void testGetJvmTestEnviroment() {
+    File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
+    Preferences preferences = new Preferences();
+    // test discovery uses --test-dry-run which was added in 8.3
+    preferences.setGradleVersion("8.3");
+    GradleApiConnector connector = getApiConnector(preferences);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+
+    Map<BuildTargetIdentifier, Set<GradleTestTask>> testTaskMap = new HashMap<>();
+    for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+      BuildTargetIdentifier fakeBt = new BuildTargetIdentifier(gradleSourceSet.getDisplayName());
+      testTaskMap.put(fakeBt, gradleSourceSet.getTestTasks());
+    }
+    Map<BuildTargetIdentifier, List<GradleTestEntity>> tests =
+          connector.getTestClasses(projectDir.toURI(), testTaskMap);
+    assertHasTestClass(tests, "junit5-jupiter-starter-gradle [test]",
+        "com.example.project.CalculatorTests");
+  }
+
+  private void assertHasTestClass(Map<BuildTargetIdentifier, List<GradleTestEntity>> tests,
+      String sourceSetDisplayName, String className) {
+    List<GradleTestEntity> btTests = tests.entrySet().stream()
+        .filter(entry -> entry.getKey().getUri().equals(sourceSetDisplayName))
+        .flatMap(entry -> entry.getValue().stream())
+        .collect(Collectors.toList());
+    assertTrue(btTests.size() > 0,
+        () -> "SourceSet " + sourceSetDisplayName + " not found in "
+        + tests.keySet().stream()
+          .map(bt -> bt.getUri())
+          .collect(Collectors.joining(", ")));
+
+    List<String> btTestClasses = btTests.stream()
+        .flatMap(entity -> entity.getTestClasses().stream())
+        .collect(Collectors.toList());
+    assertTrue(btTestClasses.contains(className),
+        () -> "Test class " + className + " not found in "
+        + String.join(", ", btTestClasses));
+  }
+
+  @Test
+  void testBuildTargetTest() {
+    File projectDir = projectPath.resolve("java-tests").toFile();
+    GradleApiConnector connector = getApiConnector();
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    GradleSourceSet testSourceSet =
+        findSourceSet(gradleSourceSets, "java-tests [test]");
+    Map<BuildTargetIdentifier, Set<String>> testClassesMap = new HashMap<>();
+    BuildTargetIdentifier fakeBt = new BuildTargetIdentifier(testSourceSet.getDisplayName());
+    Set<String> classes = new HashSet<>();
+    testClassesMap.put(fakeBt, classes);
+    classes.add("com.example.project.PassingTests");
+    StatusCode passingTest = connector.runTestClasses(projectDir.toURI(), testClassesMap);
+    assertEquals(StatusCode.OK, passingTest);
+    classes.clear();
+    classes.add("com.example.project.FailingTests");
+    StatusCode failingTest = connector.runTestClasses(projectDir.toURI(), testClassesMap);
+    assertEquals(StatusCode.ERROR, failingTest);   
   }
 }

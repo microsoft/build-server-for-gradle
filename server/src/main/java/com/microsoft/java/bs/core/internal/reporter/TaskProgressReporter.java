@@ -14,7 +14,7 @@ import ch.epfl.scala.bsp4j.StatusCode;
  */
 public class TaskProgressReporter implements ProgressListener {
 
-  private ProgressReporter reporter;
+  private final ProgressReporter reporter;
 
   public TaskProgressReporter(ProgressReporter reporter) {
     this.reporter = reporter;
