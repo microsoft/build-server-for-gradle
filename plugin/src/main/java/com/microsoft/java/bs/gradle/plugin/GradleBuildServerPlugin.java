@@ -12,6 +12,8 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry;
 
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+
 /**
  * The customized Gradle plugin to get the project structure information.
  */
@@ -40,9 +42,9 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
     if (supportedLanguagesProps != null) {
       String[] supportedLanguages = supportedLanguagesProps.split(",");
       for (String language : supportedLanguages) {
-        if (language.equalsIgnoreCase("java")) {
+        if (language.equalsIgnoreCase(SupportedLanguages.JAVA)) {
           SUPPORTED_LANGUAGE_BUILDERS.add(new JavaLanguageModelBuilder());
-        } else if (language.equalsIgnoreCase("scala")) {
+        } else if (language.equalsIgnoreCase(SupportedLanguages.SCALA)) {
           SUPPORTED_LANGUAGE_BUILDERS.add(new ScalaLanguageModelBuilder());
         }
       }

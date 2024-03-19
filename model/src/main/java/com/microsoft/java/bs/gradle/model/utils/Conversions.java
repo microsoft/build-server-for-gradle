@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-package com.microsoft.java.bs.gradle.plugin;
+package com.microsoft.java.bs.gradle.model.utils;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;

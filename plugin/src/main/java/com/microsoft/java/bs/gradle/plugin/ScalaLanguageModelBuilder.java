@@ -13,12 +13,12 @@ import org.gradle.api.tasks.ScalaSourceDirectorySet;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.scala.ScalaCompile;
 
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+
 /**
  * The language model builder for Scala language.
  */
 public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
-
-  private static final String LANGUAGE_ID = "scala";
 
   @Override
   public boolean appliesFor(Project project, SourceSet sourceSet) {
@@ -27,7 +27,7 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
 
   @Override
   public String getLanguageId() {
-    return LANGUAGE_ID;
+    return SupportedLanguages.SCALA;
   }
 
   @Override
@@ -43,7 +43,7 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   private ScalaCompile getScalaCompileTask(Project project, SourceSet sourceSet) {
-    return (ScalaCompile) getLanguageCompileTask(LANGUAGE_ID, project, sourceSet);
+    return (ScalaCompile) getLanguageCompileTask(SupportedLanguages.SCALA, project, sourceSet);
   }
 
   @Override

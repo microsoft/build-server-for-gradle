@@ -24,6 +24,7 @@ import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.JvmBuildTarget;
@@ -140,7 +141,7 @@ class BuildTargetManagerTest {
     when(mockedJavaExtension.getSourceCompatibility()).thenReturn("17");
     when(mockedJavaExtension.getTargetCompatibility()).thenReturn("17");
     Map<String, Object> extensions = new HashMap<>();
-    extensions.put("java", mockedJavaExtension);
+    extensions.put(SupportedLanguages.JAVA, mockedJavaExtension);
     when(mocked.getExtensions()).thenReturn(extensions);
     return mocked;
   }

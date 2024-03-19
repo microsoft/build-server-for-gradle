@@ -27,6 +27,7 @@ import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildServerCapabilities;
 import ch.epfl.scala.bsp4j.CompileProvider;
@@ -105,7 +106,7 @@ public class LifecycleService {
     capabilities.setDependencyModulesProvider(true);
     capabilities.setCanReload(true);
     capabilities.setBuildTargetChangedProvider(true);
-    capabilities.setCompileProvider(new CompileProvider(Arrays.asList("java")));
+    capabilities.setCompileProvider(new CompileProvider(Arrays.asList(SupportedLanguages.JAVA)));
     return capabilities;
   }
 

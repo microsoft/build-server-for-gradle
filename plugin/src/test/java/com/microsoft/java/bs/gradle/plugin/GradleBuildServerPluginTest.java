@@ -23,7 +23,9 @@ import org.junit.jupiter.api.condition.JRE;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
+import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 class GradleBuildServerPluginTest {
 
@@ -72,7 +74,7 @@ class GradleBuildServerPluginTest {
         ));
 
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-            gradleSourceSet.getExtensions().get("java"));
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         assertNotNull(javaExtension);
         assertTrue(javaExtension.getCompileClasspath().size() > 0);
         assertNotNull(javaExtension.getJavaHome());
@@ -158,7 +160,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-            gradleSourceSet.getExtensions().get("java"));
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
@@ -184,7 +186,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-            gradleSourceSet.getExtensions().get("java"));
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
@@ -210,7 +212,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-            gradleSourceSet.getExtensions().get("java"));
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
@@ -236,7 +238,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-            gradleSourceSet.getExtensions().get("java"));
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
@@ -262,7 +264,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-            gradleSourceSet.getExtensions().get("java"));
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
@@ -288,7 +290,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-            gradleSourceSet.getExtensions().get("java"));
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
@@ -313,7 +315,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-            gradleSourceSet.getExtensions().get("java"));
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);

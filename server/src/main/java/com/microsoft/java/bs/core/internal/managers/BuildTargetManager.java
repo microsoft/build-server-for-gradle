@@ -17,11 +17,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.core.internal.utils.ConversionUtils;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
+import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
@@ -57,7 +58,7 @@ public class BuildTargetManager {
       BuildTarget bt = new BuildTarget(
           btId,
           tags,
-          Arrays.asList("java"),
+          Arrays.asList(SupportedLanguages.JAVA),
           Collections.emptyList(),
           new BuildTargetCapabilities(
             true /* canCompile */,
@@ -112,8 +113,8 @@ public class BuildTargetManager {
   }
 
   private void setJvmBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
-    DefaultJavaExtension javaExtension = ConversionUtils.toJavaExtension(
-        sourceSet.getExtensions().get("java"));
+    DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+        sourceSet.getExtensions().get(SupportedLanguages.JAVA));
     if (javaExtension == null) {
       return;
     }

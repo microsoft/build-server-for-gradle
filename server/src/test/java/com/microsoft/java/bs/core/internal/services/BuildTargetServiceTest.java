@@ -31,6 +31,7 @@ import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
@@ -238,7 +239,7 @@ class BuildTargetServiceTest {
     compilerArgs.add("java.base/java.lang=ALL-UNNAMED");
     when(mockedJavaExtension.getCompilerArgs()).thenReturn(compilerArgs);
     Map<String, Object> extensions = new HashMap<>();
-    extensions.put("java", mockedJavaExtension);
+    extensions.put(SupportedLanguages.JAVA, mockedJavaExtension);
     when(gradleSourceSet.getExtensions()).thenReturn(extensions);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,

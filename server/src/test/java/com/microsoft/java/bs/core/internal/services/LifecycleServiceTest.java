@@ -24,6 +24,7 @@ import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildClientCapabilities;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
@@ -33,7 +34,8 @@ class LifecycleServiceTest {
 
   @Test
   void testInitializeServer() {
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList("java"));
+    BuildClientCapabilities capabilities = new BuildClientCapabilities(
+        Arrays.asList(SupportedLanguages.JAVA));
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",
@@ -56,7 +58,8 @@ class LifecycleServiceTest {
 
   @Test
   void testInitializePreferenceManager() {
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList("java"));
+    BuildClientCapabilities capabilities = new BuildClientCapabilities(
+        Arrays.asList(SupportedLanguages.JAVA));
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",

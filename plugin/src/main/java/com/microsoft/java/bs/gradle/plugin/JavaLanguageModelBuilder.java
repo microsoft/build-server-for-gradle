@@ -29,14 +29,13 @@ import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.util.GradleVersion;
 
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
 
 /**
  * The language model builder for Java language.
  */
 public class JavaLanguageModelBuilder extends LanguageModelBuilder {
-
-  private static final String LANGUAGE_ID = "java";
 
   @Override
   public boolean appliesFor(Project project, SourceSet sourceSet) {
@@ -45,7 +44,7 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
 
   @Override
   public String getLanguageId() {
-    return LANGUAGE_ID;
+    return SupportedLanguages.JAVA;
   }
 
   @Override
@@ -81,7 +80,7 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   private JavaCompile getJavaCompileTask(Project project, SourceSet sourceSet) {
-    return (JavaCompile) getLanguageCompileTask(LANGUAGE_ID, project, sourceSet);
+    return (JavaCompile) getLanguageCompileTask(SupportedLanguages.JAVA, project, sourceSet);
   }
 
   private void addAnnotationProcessingDir(Project project, SourceSet sourceSet,

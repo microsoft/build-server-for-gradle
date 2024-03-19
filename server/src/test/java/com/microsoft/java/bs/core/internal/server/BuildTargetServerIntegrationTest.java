@@ -23,6 +23,7 @@ import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildClientCapabilities;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
@@ -70,8 +71,9 @@ class BuildTargetServerIntegrationTest {
         "..",
         "testProjects",
         "junit5-jupiter-starter-gradle").toFile();
-    
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList("java"));
+
+    BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList(
+        SupportedLanguages.JAVA));
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",
@@ -79,7 +81,7 @@ class BuildTargetServerIntegrationTest {
         root.toURI().toString(),
         capabilities
     );
-    params.setCapabilities(new BuildClientCapabilities(Arrays.asList("java")));
+    params.setCapabilities(new BuildClientCapabilities(Arrays.asList(SupportedLanguages.JAVA)));
     gradleBuildServer.buildInitialize(params).join();
     gradleBuildServer.onBuildInitialized();
 

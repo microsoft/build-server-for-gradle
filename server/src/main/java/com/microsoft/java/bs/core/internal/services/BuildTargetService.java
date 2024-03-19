@@ -25,13 +25,14 @@ import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
-import com.microsoft.java.bs.core.internal.utils.ConversionUtils;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
+import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetEvent;
@@ -297,8 +298,8 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
-      DefaultJavaExtension javaExtension = ConversionUtils.toJavaExtension(
-          sourceSet.getExtensions().get("java"));
+      DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+          sourceSet.getExtensions().get(SupportedLanguages.JAVA));
       if (javaExtension == null) {
         LOGGER.warning("Skip javac options collection for the build target: " + btId.getUri()
             + ". Because the java extension cannot be found from source set.");
