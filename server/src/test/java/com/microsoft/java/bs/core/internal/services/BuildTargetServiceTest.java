@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.core.internal.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -19,6 +20,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import ch.epfl.scala.bsp4j.JvmBuildTarget;
+import ch.epfl.scala.bsp4j.ScalaBuildTarget;
+import ch.epfl.scala.bsp4j.ScalacOptionsParams;
+import ch.epfl.scala.bsp4j.ScalacOptionsResult;
+import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -66,9 +72,11 @@ class BuildTargetServiceTest {
   }
 
   @Test
-  void testWorkspaceBuildTargets() {
+  void testJvmWorkspaceBuildTargets() {
     BuildTarget target = mock(BuildTarget.class);
     when(target.getBaseDirectory()).thenReturn("foo/bar");
+    when(target.getDataKind()).thenReturn("jvm");
+    when(target.getData()).thenReturn(new JvmBuildTarget(null, null));
     GradleBuildTarget gradleBuildTarget = new GradleBuildTarget(target,
         mock(GradleSourceSet.class));
     when(buildTargetManager.getAllGradleBuildTargets())
@@ -81,6 +89,30 @@ class BuildTargetServiceTest {
 
     assertEquals(1, response.getTargets().size());
     assertEquals("foo/bar", response.getTargets().get(0).getBaseDirectory());
+    assertEquals("jvm", response.getTargets().get(0).getDataKind());
+    assertInstanceOf(JvmBuildTarget.class, response.getTargets().get(0).getData());
+  }
+
+  @Test
+  void testScalaWorkspaceBuildTargets() {
+    BuildTarget target = mock(BuildTarget.class);
+    when(target.getBaseDirectory()).thenReturn("foo/bar");
+    when(target.getDataKind()).thenReturn("scala");
+    when(target.getData()).thenReturn(new ScalaBuildTarget(null, null, null, null, null));
+    GradleBuildTarget gradleBuildTarget = new GradleBuildTarget(target,
+            mock(GradleSourceSet.class));
+    when(buildTargetManager.getAllGradleBuildTargets())
+            .thenReturn(Arrays.asList(gradleBuildTarget));
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+            connector, preferenceManager);
+
+    WorkspaceBuildTargetsResult response = buildTargetService.getWorkspaceBuildTargets();
+
+    assertEquals(1, response.getTargets().size());
+    assertEquals("foo/bar", response.getTargets().get(0).getBaseDirectory());
+    assertEquals("scala", response.getTargets().get(0).getDataKind());
+    assertInstanceOf(ScalaBuildTarget.class, response.getTargets().get(0).getData());
   }
 
   @Test
@@ -249,5 +281,33 @@ class BuildTargetServiceTest {
   
     assertEquals(1, javacOptions.getItems().size());
     assertEquals(2, javacOptions.getItems().get(0).getOptions().size());
+  }
+
+  @Test
+  void testGetScalacOptions() {
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+
+    List<String> compilerArgs = new ArrayList<>();
+    compilerArgs.add("-deprecation");
+    compilerArgs.add("-unchecked");
+    compilerArgs.add("-encoding");
+    compilerArgs.add("utf8");
+    ScalaExtension mockedScalaExtension = mock(ScalaExtension.class);
+    when(mockedScalaExtension.getScalaCompilerArgs()).thenReturn(compilerArgs);
+    Map<String, Object> extensions = new HashMap<>();
+    extensions.put(SupportedLanguages.SCALA, mockedScalaExtension);
+    when(gradleSourceSet.getExtensions()).thenReturn(extensions);
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+            connector, preferenceManager);
+    ScalacOptionsResult scalacOptions = buildTargetService.getBuildTargetScalacOptions(
+            new ScalacOptionsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+
+    assertEquals(1, scalacOptions.getItems().size());
+    assertEquals(4, scalacOptions.getItems().get(0).getOptions().size());
   }
 }

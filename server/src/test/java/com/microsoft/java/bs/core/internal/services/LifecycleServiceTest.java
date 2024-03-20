@@ -59,7 +59,7 @@ class LifecycleServiceTest {
   @Test
   void testInitializePreferenceManager() {
     BuildClientCapabilities capabilities = new BuildClientCapabilities(
-        Arrays.asList(SupportedLanguages.JAVA));
+        Arrays.asList(SupportedLanguages.JAVA, SupportedLanguages.SCALA));
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",

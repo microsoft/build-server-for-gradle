@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.gradle.model.impl;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -45,6 +46,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private File resourceOutputDir;
 
+  private List<File> compileClasspath;
+
   private Set<GradleModuleDependency> moduleDependencies;
 
   private Set<BuildTargetDependency> buildTargetDependencies;
@@ -74,6 +77,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.sourceOutputDir = gradleSourceSet.getSourceOutputDir();
     this.resourceDirs = gradleSourceSet.getResourceDirs();
     this.resourceOutputDir = gradleSourceSet.getResourceOutputDir();
+    this.compileClasspath = gradleSourceSet.getCompileClasspath();
     this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
     this.buildTargetDependencies = gradleSourceSet.getBuildTargetDependencies().stream()
@@ -186,6 +190,15 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.resourceOutputDir = resourceOutputDir;
   }
 
+  @Override
+  public List<File> getCompileClasspath() {
+    return compileClasspath;
+  }
+
+  public void setCompileClasspath(List<File> compileClasspath) {
+    this.compileClasspath = compileClasspath;
+  }
+
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -222,8 +235,9 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   public int hashCode() {
     return Objects.hash(gradleVersion, displayName, projectName, projectPath,
         projectDir, rootDir, sourceSetName, classesTaskName, sourceDirs,
-        generatedSourceDirs, sourceOutputDir, moduleDependencies,
-        buildTargetDependencies, hasTests, extensions);
+        generatedSourceDirs, sourceOutputDir, resourceDirs, resourceOutputDir,
+        compileClasspath, moduleDependencies, buildTargetDependencies,
+        hasTests, extensions);
   }
 
   @Override
@@ -251,6 +265,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(sourceOutputDir, other.sourceOutputDir)
         && Objects.equals(resourceDirs, other.resourceDirs)
         && Objects.equals(resourceOutputDir, other.resourceOutputDir)
+        && Objects.equals(compileClasspath, other.compileClasspath)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(buildTargetDependencies, other.buildTargetDependencies)
         && hasTests == other.hasTests

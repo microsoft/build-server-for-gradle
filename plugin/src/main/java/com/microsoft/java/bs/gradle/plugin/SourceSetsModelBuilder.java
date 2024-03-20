@@ -9,6 +9,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -90,6 +91,10 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
         exclusionFromDependencies.addAll(generatedSrcDirs);
 
+        // classpath
+        List<File> compileClasspath = new LinkedList<>(sourceSet.getCompileClasspath().getFiles());
+        gradleSourceSet.setCompileClasspath(compileClasspath);
+
         // source output dir
         File sourceOutputDir = getSourceOutputDir(sourceSet);
         if (sourceOutputDir != null) {
@@ -140,9 +145,13 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       Map<String, Object> extensions = new HashMap<>();
       for (LanguageModelBuilder languageModelBuilder :
           GradleBuildServerPlugin.SUPPORTED_LANGUAGE_BUILDERS) {
+
         if (languageModelBuilder.appliesFor(project, sourceSet)) {
-          extensions.put(languageModelBuilder.getLanguageId(),
-              languageModelBuilder.getExtensionsFor(project, sourceSet));
+          Object extension = languageModelBuilder.getExtensionsFor(project, sourceSet,
+              gradleSourceSet.getModuleDependencies());
+          if (extension != null) {
+            extensions.put(languageModelBuilder.getLanguageId(), extension);
+          }
         }
       }
       gradleSourceSet.setExtensions(extensions);

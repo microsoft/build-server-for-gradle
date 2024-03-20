@@ -15,8 +15,6 @@ import com.microsoft.java.bs.gradle.model.JavaExtension;
 public class DefaultJavaExtension implements JavaExtension {
   private static final long serialVersionUID = 123345L;
 
-  private List<File> compileClasspath;
-
   private File javaHome;
 
   private String javaVersion;
@@ -26,15 +24,6 @@ public class DefaultJavaExtension implements JavaExtension {
   private String targetCompatibility;
 
   private List<String> compilerArgs;
-
-  @Override
-  public List<File> getCompileClasspath() {
-    return compileClasspath;
-  }
-
-  public void setCompileClasspath(List<File> compileClasspath) {
-    this.compileClasspath = compileClasspath;
-  }
 
   @Override
   public File getJavaHome() {
@@ -83,7 +72,7 @@ public class DefaultJavaExtension implements JavaExtension {
 
   @Override
   public int hashCode() {
-    return Objects.hash(compileClasspath, javaHome, javaVersion,
+    return Objects.hash(javaHome, javaVersion,
         sourceCompatibility, targetCompatibility, compilerArgs
     );
   }
@@ -100,8 +89,7 @@ public class DefaultJavaExtension implements JavaExtension {
       return false;
     }
     DefaultJavaExtension other = (DefaultJavaExtension) obj;
-    return Objects.equals(compileClasspath, other.compileClasspath)
-        && Objects.equals(javaHome, other.javaHome)
+    return Objects.equals(javaHome, other.javaHome)
         && Objects.equals(javaVersion, other.javaVersion)
         && Objects.equals(sourceCompatibility, other.sourceCompatibility)
         && Objects.equals(targetCompatibility, other.targetCompatibility)

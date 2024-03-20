@@ -106,7 +106,8 @@ public class LifecycleService {
     capabilities.setDependencyModulesProvider(true);
     capabilities.setCanReload(true);
     capabilities.setBuildTargetChangedProvider(true);
-    capabilities.setCompileProvider(new CompileProvider(Arrays.asList(SupportedLanguages.JAVA)));
+    capabilities.setCompileProvider(new CompileProvider(Arrays.asList(SupportedLanguages.JAVA,
+        SupportedLanguages.SCALA)));
     return capabilities;
   }
 

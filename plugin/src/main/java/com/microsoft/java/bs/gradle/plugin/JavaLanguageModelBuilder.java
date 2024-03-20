@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
@@ -61,11 +62,9 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   @Override
-  public Object getExtensionsFor(Project project, SourceSet sourceSet) {
+  public Object getExtensionsFor(Project project, SourceSet sourceSet,
+      Set<GradleModuleDependency> moduleDependencies) {
     DefaultJavaExtension extension = new DefaultJavaExtension();
-    // classpath
-    List<File> compileClasspath = new LinkedList<>(sourceSet.getCompileClasspath().getFiles());
-    extension.setCompileClasspath(compileClasspath);
 
     // jdk
     extension.setJavaHome(DefaultInstalledJdk.current().getJavaHome());

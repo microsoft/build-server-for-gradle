@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
@@ -58,6 +60,7 @@ class GradleBuildServerPluginTest {
             || gradleSourceSet.getSourceSetName().equals("test"));
         assertTrue(gradleSourceSet.getClassesTaskName().equals("classes")
             || gradleSourceSet.getClassesTaskName().equals("testClasses"));
+        assertFalse(gradleSourceSet.getCompileClasspath().isEmpty());
         assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
@@ -76,7 +79,6 @@ class GradleBuildServerPluginTest {
         DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
             gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
         assertNotNull(javaExtension);
-        assertTrue(javaExtension.getCompileClasspath().size() > 0);
         assertNotNull(javaExtension.getJavaHome());
         assertNotNull(javaExtension.getJavaVersion());
         assertNotNull(javaExtension.getSourceCompatibility());
@@ -334,8 +336,116 @@ class GradleBuildServerPluginTest {
     ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
     File initScript = PluginHelper.getInitScript();
     modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-    modelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages=java");
+    modelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages=java,scala");
     GradleSourceSets gradleSourceSets = modelBuilder.get();
     return gradleSourceSets;
+  }
+
+  @Test
+  void testScala2ModelBuilder() throws IOException {
+    File projectDir = projectPath.resolve("scala-2").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        assertEquals("scala-2", gradleSourceSet.getProjectName());
+        assertEquals(":", gradleSourceSet.getProjectPath());
+        assertEquals(projectDir, gradleSourceSet.getProjectDir());
+        assertEquals(projectDir, gradleSourceSet.getRootDir());
+        assertTrue(gradleSourceSet.getSourceSetName().equals("main")
+                || gradleSourceSet.getSourceSetName().equals("test"));
+        assertTrue(gradleSourceSet.getClassesTaskName().equals("classes")
+                || gradleSourceSet.getClassesTaskName().equals("testClasses"));
+        assertFalse(gradleSourceSet.getCompileClasspath().isEmpty());
+        assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
+        assertNotNull(gradleSourceSet.getBuildTargetDependencies());
+        assertNotNull(gradleSourceSet.getModuleDependencies());
+        assertNotNull(gradleSourceSet.getSourceOutputDir());
+        assertNotNull(gradleSourceSet.getResourceOutputDir());
+
+        JavaExtension javaExtension = Conversions.toJavaExtension(
+                gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        assertNotNull(javaExtension);
+        assertNotNull(javaExtension.getJavaHome());
+        assertNotNull(javaExtension.getJavaVersion());
+
+        assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
+                dependency -> dependency.getModule().equals("scala-library")
+        ));
+        ScalaExtension scalaExtension = Conversions.toScalaExtension(
+                gradleSourceSet.getExtensions().get(SupportedLanguages.SCALA));
+        assertNotNull(scalaExtension);
+        assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
+        assertEquals("2.13.12", scalaExtension.getScalaVersion());
+        assertEquals("2.13", scalaExtension.getScalaBinaryVersion());
+
+        assertTrue(gradleSourceSet.getCompileClasspath().stream().anyMatch(
+                file -> file.getName().equals("scala-library-2.13.12.jar")));
+        assertFalse(scalaExtension.getScalaJars().isEmpty());
+        assertTrue(scalaExtension.getScalaJars().stream().anyMatch(
+                file -> file.getName().equals("scala-compiler-2.13.12.jar")));
+        assertFalse(scalaExtension.getScalaCompilerArgs().isEmpty());
+        assertTrue(scalaExtension.getScalaCompilerArgs().stream()
+                .anyMatch(arg -> arg.equals("-deprecation")));
+      }
+    }
+  }
+
+  @Test
+  void testScala3ModelBuilder() throws IOException {
+    File projectDir = projectPath.resolve("scala-3").toFile();
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
+    connector.useBuildDistribution();
+    try (ProjectConnection connect = connector.connect()) {
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        assertEquals("scala-3", gradleSourceSet.getProjectName());
+        assertEquals(":", gradleSourceSet.getProjectPath());
+        assertEquals(projectDir, gradleSourceSet.getProjectDir());
+        assertEquals(projectDir, gradleSourceSet.getRootDir());
+        assertTrue(gradleSourceSet.getSourceSetName().equals("main")
+                || gradleSourceSet.getSourceSetName().equals("test"));
+        assertTrue(gradleSourceSet.getClassesTaskName().equals("classes")
+                || gradleSourceSet.getClassesTaskName().equals("testClasses"));
+        assertFalse(gradleSourceSet.getCompileClasspath().isEmpty());
+        assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
+        assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
+        assertNotNull(gradleSourceSet.getSourceOutputDir());
+        assertNotNull(gradleSourceSet.getResourceOutputDir());
+        assertNotNull(gradleSourceSet.getBuildTargetDependencies());
+        assertNotNull(gradleSourceSet.getModuleDependencies());
+        JavaExtension javaExtension = Conversions.toJavaExtension(
+                gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        assertNotNull(javaExtension);
+        assertNotNull(javaExtension.getJavaHome());
+        assertNotNull(javaExtension.getJavaVersion());
+
+        assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
+                dependency -> dependency.getModule().contains("scala3-library_3")
+        ));
+
+        ScalaExtension scalaExtension = Conversions.toScalaExtension(
+                gradleSourceSet.getExtensions().get(SupportedLanguages.SCALA));
+        assertNotNull(scalaExtension);
+        assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
+        assertEquals("3.3.1", scalaExtension.getScalaVersion());
+        assertEquals("3.3", scalaExtension.getScalaBinaryVersion());
+
+        assertTrue(gradleSourceSet.getCompileClasspath().stream().anyMatch(
+                file -> file.getName().equals("scala3-library_3-3.3.1.jar")));
+        assertFalse(scalaExtension.getScalaJars().isEmpty());
+        assertTrue(scalaExtension.getScalaJars().stream().anyMatch(
+                file -> file.getName().equals("scala3-compiler_3-3.3.1.jar")));
+        assertFalse(scalaExtension.getScalaCompilerArgs().isEmpty());
+        assertTrue(scalaExtension.getScalaCompilerArgs().stream()
+                .anyMatch(arg -> arg.equals("-deprecation")));
+      }
+    }
   }
 }

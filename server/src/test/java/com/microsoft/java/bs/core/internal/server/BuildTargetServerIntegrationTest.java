@@ -81,7 +81,8 @@ class BuildTargetServerIntegrationTest {
         root.toURI().toString(),
         capabilities
     );
-    params.setCapabilities(new BuildClientCapabilities(Arrays.asList(SupportedLanguages.JAVA)));
+    params.setCapabilities(new BuildClientCapabilities(Arrays.asList(SupportedLanguages.JAVA,
+        SupportedLanguages.SCALA)));
     gradleBuildServer.buildInitialize(params).join();
     gradleBuildServer.onBuildInitialized();
 
