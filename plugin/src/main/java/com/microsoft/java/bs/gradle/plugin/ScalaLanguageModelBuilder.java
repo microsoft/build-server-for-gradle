@@ -37,7 +37,7 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
 
   @Override
   public String getLanguageId() {
-    return SupportedLanguages.SCALA;
+    return SupportedLanguages.SCALA.getBspName();
   }
 
   @Override

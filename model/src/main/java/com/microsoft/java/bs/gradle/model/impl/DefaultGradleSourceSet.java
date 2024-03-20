@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 /**
  * Default implementation of {@link GradleSourceSet}.
@@ -83,7 +84,9 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.buildTargetDependencies = gradleSourceSet.getBuildTargetDependencies().stream()
         .map(DefaultBuildTargetDependency::new).collect(Collectors.toSet());
     this.hasTests = gradleSourceSet.hasTests();
-    this.extensions = gradleSourceSet.getExtensions();
+    this.extensions = gradleSourceSet.getExtensions().entrySet().stream()
+      .collect(Collectors.toMap(Map.Entry::getKey,
+        e -> Conversions.convertExtension(e.getKey(), e.getValue())));
   }
 
   public String getGradleVersion() {

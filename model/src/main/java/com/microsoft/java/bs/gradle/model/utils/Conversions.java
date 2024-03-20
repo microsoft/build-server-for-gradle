@@ -7,6 +7,7 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
 import com.microsoft.java.bs.gradle.model.impl.DefaultScalaExtension;
 
@@ -17,9 +18,25 @@ import com.microsoft.java.bs.gradle.model.impl.DefaultScalaExtension;
 public class Conversions {
 
   /**
+   * copy the extension object to handle using different ClassLoaders.
+   */
+  public static Object convertExtension(String language, Object extension) {
+    if (extension == null) {
+      return null;
+    }
+    if (language.equals(SupportedLanguages.JAVA.getBspName())) {
+      return toJavaExtension(extension);
+    } else if (language.equals(SupportedLanguages.SCALA.getBspName())) {
+      return toScalaExtension(extension);
+    } else {
+      throw new IllegalStateException("Unsupported language extension conversion "  + language);
+    }
+  }
+
+  /**
    * Convert an object to a DefaultJavaExtension.
    */
-  public static DefaultJavaExtension toJavaExtension(Object object) {
+  private static DefaultJavaExtension toJavaExtension(Object object) {
     DefaultJavaExtension result = new DefaultJavaExtension();
     try {
       result.setJavaHome((File) object.getClass().getDeclaredMethod("getJavaHome").invoke(object));
@@ -32,7 +49,7 @@ public class Conversions {
       result.setCompilerArgs(
           (List<String>) object.getClass().getDeclaredMethod("getCompilerArgs").invoke(object));
     } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
-        | NoSuchMethodException | SecurityException e) {
+             | NoSuchMethodException | SecurityException e) {
       return null;
     }
     return result;
@@ -41,23 +58,20 @@ public class Conversions {
   /**
    * Convert an object to a DefaultScalaExtension.
    */
-  public static DefaultScalaExtension toScalaExtension(Object object) {
-    if (object == null) {
-      return null;
-    }
+  private static DefaultScalaExtension toScalaExtension(Object object) {
     DefaultScalaExtension result = new DefaultScalaExtension();
     try {
       result.setScalaCompilerArgs(
-          (List<String>) object.getClass().getDeclaredMethod("getScalaCompilerArgs")
-            .invoke(object));
+              (List<String>) object.getClass().getDeclaredMethod("getScalaCompilerArgs")
+                      .invoke(object));
       result.setScalaOrganization(
-          (String) object.getClass().getDeclaredMethod("getScalaOrganization").invoke(object));
+              (String) object.getClass().getDeclaredMethod("getScalaOrganization").invoke(object));
       result.setScalaVersion(
-          (String) object.getClass().getDeclaredMethod("getScalaVersion").invoke(object));
+              (String) object.getClass().getDeclaredMethod("getScalaVersion").invoke(object));
       result.setScalaBinaryVersion(
-          (String) object.getClass().getDeclaredMethod("getScalaBinaryVersion").invoke(object));
+              (String) object.getClass().getDeclaredMethod("getScalaBinaryVersion").invoke(object));
       result.setScalaJars(
-          (List<File>) object.getClass().getDeclaredMethod("getScalaJars").invoke(object));
+              (List<File>) object.getClass().getDeclaredMethod("getScalaJars").invoke(object));
     } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
              | NoSuchMethodException | SecurityException e) {
       return null;

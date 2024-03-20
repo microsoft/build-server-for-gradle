@@ -13,7 +13,6 @@ import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,8 +33,8 @@ class LifecycleServiceTest {
 
   @Test
   void testInitializeServer() {
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(
-        Arrays.asList(SupportedLanguages.JAVA));
+    BuildClientCapabilities capabilities =
+        new BuildClientCapabilities(SupportedLanguages.allBspNames);
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",
@@ -58,8 +57,8 @@ class LifecycleServiceTest {
 
   @Test
   void testInitializePreferenceManager() {
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(
-        Arrays.asList(SupportedLanguages.JAVA, SupportedLanguages.SCALA));
+    BuildClientCapabilities capabilities =
+        new BuildClientCapabilities(SupportedLanguages.allBspNames);
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",

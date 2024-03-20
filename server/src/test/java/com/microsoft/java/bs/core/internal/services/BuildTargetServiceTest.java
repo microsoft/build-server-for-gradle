@@ -271,7 +271,7 @@ class BuildTargetServiceTest {
     compilerArgs.add("java.base/java.lang=ALL-UNNAMED");
     when(mockedJavaExtension.getCompilerArgs()).thenReturn(compilerArgs);
     Map<String, Object> extensions = new HashMap<>();
-    extensions.put(SupportedLanguages.JAVA, mockedJavaExtension);
+    extensions.put(SupportedLanguages.JAVA.getBspName(), mockedJavaExtension);
     when(gradleSourceSet.getExtensions()).thenReturn(extensions);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
@@ -299,7 +299,7 @@ class BuildTargetServiceTest {
     ScalaExtension mockedScalaExtension = mock(ScalaExtension.class);
     when(mockedScalaExtension.getScalaCompilerArgs()).thenReturn(compilerArgs);
     Map<String, Object> extensions = new HashMap<>();
-    extensions.put(SupportedLanguages.SCALA, mockedScalaExtension);
+    extensions.put(SupportedLanguages.SCALA.getBspName(), mockedScalaExtension);
     when(gradleSourceSet.getExtensions()).thenReturn(extensions);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,

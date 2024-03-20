@@ -25,7 +25,6 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
-import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
@@ -117,10 +116,8 @@ public class BuildTargetManager {
   }
 
   private void setBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
-    ScalaExtension scalaExtension = Conversions.toScalaExtension(
-            sourceSet.getExtensions().get(SupportedLanguages.SCALA));
-    JavaExtension javaExtension = Conversions.toJavaExtension(
-            sourceSet.getExtensions().get(SupportedLanguages.JAVA));
+    ScalaExtension scalaExtension = SupportedLanguages.SCALA.convert(sourceSet.getExtensions());
+    JavaExtension javaExtension = SupportedLanguages.JAVA.convert(sourceSet.getExtensions());
     if (scalaExtension != null) {
       setScalaBuildTarget(sourceSet, scalaExtension, javaExtension, bt);
     } else if (javaExtension != null) {

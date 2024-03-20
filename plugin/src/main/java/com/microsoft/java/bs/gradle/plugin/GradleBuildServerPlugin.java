@@ -42,9 +42,9 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
     if (supportedLanguagesProps != null) {
       String[] supportedLanguages = supportedLanguagesProps.split(",");
       for (String language : supportedLanguages) {
-        if (language.equalsIgnoreCase(SupportedLanguages.JAVA)) {
+        if (language.equalsIgnoreCase(SupportedLanguages.JAVA.getBspName())) {
           SUPPORTED_LANGUAGE_BUILDERS.add(new JavaLanguageModelBuilder());
-        } else if (language.equalsIgnoreCase(SupportedLanguages.SCALA)) {
+        } else if (language.equalsIgnoreCase(SupportedLanguages.SCALA.getBspName())) {
           SUPPORTED_LANGUAGE_BUILDERS.add(new ScalaLanguageModelBuilder());
         }
       }

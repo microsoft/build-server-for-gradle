@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.Set;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.SupportedLanguage;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.UnknownTaskException;
@@ -29,8 +30,9 @@ public abstract class LanguageModelBuilder {
   public abstract Object getExtensionsFor(Project project, SourceSet sourceSet,
       Set<GradleModuleDependency> moduleDependencies);
 
-  protected Task getLanguageCompileTask(String language, Project project, SourceSet sourceSet) {
-    String taskName = sourceSet.getCompileTaskName(language);
+  protected Task getLanguageCompileTask(SupportedLanguage<?> language,
+      Project project, SourceSet sourceSet) {
+    String taskName = sourceSet.getCompileTaskName(language.getGradleName());
     try {
       return project.getTasks().getByName(taskName);
     } catch (UnknownTaskException e) {

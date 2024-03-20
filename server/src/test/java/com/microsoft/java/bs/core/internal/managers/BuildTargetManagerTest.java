@@ -141,7 +141,7 @@ class BuildTargetManagerTest {
     when(mockedJavaExtension.getSourceCompatibility()).thenReturn("17");
     when(mockedJavaExtension.getTargetCompatibility()).thenReturn("17");
     Map<String, Object> extensions = new HashMap<>();
-    extensions.put(SupportedLanguages.JAVA, mockedJavaExtension);
+    extensions.put(SupportedLanguages.JAVA.getBspName(), mockedJavaExtension);
     when(mocked.getExtensions()).thenReturn(extensions);
     return mocked;
   }

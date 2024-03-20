@@ -9,7 +9,6 @@ import java.io.File;
 import java.lang.Runtime.Version;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
@@ -106,8 +105,7 @@ public class LifecycleService {
     capabilities.setDependencyModulesProvider(true);
     capabilities.setCanReload(true);
     capabilities.setBuildTargetChangedProvider(true);
-    capabilities.setCompileProvider(new CompileProvider(Arrays.asList(SupportedLanguages.JAVA,
-        SupportedLanguages.SCALA)));
+    capabilities.setCompileProvider(new CompileProvider(SupportedLanguages.allBspNames));
     return capabilities;
   }
 

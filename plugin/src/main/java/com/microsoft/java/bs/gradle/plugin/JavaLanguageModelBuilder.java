@@ -45,7 +45,7 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
 
   @Override
   public String getLanguageId() {
-    return SupportedLanguages.JAVA;
+    return SupportedLanguages.JAVA.getBspName();
   }
 
   @Override

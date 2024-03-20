@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -72,8 +71,8 @@ class BuildTargetServerIntegrationTest {
         "testProjects",
         "junit5-jupiter-starter-gradle").toFile();
 
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(Arrays.asList(
-        SupportedLanguages.JAVA));
+    BuildClientCapabilities capabilities =
+        new BuildClientCapabilities(SupportedLanguages.allBspNames);
     InitializeBuildParams params = new InitializeBuildParams(
         "test-client",
         "0.1.0",
@@ -81,8 +80,6 @@ class BuildTargetServerIntegrationTest {
         root.toURI().toString(),
         capabilities
     );
-    params.setCapabilities(new BuildClientCapabilities(Arrays.asList(SupportedLanguages.JAVA,
-        SupportedLanguages.SCALA)));
     gradleBuildServer.buildInitialize(params).join();
     gradleBuildServer.onBuildInitialized();
 

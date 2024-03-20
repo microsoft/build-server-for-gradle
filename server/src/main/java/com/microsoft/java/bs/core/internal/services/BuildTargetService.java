@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import ch.epfl.scala.bsp4j.ScalacOptionsItem;
 import ch.epfl.scala.bsp4j.ScalacOptionsParams;
 import ch.epfl.scala.bsp4j.ScalacOptionsResult;
+import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import org.apache.commons.lang3.StringUtils;
 
@@ -35,8 +36,6 @@ import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
-import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
-import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetEvent;
@@ -302,8 +301,7 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
-      DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-          sourceSet.getExtensions().get(SupportedLanguages.JAVA));
+      JavaExtension javaExtension = SupportedLanguages.JAVA.convert(sourceSet.getExtensions());
       if (javaExtension == null) {
         LOGGER.warning("Skip javac options collection for the build target: " + btId.getUri()
             + ". Because the java extension cannot be found from source set.");
@@ -342,8 +340,7 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
-      ScalaExtension scalaExtension = Conversions.toScalaExtension(
-              sourceSet.getExtensions().get(SupportedLanguages.SCALA));
+      ScalaExtension scalaExtension = SupportedLanguages.SCALA.convert(sourceSet.getExtensions());
       if (scalaExtension == null) {
         LOGGER.warning("Skip scalac options collection for the build target: " + btId.getUri()
                 + ". Because the scalac extension cannot be found from source set.");

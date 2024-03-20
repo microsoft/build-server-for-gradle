@@ -12,13 +12,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
-import com.microsoft.java.bs.gradle.model.utils.Conversions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -45,11 +42,8 @@ class GradleApiConnectorTest {
   }
 
   private GradleApiConnector getConnector() {
-    List<String> supportedLanguages = new LinkedList<>();
-    supportedLanguages.add(SupportedLanguages.JAVA);
-    supportedLanguages.add(SupportedLanguages.SCALA);
     PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setClientSupportedLanguages(supportedLanguages);
+    preferenceManager.setClientSupportedLanguages(SupportedLanguages.allBspNames);
     preferenceManager.setPreferences(new Preferences());
     return new GradleApiConnector(preferenceManager);
   }
@@ -68,8 +62,8 @@ class GradleApiConnectorTest {
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-      assertNotNull(gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
-      assertNull(gradleSourceSet.getExtensions().get(SupportedLanguages.SCALA));
+      assertNotNull(SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions()));
+      assertNull(SupportedLanguages.SCALA.convert(gradleSourceSet.getExtensions()));
       assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
       assertEquals(":", gradleSourceSet.getProjectPath());
       assertEquals(projectDir, gradleSourceSet.getProjectDir());
@@ -238,8 +232,7 @@ class GradleApiConnectorTest {
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet main = findSourceSet(gradleSourceSets, "scala-2 [main]");
-    ScalaExtension scalaExtension = Conversions.toScalaExtension(
-        main.getExtensions().get(SupportedLanguages.SCALA));
+    ScalaExtension scalaExtension = SupportedLanguages.SCALA.convert(main.getExtensions());
     assertNotNull(scalaExtension);
     assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
     assertEquals("2.13.12", scalaExtension.getScalaVersion());
@@ -263,8 +256,7 @@ class GradleApiConnectorTest {
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet main = findSourceSet(gradleSourceSets, "scala-3 [main]");
-    ScalaExtension scalaExtension = Conversions.toScalaExtension(
-        main.getExtensions().get(SupportedLanguages.SCALA));
+    ScalaExtension scalaExtension = SupportedLanguages.SCALA.convert(main.getExtensions());
     assertNotNull(scalaExtension);
     assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
     assertEquals("3.3.1", scalaExtension.getScalaVersion());
