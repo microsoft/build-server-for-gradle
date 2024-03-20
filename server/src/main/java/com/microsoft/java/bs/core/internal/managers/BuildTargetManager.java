@@ -20,6 +20,9 @@ import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
+import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
@@ -55,7 +58,7 @@ public class BuildTargetManager {
       BuildTarget bt = new BuildTarget(
           btId,
           tags,
-          Arrays.asList("java"),
+          Arrays.asList(SupportedLanguages.JAVA),
           Collections.emptyList(),
           new BuildTargetCapabilities(
             true /* canCompile */,
@@ -110,13 +113,21 @@ public class BuildTargetManager {
   }
 
   private void setJvmBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
+    DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+        sourceSet.getExtensions().get(SupportedLanguages.JAVA));
+    if (javaExtension == null) {
+      return;
+    }
+
     // See: https://build-server-protocol.github.io/docs/extensions/jvm#jvmbuildtarget
     JvmBuildTargetEx jvmBuildTarget = new JvmBuildTargetEx(
-        sourceSet.getJavaHome() == null ? "" : sourceSet.getJavaHome().toURI().toString(),
-        sourceSet.getJavaVersion() == null ? "" : sourceSet.getJavaVersion(),
+        javaExtension.getJavaHome() == null ? "" : javaExtension.getJavaHome().toURI().toString(),
+        javaExtension.getJavaVersion() == null ? "" : javaExtension.getJavaVersion(),
         sourceSet.getGradleVersion() == null ? "" : sourceSet.getGradleVersion(),
-        sourceSet.getSourceCompatibility() == null ? "" : sourceSet.getSourceCompatibility(),
-        sourceSet.getTargetCompatibility() == null ? "" : sourceSet.getTargetCompatibility()
+        javaExtension.getSourceCompatibility() == null ? ""
+            : javaExtension.getSourceCompatibility(),
+        javaExtension.getTargetCompatibility() == null ? ""
+            : javaExtension.getTargetCompatibility()
     );
     bt.setDataKind("jvm");
     bt.setData(jvmBuildTarget);

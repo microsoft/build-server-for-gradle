@@ -5,13 +5,18 @@ package com.microsoft.java.bs.gradle.model;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * Represents a source set in a Gradle project.
  */
 public interface GradleSourceSet extends Serializable {
+
+  /**
+   * The Gradle version of the project.
+   */
+  public String getGradleVersion();
 
   /**
    * A unique name for this project/sourceSet combination.
@@ -75,41 +80,6 @@ public interface GradleSourceSet extends Serializable {
   public File getResourceOutputDir();
 
   /**
-   * The compile classpath for this source set.
-   */
-  public List<File> getCompileClasspath();
-
-  /**
-   * JDK home file location.
-   */
-  public File getJavaHome();
-
-  /**
-   * The java version this target is supposed to use.
-   */
-  public String getJavaVersion();
-
-  /**
-   * The Gradle version of the project.
-   */
-  public String getGradleVersion();
-
-  /**
-   * The source compatibility of the source set.
-   */
-  public String getSourceCompatibility();
-
-  /**
-   * The target compatibility of the source set.
-   */
-  public String getTargetCompatibility();
-
-  /**
-   * The list of compiler arguments.
-   */
-  public List<String> getCompilerArgs();
-
-  /**
    * Module dependencies.
    */
   public Set<GradleModuleDependency> getModuleDependencies();
@@ -123,4 +93,9 @@ public interface GradleSourceSet extends Serializable {
    * has tests defined.
    */
   public boolean hasTests();
+
+  /**
+   * Extensions of the source set.
+   */
+  public Map<String, Object> getExtensions();
 }

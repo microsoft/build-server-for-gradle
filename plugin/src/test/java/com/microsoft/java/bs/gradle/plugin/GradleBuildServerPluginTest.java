@@ -23,6 +23,9 @@ import org.junit.jupiter.api.condition.JRE;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
+import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 class GradleBuildServerPluginTest {
 
@@ -43,12 +46,10 @@ class GradleBuildServerPluginTest {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
     try (ProjectConnection connect = connector.connect()) {
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        assertNotNull(gradleSourceSet.getGradleVersion());
         assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
         assertEquals(":", gradleSourceSet.getProjectPath());
         assertEquals(projectDir, gradleSourceSet.getProjectDir());
@@ -60,16 +61,9 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
         assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
-        assertTrue(gradleSourceSet.getCompileClasspath().size() > 0);
         assertNotNull(gradleSourceSet.getSourceOutputDir());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
 
-        assertNotNull(gradleSourceSet.getJavaHome());
-        assertNotNull(gradleSourceSet.getJavaVersion());
-        assertNotNull(gradleSourceSet.getSourceCompatibility());
-        assertNotNull(gradleSourceSet.getTargetCompatibility());
-        assertNotNull(gradleSourceSet.getCompilerArgs());
-        assertNotNull(gradleSourceSet.getGradleVersion());
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
         assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
@@ -78,6 +72,16 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
             dependency -> dependency.getModule().contains("gradle-api")
         ));
+
+        DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        assertNotNull(javaExtension);
+        assertTrue(javaExtension.getCompileClasspath().size() > 0);
+        assertNotNull(javaExtension.getJavaHome());
+        assertNotNull(javaExtension.getJavaVersion());
+        assertNotNull(javaExtension.getSourceCompatibility());
+        assertNotNull(javaExtension.getTargetCompatibility());
+        assertNotNull(javaExtension.getCompilerArgs());
       }
     }
   }
@@ -90,10 +94,7 @@ class GradleBuildServerPluginTest {
         .forProjectDirectory(projectDir)
         .useGradleVersion("4.8");
     try (ProjectConnection connect = connector.connect()) {
-      File initScript = PluginHelper.getInitScript();
-      GradleSourceSets gradleSourceSets = connect.model(GradleSourceSets.class)
-          .addArguments("--init-script", initScript.getAbsolutePath())
-          .get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(0, gradleSourceSets.getGradleSourceSets().size());
     }
   }
@@ -106,10 +107,7 @@ class GradleBuildServerPluginTest {
         .forProjectDirectory(projectDir)
         .useGradleVersion("5.6.4");
     try (ProjectConnection connect = connector.connect()) {
-      File initScript = PluginHelper.getInitScript();
-      GradleSourceSets gradleSourceSets = connect.model(GradleSourceSets.class)
-          .addArguments("--init-script", initScript.getAbsolutePath())
-          .get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     }
   }
@@ -124,10 +122,7 @@ class GradleBuildServerPluginTest {
         .forProjectDirectory(projectDir)
         .useGradleVersion("4.2.1");
     try (ProjectConnection connect = connector.connect()) {
-      File initScript = PluginHelper.getInitScript();
-      GradleSourceSets gradleSourceSets = connect.model(GradleSourceSets.class)
-          .addArguments("--init-script", initScript.getAbsolutePath())
-          .get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     }
   }
@@ -140,17 +135,15 @@ class GradleBuildServerPluginTest {
 
     try (ProjectConnection connect = connector.connect()) {
       connect.newBuild().forTasks("clean", "compileJava").run();
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
 
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       int generatedSourceDirCount = 0;
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         generatedSourceDirCount += gradleSourceSet.getGeneratedSourceDirs().size();
         assertTrue(gradleSourceSet.getGeneratedSourceDirs().stream().anyMatch(
-            dir -> dir.getAbsolutePath().replaceAll("\\\\", "/").endsWith("build/generated/sources")
+            dir -> dir.getAbsolutePath().replaceAll("\\\\", "/")
+                .endsWith("build/generated/sources")
         ));
       }
       assertEquals(4, generatedSourceDirCount);
@@ -163,22 +156,21 @@ class GradleBuildServerPluginTest {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
     try (ProjectConnection connect = connector.connect()) {
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertTrue(args.contains("|-source|1.8"), () -> "Available args: " + args);
         assertTrue(args.contains("|-target|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("1.8", gradleSourceSet.getSourceCompatibility(),
+        assertEquals("1.8", javaExtension.getSourceCompatibility(),
             () -> "Available args: " + args);
-        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+        assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
     }
@@ -190,22 +182,21 @@ class GradleBuildServerPluginTest {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
     try (ProjectConnection connect = connector.connect()) {
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
         assertTrue(args.contains("|--release|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("9", gradleSourceSet.getSourceCompatibility(),
+        assertEquals("9", javaExtension.getSourceCompatibility(),
             () -> "Available args: " + args);
-        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+        assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
     }
@@ -217,22 +208,21 @@ class GradleBuildServerPluginTest {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
     try (ProjectConnection connect = connector.connect()) {
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
         assertTrue(args.contains("|--release|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("9", gradleSourceSet.getSourceCompatibility(),
+        assertEquals("9", javaExtension.getSourceCompatibility(),
             () -> "Available args: " + args);
-        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+        assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
     }
@@ -244,22 +234,21 @@ class GradleBuildServerPluginTest {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
     try (ProjectConnection connect = connector.connect()) {
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
         assertTrue(args.contains("|--source|1.8"), () -> "Available args: " + args);
         assertTrue(args.contains("|--target|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("1.8", gradleSourceSet.getSourceCompatibility(),
+        assertEquals("1.8", javaExtension.getSourceCompatibility(),
             () -> "Available args: " + args);
-        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+        assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
     }
@@ -271,22 +260,21 @@ class GradleBuildServerPluginTest {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
     try (ProjectConnection connect = connector.connect()) {
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertTrue(args.contains("|-source|1.8"), () -> "Available args: " + args);
         assertTrue(args.contains("|-target|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("1.8", gradleSourceSet.getSourceCompatibility(),
+        assertEquals("1.8", javaExtension.getSourceCompatibility(),
             () -> "Available args: " + args);
-        assertEquals("9", gradleSourceSet.getTargetCompatibility(),
+        assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
     }
@@ -298,21 +286,20 @@ class GradleBuildServerPluginTest {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
     try (ProjectConnection connect = connector.connect()) {
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertTrue(args.contains("|-source|"), () -> "Available args: " + args);
         assertTrue(args.contains("|-target|"), () -> "Available args: " + args);
-        assertFalse(gradleSourceSet.getSourceCompatibility().isEmpty(),
+        assertFalse(javaExtension.getSourceCompatibility().isEmpty(),
             () -> "Available args: " + args);
-        assertFalse(gradleSourceSet.getTargetCompatibility().isEmpty(),
+        assertFalse(javaExtension.getTargetCompatibility().isEmpty(),
             () -> "Available args: " + args);
       }
     }
@@ -324,23 +311,31 @@ class GradleBuildServerPluginTest {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
     connector.useBuildDistribution();
     try (ProjectConnection connect = connector.connect()) {
-      ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-      File initScript = PluginHelper.getInitScript();
-      modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-      GradleSourceSets gradleSourceSets = modelBuilder.get();
+      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        String args = "|" + String.join("|", gradleSourceSet.getCompilerArgs());
+        DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+            gradleSourceSet.getExtensions().get(SupportedLanguages.JAVA));
+        String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertTrue(args.contains("|-source|17|"), () -> "Available args: " + args);
         assertTrue(args.contains("|-target|17|"), () -> "Available args: " + args);
-        assertFalse(gradleSourceSet.getSourceCompatibility().isEmpty(),
+        assertFalse(javaExtension.getSourceCompatibility().isEmpty(),
             () -> "Available args: " + args);
-        assertFalse(gradleSourceSet.getTargetCompatibility().isEmpty(),
+        assertFalse(javaExtension.getTargetCompatibility().isEmpty(),
             () -> "Available args: " + args);
       }
     }
+  }
+
+  private GradleSourceSets getGradleSourceSets(ProjectConnection connect) throws IOException {
+    ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+    File initScript = PluginHelper.getInitScript();
+    modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
+    modelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages=java");
+    GradleSourceSets gradleSourceSets = modelBuilder.get();
+    return gradleSourceSets;
   }
 }

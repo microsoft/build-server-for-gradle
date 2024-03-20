@@ -30,6 +30,9 @@ import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
+import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetEvent;
@@ -295,7 +298,14 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
-      List<String> classpath = sourceSet.getCompileClasspath().stream()
+      DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
+          sourceSet.getExtensions().get(SupportedLanguages.JAVA));
+      if (javaExtension == null) {
+        LOGGER.warning("Skip javac options collection for the build target: " + btId.getUri()
+            + ". Because the java extension cannot be found from source set.");
+        continue;
+      }
+      List<String> classpath = javaExtension.getCompileClasspath().stream()
           .map(file -> file.toURI().toString())
           .collect(Collectors.toList());
       String classesDir;
@@ -306,7 +316,7 @@ public class BuildTargetService {
       }
       items.add(new JavacOptionsItem(
           btId,
-          sourceSet.getCompilerArgs(),
+          javaExtension.getCompilerArgs(),
           classpath,
           classesDir
       ));

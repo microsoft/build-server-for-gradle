@@ -13,8 +13,10 @@ import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +30,8 @@ import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
@@ -229,11 +233,14 @@ class BuildTargetServiceTest {
     GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
 
+    JavaExtension mockedJavaExtension = mock(JavaExtension.class);
     List<String> compilerArgs = new ArrayList<>();
-
     compilerArgs.add("--add-opens");
     compilerArgs.add("java.base/java.lang=ALL-UNNAMED");
-    when(gradleSourceSet.getCompilerArgs()).thenReturn(compilerArgs);
+    when(mockedJavaExtension.getCompilerArgs()).thenReturn(compilerArgs);
+    Map<String, Object> extensions = new HashMap<>();
+    extensions.put(SupportedLanguages.JAVA, mockedJavaExtension);
+    when(gradleSourceSet.getExtensions()).thenReturn(extensions);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
         connector, preferenceManager);

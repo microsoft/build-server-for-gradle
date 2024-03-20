@@ -88,6 +88,8 @@ public class GradleApiConnector {
         customModelBuilder.addJvmArguments(
             "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005");
       }
+      customModelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages="
+          + String.join(",", preferenceManager.getClientSupportedLanguages()));
       // since the model returned from Gradle TAPI is a wrapped object, here we re-construct it
       // via a copy constructor and return as a POJO.
       return new DefaultGradleSourceSets(customModelBuilder.get());
