@@ -30,6 +30,7 @@ import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
 import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
@@ -142,12 +143,12 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         continue;
       }
 
-      Map<String, Object> extensions = new HashMap<>();
+      Map<String, LanguageExtension> extensions = new HashMap<>();
       for (LanguageModelBuilder languageModelBuilder :
           GradleBuildServerPlugin.SUPPORTED_LANGUAGE_BUILDERS) {
 
         if (languageModelBuilder.appliesFor(project, sourceSet)) {
-          Object extension = languageModelBuilder.getExtensionsFor(project, sourceSet,
+          LanguageExtension extension = languageModelBuilder.getExtensionsFor(project, sourceSet,
               gradleSourceSet.getModuleDependencies());
           if (extension != null) {
             extensions.put(languageModelBuilder.getLanguageId(), extension);

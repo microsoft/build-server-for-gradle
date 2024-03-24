@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.gradle.model.impl;
 
 import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguage;
 
 import java.util.Map;
@@ -23,11 +24,7 @@ public class DefaultJavaLanguage implements SupportedLanguage<JavaExtension> {
   }
 
   @Override
-  public JavaExtension convert(Map<String, Object> extensions) {
-    Object extension = extensions.get(getBspName());
-    if (extension == null) {
-      return null;
-    }
-    return (JavaExtension) extension;
+  public JavaExtension convert(Map<String, LanguageExtension> extensions) {
+    return (JavaExtension) extensions.get(getBspName());
   }
 }

@@ -62,7 +62,7 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   @Override
-  public Object getExtensionsFor(Project project, SourceSet sourceSet,
+  public DefaultJavaExtension getExtensionsFor(Project project, SourceSet sourceSet,
       Set<GradleModuleDependency> moduleDependencies) {
     DefaultJavaExtension extension = new DefaultJavaExtension();
 

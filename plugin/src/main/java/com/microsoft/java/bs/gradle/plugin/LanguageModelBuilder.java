@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.Set;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguage;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -27,7 +28,7 @@ public abstract class LanguageModelBuilder {
   public abstract Collection<File> getGeneratedSourceFoldersFor(Project project,
       SourceSet sourceSet);
 
-  public abstract Object getExtensionsFor(Project project, SourceSet sourceSet,
+  public abstract LanguageExtension getExtensionsFor(Project project, SourceSet sourceSet,
       Set<GradleModuleDependency> moduleDependencies);
 
   protected Task getLanguageCompileTask(SupportedLanguage<?> language,

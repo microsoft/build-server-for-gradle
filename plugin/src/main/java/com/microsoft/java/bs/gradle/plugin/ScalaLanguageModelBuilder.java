@@ -57,7 +57,7 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   @Override
-  public Object getExtensionsFor(Project project, SourceSet sourceSet,
+  public DefaultScalaExtension getExtensionsFor(Project project, SourceSet sourceSet,
       Set<GradleModuleDependency> moduleDependencies) {
     GradleModuleDependency scalaLibraryDependency = getScalaLibraryDependency(moduleDependencies);
     if (scalaLibraryDependency != null) {

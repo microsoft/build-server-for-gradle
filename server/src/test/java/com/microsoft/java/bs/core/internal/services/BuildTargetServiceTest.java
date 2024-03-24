@@ -37,6 +37,7 @@ import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
@@ -270,7 +271,7 @@ class BuildTargetServiceTest {
     compilerArgs.add("--add-opens");
     compilerArgs.add("java.base/java.lang=ALL-UNNAMED");
     when(mockedJavaExtension.getCompilerArgs()).thenReturn(compilerArgs);
-    Map<String, Object> extensions = new HashMap<>();
+    Map<String, LanguageExtension> extensions = new HashMap<>();
     extensions.put(SupportedLanguages.JAVA.getBspName(), mockedJavaExtension);
     when(gradleSourceSet.getExtensions()).thenReturn(extensions);
 
@@ -298,7 +299,7 @@ class BuildTargetServiceTest {
     compilerArgs.add("utf8");
     ScalaExtension mockedScalaExtension = mock(ScalaExtension.class);
     when(mockedScalaExtension.getScalaCompilerArgs()).thenReturn(compilerArgs);
-    Map<String, Object> extensions = new HashMap<>();
+    Map<String, LanguageExtension> extensions = new HashMap<>();
     extensions.put(SupportedLanguages.SCALA.getBspName(), mockedScalaExtension);
     when(gradleSourceSet.getExtensions()).thenReturn(extensions);
 

@@ -3,6 +3,7 @@
 
 package com.microsoft.java.bs.gradle.model.impl;
 
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguage;
 
@@ -24,11 +25,7 @@ public class DefaultScalaLanguage implements SupportedLanguage<ScalaExtension> {
   }
 
   @Override
-  public ScalaExtension convert(Map<String, Object> extensions) {
-    Object extension = extensions.get(getBspName());
-    if (extension == null) {
-      return null;
-    }
-    return (ScalaExtension) extension;
+  public ScalaExtension convert(Map<String, LanguageExtension> extensions) {
+    return (ScalaExtension) extensions.get(getBspName());
   }
 }

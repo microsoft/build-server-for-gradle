@@ -6,6 +6,7 @@ package com.microsoft.java.bs.gradle.model.impl;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Objects;
 
@@ -24,6 +25,29 @@ public class DefaultScalaExtension implements ScalaExtension {
   private String scalaBinaryVersion;
 
   private List<File> scalaJars;
+
+  @Override
+  public Object convert(ClassLoader classLoader) {
+    try {
+      Class<?> destinationClass = classLoader.loadClass(getClass().getName());
+      Object result = destinationClass.getConstructor().newInstance();
+      destinationClass.getDeclaredMethod("setScalaCompilerArgs", List.class)
+          .invoke(result, getScalaCompilerArgs());
+      destinationClass.getDeclaredMethod("setScalaOrganization", String.class)
+          .invoke(result, getScalaOrganization());
+      destinationClass.getDeclaredMethod("setScalaVersion", String.class)
+          .invoke(result, getScalaVersion());
+      destinationClass.getDeclaredMethod("setScalaBinaryVersion", String.class)
+          .invoke(result, getScalaBinaryVersion());
+      destinationClass.getDeclaredMethod("setScalaJars", List.class)
+          .invoke(result, getScalaJars());
+      return result;
+    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
+              | NoSuchMethodException | ClassNotFoundException | InstantiationException
+              | SecurityException e) {
+      throw new IllegalStateException("Error converting " + getClass().getName(), e);
+    }
+  }
 
   @Override
   public List<String> getScalaCompilerArgs() {

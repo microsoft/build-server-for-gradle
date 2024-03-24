@@ -8,11 +8,11 @@ import java.util.Map;
 /**
  * The supported language interface.
  */
-public interface SupportedLanguage<E> {
+public interface SupportedLanguage<E extends LanguageExtension> {
 
   String getBspName();
 
   String getGradleName();
 
-  E convert(Map<String, Object> extensions);
+  E convert(Map<String, LanguageExtension> extensions);
 }

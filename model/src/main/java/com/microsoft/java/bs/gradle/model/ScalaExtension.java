@@ -4,13 +4,12 @@
 package com.microsoft.java.bs.gradle.model;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.List;
 
 /**
  * The extension model for Scala language.
  */
-public interface ScalaExtension extends Serializable {
+public interface ScalaExtension extends LanguageExtension {
   /**
    * The list of Scala compiler arguments.
    */

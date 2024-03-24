@@ -103,5 +103,5 @@ public interface GradleSourceSet extends Serializable {
   /**
    * Extensions of the source set.
    */
-  public Map<String, Object> getExtensions();
+  public Map<String, LanguageExtension> getExtensions();
 }

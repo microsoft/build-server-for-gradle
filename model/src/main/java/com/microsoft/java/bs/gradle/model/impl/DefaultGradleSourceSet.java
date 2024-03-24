@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
-import com.microsoft.java.bs.gradle.model.utils.Conversions;
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
 
 /**
  * Default implementation of {@link GradleSourceSet}.
@@ -55,7 +55,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private boolean hasTests;
 
-  private Map<String, Object> extensions;
+  private Map<String, LanguageExtension> extensions;
 
   public DefaultGradleSourceSet() {}
 
@@ -86,9 +86,14 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.hasTests = gradleSourceSet.hasTests();
     this.extensions = gradleSourceSet.getExtensions().entrySet().stream()
       .collect(Collectors.toMap(Map.Entry::getKey,
-        e -> Conversions.convertExtension(e.getKey(), e.getValue())));
+        e -> convertLanguageExtension(e.getValue())));
   }
 
+  private LanguageExtension convertLanguageExtension(LanguageExtension object) {
+    return (LanguageExtension) object.convert(getClass().getClassLoader());
+  }
+
+  @Override
   public String getGradleVersion() {
     return gradleVersion;
   }
@@ -97,6 +102,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.gradleVersion = gradleVersion;
   }
 
+  @Override
   public String getDisplayName() {
     return displayName;
   }
@@ -105,6 +111,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.displayName = displayName;
   }
 
+  @Override
   public String getProjectName() {
     return projectName;
   }
@@ -113,6 +120,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.projectName = projectName;
   }
 
+  @Override
   public String getProjectPath() {
     return projectPath;
   }
@@ -121,6 +129,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.projectPath = projectPath;
   }
 
+  @Override
   public File getProjectDir() {
     return projectDir;
   }
@@ -129,6 +138,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.projectDir = projectDir;
   }
 
+  @Override
   public File getRootDir() {
     return rootDir;
   }
@@ -137,6 +147,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.rootDir = rootDir;
   }
 
+  @Override
   public String getSourceSetName() {
     return sourceSetName;
   }
@@ -145,6 +156,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.sourceSetName = sourceSetName;
   }
 
+  @Override
   public String getClassesTaskName() {
     return classesTaskName;
   }
@@ -153,6 +165,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.classesTaskName = classesTaskName;
   }
 
+  @Override
   public Set<File> getSourceDirs() {
     return sourceDirs;
   }
@@ -161,6 +174,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.sourceDirs = sourceDirs;
   }
 
+  @Override
   public Set<File> getGeneratedSourceDirs() {
     return generatedSourceDirs;
   }
@@ -169,6 +183,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.generatedSourceDirs = generatedSourceDirs;
   }
 
+  @Override
   public File getSourceOutputDir() {
     return sourceOutputDir;
   }
@@ -177,6 +192,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.sourceOutputDir = sourceOutputDir;
   }
 
+  @Override
   public Set<File> getResourceDirs() {
     return resourceDirs;
   }
@@ -185,6 +201,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.resourceDirs = resourceDirs;
   }
 
+  @Override
   public File getResourceOutputDir() {
     return resourceOutputDir;
   }
@@ -202,6 +219,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.compileClasspath = compileClasspath;
   }
 
+  @Override
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -210,6 +228,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.moduleDependencies = moduleDependencies;
   }
 
+  @Override
   public Set<BuildTargetDependency> getBuildTargetDependencies() {
     return buildTargetDependencies;
   }
@@ -218,6 +237,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.buildTargetDependencies = buildTargetDependencies;
   }
 
+  @Override
   public boolean hasTests() {
     return hasTests;
   }
@@ -226,11 +246,12 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.hasTests = hasTests;
   }
 
-  public Map<String, Object> getExtensions() {
+  @Override
+  public Map<String, LanguageExtension> getExtensions() {
     return extensions;
   }
 
-  public void setExtensions(Map<String, Object> extensions) {
+  public void setExtensions(Map<String, LanguageExtension> extensions) {
     this.extensions = extensions;
   }
 
