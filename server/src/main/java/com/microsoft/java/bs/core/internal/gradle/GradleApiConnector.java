@@ -9,6 +9,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,8 @@ import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TestReportReporter;
+import com.microsoft.java.bs.gradle.model.GradleIncludedBuild;
+import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 
@@ -70,6 +74,19 @@ public class GradleApiConnector {
     return model.getGradle().getGradleVersion();
   }
 
+  private List<GradleSourceSet> getIncludedBuildGradleSourceSets(File initScript, URI projectUri) {
+    // add source sets for this project
+    List<GradleSourceSet> allSourceSets = new ArrayList<>();
+    GradleSourceSets gradleSourceSets = getGradleSourceSets(initScript, projectUri);
+    allSourceSets.addAll(gradleSourceSets.getGradleSourceSets());
+    // check included builds for more source sets to add
+    for (GradleIncludedBuild includedBuild : gradleSourceSets.getGradleIncludedBuilds()) {
+      URI includedProjectUri = includedBuild.getProjectDir().toURI();
+      allSourceSets.addAll(getIncludedBuildGradleSourceSets(initScript, includedProjectUri));
+    }
+    return allSourceSets;
+  }
+
   /**
    * Get the source sets of the Gradle project.
    *
@@ -82,6 +99,17 @@ public class GradleApiConnector {
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
+    List<GradleSourceSet> allSourceSets = getIncludedBuildGradleSourceSets(initScript, projectUri);
+
+    return new DefaultGradleSourceSets(Collections.emptyList(), allSourceSets);
+  }
+
+  private GradleSourceSets getGradleSourceSets(File initScript, URI projectUri) {
+    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
+    String summary = "";
+    StatusCode statusCode = StatusCode.OK;
+    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
+      reporter.taskStarted("Connect to Gradle Daemon");
     ProgressReporter reporter = new DefaultProgressReporter(client);
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
