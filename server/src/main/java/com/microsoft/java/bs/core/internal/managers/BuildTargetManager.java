@@ -116,8 +116,8 @@ public class BuildTargetManager {
   }
 
   private void setBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
-    ScalaExtension scalaExtension = SupportedLanguages.SCALA.convert(sourceSet.getExtensions());
-    JavaExtension javaExtension = SupportedLanguages.JAVA.convert(sourceSet.getExtensions());
+    ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(sourceSet);
+    JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(sourceSet);
     if (scalaExtension != null) {
       setScalaBuildTarget(sourceSet, scalaExtension, javaExtension, bt);
     } else if (javaExtension != null) {

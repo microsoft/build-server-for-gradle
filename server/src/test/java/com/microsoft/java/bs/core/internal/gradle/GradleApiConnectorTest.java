@@ -62,8 +62,8 @@ class GradleApiConnectorTest {
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-      assertNotNull(SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions()));
-      assertNull(SupportedLanguages.SCALA.convert(gradleSourceSet.getExtensions()));
+      assertNotNull(SupportedLanguages.JAVA.getExtension(gradleSourceSet));
+      assertNull(SupportedLanguages.SCALA.getExtension(gradleSourceSet));
       assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
       assertEquals(":", gradleSourceSet.getProjectPath());
       assertEquals(projectDir, gradleSourceSet.getProjectDir());
@@ -232,7 +232,7 @@ class GradleApiConnectorTest {
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet main = findSourceSet(gradleSourceSets, "scala-2 [main]");
-    ScalaExtension scalaExtension = SupportedLanguages.SCALA.convert(main.getExtensions());
+    ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(main);
     assertNotNull(scalaExtension);
     assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
     assertEquals("2.13.12", scalaExtension.getScalaVersion());
@@ -256,7 +256,7 @@ class GradleApiConnectorTest {
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
     assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     GradleSourceSet main = findSourceSet(gradleSourceSets, "scala-3 [main]");
-    ScalaExtension scalaExtension = SupportedLanguages.SCALA.convert(main.getExtensions());
+    ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(main);
     assertNotNull(scalaExtension);
     assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
     assertEquals("3.3.1", scalaExtension.getScalaVersion());

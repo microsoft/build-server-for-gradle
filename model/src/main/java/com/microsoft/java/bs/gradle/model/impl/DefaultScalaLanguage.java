@@ -25,7 +25,7 @@ public class DefaultScalaLanguage implements SupportedLanguage<ScalaExtension> {
   }
 
   @Override
-  public ScalaExtension convert(Map<String, LanguageExtension> extensions) {
+  public ScalaExtension getExtension(Map<String, LanguageExtension> extensions) {
     return (ScalaExtension) extensions.get(getBspName());
   }
 }

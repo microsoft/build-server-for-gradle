@@ -301,7 +301,7 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
-      JavaExtension javaExtension = SupportedLanguages.JAVA.convert(sourceSet.getExtensions());
+      JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(sourceSet);
       if (javaExtension == null) {
         LOGGER.warning("Skip javac options collection for the build target: " + btId.getUri()
             + ". Because the java extension cannot be found from source set.");
@@ -340,7 +340,7 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
-      ScalaExtension scalaExtension = SupportedLanguages.SCALA.convert(sourceSet.getExtensions());
+      ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(sourceSet);
       if (scalaExtension == null) {
         LOGGER.warning("Skip scalac options collection for the build target: " + btId.getUri()
                 + ". Because the scalac extension cannot be found from source set.");

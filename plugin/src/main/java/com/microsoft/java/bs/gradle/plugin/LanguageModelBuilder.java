@@ -21,7 +21,11 @@ import org.gradle.api.tasks.SourceSet;
 public abstract class LanguageModelBuilder {
   public abstract boolean appliesFor(Project project, SourceSet sourceSet);
 
-  public abstract String getLanguageId();
+  public abstract SupportedLanguage<?> getLanguage();
+
+  public String getLanguageId() {
+    return getLanguage().getBspName();
+  }
 
   public abstract Collection<File> getSourceFoldersFor(Project project, SourceSet sourceSet);
 
@@ -31,9 +35,8 @@ public abstract class LanguageModelBuilder {
   public abstract LanguageExtension getExtensionsFor(Project project, SourceSet sourceSet,
       Set<GradleModuleDependency> moduleDependencies);
 
-  protected Task getLanguageCompileTask(SupportedLanguage<?> language,
-      Project project, SourceSet sourceSet) {
-    String taskName = sourceSet.getCompileTaskName(language.getGradleName());
+  protected Task getLanguageCompileTask(Project project, SourceSet sourceSet) {
+    String taskName = sourceSet.getCompileTaskName(getLanguage().getGradleName());
     try {
       return project.getTasks().getByName(taskName);
     } catch (UnknownTaskException e) {

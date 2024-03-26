@@ -13,6 +13,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.ScalaExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguage;
 import com.microsoft.java.bs.gradle.model.impl.DefaultScalaExtension;
 import org.gradle.api.Project;
 import org.gradle.api.file.SourceDirectorySet;
@@ -36,8 +38,8 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   @Override
-  public String getLanguageId() {
-    return SupportedLanguages.SCALA.getBspName();
+  public SupportedLanguage<ScalaExtension> getLanguage() {
+    return SupportedLanguages.SCALA;
   }
 
   @Override
@@ -53,7 +55,7 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   private ScalaCompile getScalaCompileTask(Project project, SourceSet sourceSet) {
-    return (ScalaCompile) getLanguageCompileTask(SupportedLanguages.SCALA, project, sourceSet);
+    return (ScalaCompile) getLanguageCompileTask(project, sourceSet);
   }
 
   @Override

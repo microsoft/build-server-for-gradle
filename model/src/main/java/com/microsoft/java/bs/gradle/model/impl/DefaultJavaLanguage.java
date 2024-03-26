@@ -24,7 +24,7 @@ public class DefaultJavaLanguage implements SupportedLanguage<JavaExtension> {
   }
 
   @Override
-  public JavaExtension convert(Map<String, LanguageExtension> extensions) {
+  public JavaExtension getExtension(Map<String, LanguageExtension> extensions) {
     return (JavaExtension) extensions.get(getBspName());
   }
 }

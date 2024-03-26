@@ -75,8 +75,7 @@ class GradleBuildServerPluginTest {
             dependency -> dependency.getModule().contains("gradle-api")
         ));
 
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         assertNotNull(javaExtension.getJavaHome());
         assertNotNull(javaExtension.getJavaVersion());
@@ -160,8 +159,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
@@ -187,8 +185,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
@@ -214,8 +211,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
@@ -241,8 +237,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
@@ -268,8 +263,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
@@ -295,8 +289,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
@@ -321,8 +314,7 @@ class GradleBuildServerPluginTest {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         String args = "|" + String.join("|", javaExtension.getCompilerArgs());
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
@@ -342,7 +334,8 @@ class GradleBuildServerPluginTest {
     ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
     File initScript = PluginHelper.getInitScript();
     modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-    modelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages=java,scala");
+    modelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages="
+            + String.join(",", SupportedLanguages.allBspNames));
     return new DefaultGradleSourceSets(modelBuilder.get());
   }
 
@@ -372,8 +365,7 @@ class GradleBuildServerPluginTest {
         assertNotNull(gradleSourceSet.getSourceOutputDir());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
 
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         assertNotNull(javaExtension.getJavaHome());
         assertNotNull(javaExtension.getJavaVersion());
@@ -381,8 +373,7 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
                 dependency -> dependency.getModule().equals("scala-library")
         ));
-        ScalaExtension scalaExtension =
-             SupportedLanguages.SCALA.convert(gradleSourceSet.getExtensions());
+        ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(gradleSourceSet);
         assertNotNull(scalaExtension);
         assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
         assertEquals("2.13.12", scalaExtension.getScalaVersion());
@@ -425,8 +416,7 @@ class GradleBuildServerPluginTest {
         assertNotNull(gradleSourceSet.getResourceOutputDir());
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
-        JavaExtension javaExtension =
-            SupportedLanguages.JAVA.convert(gradleSourceSet.getExtensions());
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
         assertNotNull(javaExtension.getJavaHome());
         assertNotNull(javaExtension.getJavaVersion());
@@ -435,8 +425,7 @@ class GradleBuildServerPluginTest {
                 dependency -> dependency.getModule().contains("scala3-library_3")
         ));
 
-        ScalaExtension scalaExtension =
-             SupportedLanguages.SCALA.convert(gradleSourceSet.getExtensions());
+        ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(gradleSourceSet);
         assertNotNull(scalaExtension);
         assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
         assertEquals("3.3.1", scalaExtension.getScalaVersion());

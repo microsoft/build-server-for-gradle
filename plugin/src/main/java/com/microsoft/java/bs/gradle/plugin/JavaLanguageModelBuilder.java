@@ -20,6 +20,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguage;
+
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
@@ -44,8 +47,8 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   @Override
-  public String getLanguageId() {
-    return SupportedLanguages.JAVA.getBspName();
+  public SupportedLanguage<JavaExtension> getLanguage() {
+    return SupportedLanguages.JAVA;
   }
 
   @Override
@@ -79,7 +82,7 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   private JavaCompile getJavaCompileTask(Project project, SourceSet sourceSet) {
-    return (JavaCompile) getLanguageCompileTask(SupportedLanguages.JAVA, project, sourceSet);
+    return (JavaCompile) getLanguageCompileTask(project, sourceSet);
   }
 
   private void addAnnotationProcessingDir(Project project, SourceSet sourceSet,

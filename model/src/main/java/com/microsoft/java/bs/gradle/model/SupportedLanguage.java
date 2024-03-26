@@ -14,5 +14,15 @@ public interface SupportedLanguage<E extends LanguageExtension> {
 
   String getGradleName();
 
-  E convert(Map<String, LanguageExtension> extensions);
+  /**
+   * Returns the correct type for this language extension from language extension map.
+   */
+  E getExtension(Map<String, LanguageExtension> extensions);
+
+  /**
+   * Returns the correct type for this language extension from GradleSourceSet.
+   */
+  default E getExtension(GradleSourceSet gradleSourceSet) {
+    return getExtension(gradleSourceSet.getExtensions());
+  }
 }
