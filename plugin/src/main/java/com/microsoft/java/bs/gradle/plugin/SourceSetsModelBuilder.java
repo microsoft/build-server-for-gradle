@@ -6,18 +6,21 @@ package com.microsoft.java.bs.gradle.plugin;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.CopySpec;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
+import org.gradle.api.invocation.Gradle;
 import org.gradle.api.internal.file.copy.DefaultCopySpec;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
@@ -28,12 +31,14 @@ import org.gradle.api.tasks.testing.Test;
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.util.GradleVersion;
 
+import com.microsoft.java.bs.gradle.model.GradleIncludedBuild;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
-import com.microsoft.java.bs.gradle.model.LanguageExtension;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleIncludedBuild;
 import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
 import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
 
 /**
@@ -48,12 +53,21 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   @Override
   public Object buildAll(String modelName, Project rootProject) {
     Set<Project> allProject = rootProject.getAllprojects();
+    List<GradleIncludedBuild> includedBuilds = new ArrayList<>();
     SourceSetCache cache = new SourceSetCache();
     // this set is used to eliminate the source, resource and output
     // directories from the module dependencies.
     Set<File> exclusionFromDependencies = new HashSet<>();
     // mapping Gradle source set to our customized model.
     for (Project project : allProject) {
+      // lookup included builds regardless of sourcesets existing
+      Gradle gradle = project.getGradle();
+      includedBuilds.addAll(
+          gradle.getIncludedBuilds()
+          .stream().map(includedBuild ->
+            new DefaultGradleIncludedBuild(includedBuild.getName(), includedBuild.getProjectDir()))
+          .collect(Collectors.toList()));
+
       SourceSetContainer sourceSets = getSourceSetContainer(project);
       if (sourceSets == null || sourceSets.isEmpty()) {
         continue;
@@ -159,7 +173,8 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
 
     }
 
-    return new DefaultGradleSourceSets(new LinkedList<>(cache.getAllGradleSourceSets()));
+    return new DefaultGradleSourceSets(includedBuilds,
+        new LinkedList<>(cache.getAllGradleSourceSets()));
   }
 
   private void setModuleDependencies(SourceSetCache cache, Set<File> exclusionFromDependencies) {
