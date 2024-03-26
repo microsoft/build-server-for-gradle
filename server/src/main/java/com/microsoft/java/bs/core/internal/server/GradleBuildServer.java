@@ -47,6 +47,13 @@ import ch.epfl.scala.bsp4j.ResourcesParams;
 import ch.epfl.scala.bsp4j.ResourcesResult;
 import ch.epfl.scala.bsp4j.RunParams;
 import ch.epfl.scala.bsp4j.RunResult;
+import ch.epfl.scala.bsp4j.ScalaBuildServer;
+import ch.epfl.scala.bsp4j.ScalaMainClassesParams;
+import ch.epfl.scala.bsp4j.ScalaMainClassesResult;
+import ch.epfl.scala.bsp4j.ScalaTestClassesParams;
+import ch.epfl.scala.bsp4j.ScalaTestClassesResult;
+import ch.epfl.scala.bsp4j.ScalacOptionsParams;
+import ch.epfl.scala.bsp4j.ScalacOptionsResult;
 import ch.epfl.scala.bsp4j.SourcesParams;
 import ch.epfl.scala.bsp4j.SourcesResult;
 import ch.epfl.scala.bsp4j.TestParams;
@@ -56,7 +63,7 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 /**
  * The implementation of the Build Server Protocol.
  */
-public class GradleBuildServer implements BuildServer, JavaBuildServer {
+public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBuildServer {
 
   private LifecycleService lifecycleService;
 
@@ -172,6 +179,27 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer {
   public CompletableFuture<JavacOptionsResult> buildTargetJavacOptions(JavacOptionsParams params) {
     return handleRequest("buildTarget/javacOptions", cc ->
         buildTargetService.getBuildTargetJavacOptions(params));
+  }
+
+  @Override
+  public CompletableFuture<ScalacOptionsResult> buildTargetScalacOptions(
+      ScalacOptionsParams params) {
+    return handleRequest("buildTarget/scalacOptions", cc ->
+        buildTargetService.getBuildTargetScalacOptions(params));
+  }
+
+  @Override
+  public CompletableFuture<ScalaTestClassesResult> buildTargetScalaTestClasses(
+      ScalaTestClassesParams params) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'buildTargetScalaTestClasses'");
+  }
+
+  @Override
+  public CompletableFuture<ScalaMainClassesResult> buildTargetScalaMainClasses(
+      ScalaMainClassesParams params) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'buildTargetScalaMainClasses'");
   }
 
   private void handleNotification(String methodName, Runnable runnable, boolean async) {

@@ -3,19 +3,18 @@
 
 package com.microsoft.java.bs.gradle.model.impl;
 
+import com.microsoft.java.bs.gradle.model.JavaExtension;
+
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Objects;
-
-import com.microsoft.java.bs.gradle.model.JavaExtension;
 
 /**
  * Default implementation of {@link JavaExtension}.
  */
 public class DefaultJavaExtension implements JavaExtension {
   private static final long serialVersionUID = 123345L;
-
-  private List<File> compileClasspath;
 
   private File javaHome;
 
@@ -28,12 +27,26 @@ public class DefaultJavaExtension implements JavaExtension {
   private List<String> compilerArgs;
 
   @Override
-  public List<File> getCompileClasspath() {
-    return compileClasspath;
-  }
-
-  public void setCompileClasspath(List<File> compileClasspath) {
-    this.compileClasspath = compileClasspath;
+  public Object convert(ClassLoader classLoader) {
+    try {
+      Class<?> destinationClass = classLoader.loadClass(getClass().getName());
+      Object result = destinationClass.getConstructor().newInstance();
+      destinationClass.getDeclaredMethod("setJavaHome", File.class)
+          .invoke(result, getJavaHome());
+      destinationClass.getDeclaredMethod("setJavaVersion", String.class)
+          .invoke(result, getJavaVersion());
+      destinationClass.getDeclaredMethod("setSourceCompatibility", String.class)
+          .invoke(result, getSourceCompatibility());
+      destinationClass.getDeclaredMethod("setTargetCompatibility", String.class)
+          .invoke(result, getTargetCompatibility());
+      destinationClass.getDeclaredMethod("setCompilerArgs", List.class)
+          .invoke(result, getCompilerArgs());
+      return result;
+    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
+              | NoSuchMethodException | ClassNotFoundException | InstantiationException
+              | SecurityException e) {
+      throw new IllegalStateException("Error converting " + getClass().getName(), e);
+    }
   }
 
   @Override
@@ -83,7 +96,7 @@ public class DefaultJavaExtension implements JavaExtension {
 
   @Override
   public int hashCode() {
-    return Objects.hash(compileClasspath, javaHome, javaVersion,
+    return Objects.hash(javaHome, javaVersion,
         sourceCompatibility, targetCompatibility, compilerArgs
     );
   }
@@ -100,8 +113,7 @@ public class DefaultJavaExtension implements JavaExtension {
       return false;
     }
     DefaultJavaExtension other = (DefaultJavaExtension) obj;
-    return Objects.equals(compileClasspath, other.compileClasspath)
-        && Objects.equals(javaHome, other.javaHome)
+    return Objects.equals(javaHome, other.javaHome)
         && Objects.equals(javaVersion, other.javaVersion)
         && Objects.equals(sourceCompatibility, other.sourceCompatibility)
         && Objects.equals(targetCompatibility, other.targetCompatibility)

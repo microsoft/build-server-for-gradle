@@ -5,7 +5,6 @@ package com.microsoft.java.bs.core.internal.managers;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -16,13 +15,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import ch.epfl.scala.bsp4j.JvmBuildTarget;
+import ch.epfl.scala.bsp4j.ScalaBuildTarget;
+import ch.epfl.scala.bsp4j.ScalaPlatform;
 import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
-import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
-import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
@@ -55,10 +57,11 @@ public class BuildTargetManager {
       URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
       List<String> tags = getBuildTargetTags(sourceSet.hasTests());
       BuildTargetIdentifier btId = new BuildTargetIdentifier(uri.toString());
+      List<String> languages = new LinkedList<>(sourceSet.getExtensions().keySet());
       BuildTarget bt = new BuildTarget(
           btId,
           tags,
-          Arrays.asList(SupportedLanguages.JAVA),
+          languages,
           Collections.emptyList(),
           new BuildTargetCapabilities(
             true /* canCompile */,
@@ -70,7 +73,7 @@ public class BuildTargetManager {
       bt.setBaseDirectory(sourceSet.getRootDir().toURI().toString());
       bt.setDisplayName(sourceSet.getDisplayName());
 
-      setJvmBuildTarget(sourceSet, bt);
+      setBuildTarget(sourceSet, bt);
 
       GradleBuildTarget buildTarget = new GradleBuildTarget(bt, sourceSet);
       GradleBuildTarget existingTarget = cache.get(btId);
@@ -112,15 +115,19 @@ public class BuildTargetManager {
     return tags;
   }
 
-  private void setJvmBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
-    DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-        sourceSet.getExtensions().get(SupportedLanguages.JAVA));
-    if (javaExtension == null) {
-      return;
+  private void setBuildTarget(GradleSourceSet sourceSet, BuildTarget bt) {
+    ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(sourceSet);
+    JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(sourceSet);
+    if (scalaExtension != null) {
+      setScalaBuildTarget(sourceSet, scalaExtension, javaExtension, bt);
+    } else if (javaExtension != null) {
+      setJvmBuildTarget(sourceSet, javaExtension, bt);
     }
+  }
 
+  private JvmBuildTarget getJvmBuildTarget(GradleSourceSet sourceSet, JavaExtension javaExtension) {
     // See: https://build-server-protocol.github.io/docs/extensions/jvm#jvmbuildtarget
-    JvmBuildTargetEx jvmBuildTarget = new JvmBuildTargetEx(
+    return new JvmBuildTargetEx(
         javaExtension.getJavaHome() == null ? "" : javaExtension.getJavaHome().toURI().toString(),
         javaExtension.getJavaVersion() == null ? "" : javaExtension.getJavaVersion(),
         sourceSet.getGradleVersion() == null ? "" : sourceSet.getGradleVersion(),
@@ -129,8 +136,37 @@ public class BuildTargetManager {
         javaExtension.getTargetCompatibility() == null ? ""
             : javaExtension.getTargetCompatibility()
     );
+  }
+
+  private void setJvmBuildTarget(GradleSourceSet sourceSet, JavaExtension javaExtension,
+      BuildTarget bt) {
     bt.setDataKind("jvm");
-    bt.setData(jvmBuildTarget);
+    bt.setData(getJvmBuildTarget(sourceSet, javaExtension));
+  }
+
+  private ScalaBuildTarget getScalaBuildTarget(GradleSourceSet sourceSet,
+      ScalaExtension scalaExtension, JavaExtension javaExtension) {
+    // See: https://build-server-protocol.github.io/docs/extensions/scala#scalabuildtarget
+    JvmBuildTarget jvmBuildTarget = getJvmBuildTarget(sourceSet, javaExtension);
+    List<String> scalaJars = scalaExtension.getScalaJars().stream()
+          .map(file -> file.toURI().toString())
+          .collect(Collectors.toList());
+    ScalaBuildTarget scalaBuildTarget = new ScalaBuildTarget(
+        scalaExtension.getScalaOrganization() == null ? "" : scalaExtension.getScalaOrganization(),
+        scalaExtension.getScalaVersion() == null ? "" : scalaExtension.getScalaVersion(),
+        scalaExtension.getScalaBinaryVersion() == null ? ""
+            : scalaExtension.getScalaBinaryVersion(),
+        ScalaPlatform.JVM,
+        scalaJars
+    );
+    scalaBuildTarget.setJvmBuildTarget(jvmBuildTarget);
+    return scalaBuildTarget;
+  }
+
+  private void setScalaBuildTarget(GradleSourceSet sourceSet, ScalaExtension scalaExtension,
+      JavaExtension javaExtension, BuildTarget bt) {
+    bt.setDataKind("scala");
+    bt.setData(getScalaBuildTarget(sourceSet, scalaExtension, javaExtension));
   }
 
   /**

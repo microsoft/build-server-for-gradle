@@ -18,6 +18,11 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import ch.epfl.scala.bsp4j.ScalacOptionsItem;
+import ch.epfl.scala.bsp4j.ScalacOptionsParams;
+import ch.epfl.scala.bsp4j.ScalacOptionsResult;
+import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import org.apache.commons.lang3.StringUtils;
 
 import com.microsoft.java.bs.core.Launcher;
@@ -31,8 +36,6 @@ import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
-import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
-import com.microsoft.java.bs.gradle.model.utils.Conversions;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetEvent;
@@ -285,7 +288,7 @@ public class BuildTargetService {
   }
 
   /**
-   * Get the compiler options.
+   * Get the Java compiler options.
    */
   public JavacOptionsResult getBuildTargetJavacOptions(JavacOptionsParams params) {
     List<JavacOptionsItem> items = new ArrayList<>();
@@ -298,14 +301,13 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
-      DefaultJavaExtension javaExtension = Conversions.toJavaExtension(
-          sourceSet.getExtensions().get(SupportedLanguages.JAVA));
+      JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(sourceSet);
       if (javaExtension == null) {
         LOGGER.warning("Skip javac options collection for the build target: " + btId.getUri()
             + ". Because the java extension cannot be found from source set.");
         continue;
       }
-      List<String> classpath = javaExtension.getCompileClasspath().stream()
+      List<String> classpath = sourceSet.getCompileClasspath().stream()
           .map(file -> file.toURI().toString())
           .collect(Collectors.toList());
       String classesDir;
@@ -322,6 +324,45 @@ public class BuildTargetService {
       ));
     }
     return new JavacOptionsResult(items);
+  }
+  
+  /**
+   * Get the Scala compiler options.
+   */
+  public ScalacOptionsResult getBuildTargetScalacOptions(ScalacOptionsParams params) {
+    List<ScalacOptionsItem> items = new ArrayList<>();
+    for (BuildTargetIdentifier btId : params.getTargets()) {
+      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      if (target == null) {
+        LOGGER.warning("Skip scalac options collection for the build target: " + btId.getUri()
+            + ". Because it cannot be found in the cache.");
+        continue;
+      }
+
+      GradleSourceSet sourceSet = target.getSourceSet();
+      ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(sourceSet);
+      if (scalaExtension == null) {
+        LOGGER.warning("Skip scalac options collection for the build target: " + btId.getUri()
+                + ". Because the scalac extension cannot be found from source set.");
+        continue;
+      }
+      List<String> classpath = sourceSet.getCompileClasspath().stream()
+          .map(file -> file.toURI().toString())
+          .collect(Collectors.toList());
+      String classesDir;
+      if (sourceSet.getSourceOutputDir() != null) {
+        classesDir = sourceSet.getSourceOutputDir().toURI().toString();
+      } else {
+        classesDir = "";
+      }
+      items.add(new ScalacOptionsItem(
+          btId,
+          scalaExtension.getScalaCompilerArgs(),
+          classpath,
+          classesDir
+      ));
+    }
+    return new ScalacOptionsResult(items);
   }
 
   /**

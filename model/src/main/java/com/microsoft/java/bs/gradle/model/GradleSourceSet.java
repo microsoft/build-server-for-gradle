@@ -5,6 +5,7 @@ package com.microsoft.java.bs.gradle.model;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -80,6 +81,11 @@ public interface GradleSourceSet extends Serializable {
   public File getResourceOutputDir();
 
   /**
+   * The compile classpath for this source set.
+   */
+  public List<File> getCompileClasspath();
+
+  /**
    * Module dependencies.
    */
   public Set<GradleModuleDependency> getModuleDependencies();
@@ -97,5 +103,5 @@ public interface GradleSourceSet extends Serializable {
   /**
    * Extensions of the source set.
    */
-  public Map<String, Object> getExtensions();
+  public Map<String, LanguageExtension> getExtensions();
 }

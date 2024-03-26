@@ -5,7 +5,11 @@ package com.microsoft.java.bs.gradle.plugin;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Set;
 
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguage;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.UnknownTaskException;
@@ -17,17 +21,22 @@ import org.gradle.api.tasks.SourceSet;
 public abstract class LanguageModelBuilder {
   public abstract boolean appliesFor(Project project, SourceSet sourceSet);
 
-  public abstract String getLanguageId();
+  public abstract SupportedLanguage<?> getLanguage();
+
+  public String getLanguageId() {
+    return getLanguage().getBspName();
+  }
 
   public abstract Collection<File> getSourceFoldersFor(Project project, SourceSet sourceSet);
 
   public abstract Collection<File> getGeneratedSourceFoldersFor(Project project,
       SourceSet sourceSet);
 
-  public abstract Object getExtensionsFor(Project project, SourceSet sourceSet);
+  public abstract LanguageExtension getExtensionsFor(Project project, SourceSet sourceSet,
+      Set<GradleModuleDependency> moduleDependencies);
 
-  protected Task getLanguageCompileTask(String language, Project project, SourceSet sourceSet) {
-    String taskName = sourceSet.getCompileTaskName(language);
+  protected Task getLanguageCompileTask(Project project, SourceSet sourceSet) {
+    String taskName = sourceSet.getCompileTaskName(getLanguage().getGradleName());
     try {
       return project.getTasks().getByName(taskName);
     } catch (UnknownTaskException e) {

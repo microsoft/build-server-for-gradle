@@ -4,17 +4,12 @@
 package com.microsoft.java.bs.gradle.model;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.List;
 
 /**
  * The extension model for Java language.
  */
-public interface JavaExtension extends Serializable {
-  /**
-   * The compile classpath for this source set.
-   */
-  public List<File> getCompileClasspath();
+public interface JavaExtension extends LanguageExtension {
 
   /**
    * JDK home file location.

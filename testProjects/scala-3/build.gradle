@@ -1,0 +1,17 @@
+plugins {
+	id 'scala'
+	id 'java-gradle-plugin'
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation('org.scala-lang:scala3-library_3:3.3.1')
+}
+
+tasks.withType(ScalaCompile) {
+	scalaCompileOptions.additionalParameters = ["-deprecation"]
+}
+

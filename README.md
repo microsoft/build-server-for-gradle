@@ -19,6 +19,8 @@ Following BSP requests are supported in the current implementation:
 - `buildTarget/dependencyModules`
 - `buildTarget/compile`
 - `buildTarget/cleanCache`
+- `buildTarget/javacOptions`
+- `buildTarget/scalacOptions`
 - `workspace/buildTargets`
 - `workspace/reload`
 
