@@ -11,6 +11,12 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import ch.epfl.scala.bsp4j.DependencyModulesParams;
+import ch.epfl.scala.bsp4j.DependencyModulesResult;
+import ch.epfl.scala.bsp4j.DependencySourcesParams;
+import ch.epfl.scala.bsp4j.DependencySourcesResult;
+import ch.epfl.scala.bsp4j.MavenDependencyModule;
+import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +28,7 @@ import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
+import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildClientCapabilities;
@@ -96,5 +103,30 @@ class BuildTargetServerIntegrationTest {
     CompileParams compileParams = new CompileParams(btIds);
     CompileResult compileResult = gradleBuildServer.buildTargetCompile(compileParams).join();
     assertEquals(StatusCode.OK, compileResult.getStatusCode());
+
+    // check dependency sources
+    DependencySourcesParams dependencySourcesParams = new DependencySourcesParams(btIds);
+    DependencySourcesResult dependencySourcesResult = gradleBuildServer
+        .buildTargetDependencySources(dependencySourcesParams).join();
+    assertEquals(2, dependencySourcesResult.getItems().size());
+    List<String> allSources = dependencySourcesResult.getItems().stream()
+        .flatMap(item -> item.getSources().stream()).collect(Collectors.toList());
+    assertTrue(allSources.stream().anyMatch(source -> source.endsWith("-sources.jar")));
+
+    // check dependency modules
+    DependencyModulesParams dependencyModulesParams = new DependencyModulesParams(btIds);
+    DependencyModulesResult dependencyModulesResult = gradleBuildServer
+            .buildTargetDependencyModules(dependencyModulesParams).join();
+    assertEquals(2, dependencyModulesResult.getItems().size());
+    List<MavenDependencyModuleArtifact> allArtifacts = dependencyModulesResult.getItems().stream()
+            .flatMap(item -> item.getModules().stream())
+            .filter(dependencyModule -> "maven".equals(dependencyModule.getDataKind()))
+            .map(dependencyModule -> JsonUtils.toModel(dependencyModule.getData(),
+                MavenDependencyModule.class))
+            .flatMap(mavenDependencyModule -> mavenDependencyModule.getArtifacts().stream())
+            .filter(artifact -> "sources".equals(artifact.getClassifier()))
+            .collect(Collectors.toList());
+    assertTrue(allArtifacts.stream().anyMatch(artifact ->
+        artifact.getUri().endsWith("-sources.jar")));
   }
 }

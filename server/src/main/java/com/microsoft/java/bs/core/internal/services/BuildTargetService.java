@@ -18,6 +18,9 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import ch.epfl.scala.bsp4j.DependencySourcesItem;
+import ch.epfl.scala.bsp4j.DependencySourcesParams;
+import ch.epfl.scala.bsp4j.DependencySourcesResult;
 import ch.epfl.scala.bsp4j.ScalacOptionsItem;
 import ch.epfl.scala.bsp4j.ScalacOptionsParams;
 import ch.epfl.scala.bsp4j.ScalacOptionsResult;
@@ -203,6 +206,34 @@ public class BuildTargetService {
       items.add(item);
     }
     return new OutputPathsResult(items);
+  }
+
+  /**
+   * Get artifacts dependencies - old way.
+   */
+  public DependencySourcesResult getBuildTargetDependencySources(DependencySourcesParams params) {
+    List<DependencySourcesItem> items = new ArrayList<>();
+    for (BuildTargetIdentifier btId : params.getTargets()) {
+      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      if (target == null) {
+        LOGGER.warning("Skip output collection for the build target: " + btId.getUri()
+                + ". Because it cannot be found in the cache.");
+        continue;
+      }
+
+      GradleSourceSet sourceSet = target.getSourceSet();
+      List<String> sources = new ArrayList<>();
+      for (GradleModuleDependency dep : sourceSet.getModuleDependencies()) {
+        List<String> artifacts = dep.getArtifacts().stream()
+                .filter(a -> "sources".equals(a.getClassifier()))
+                .map(a -> a.getUri().toString())
+                .collect(Collectors.toList());
+        sources.addAll(artifacts);
+      }
+
+      items.add(new DependencySourcesItem(btId, sources));
+    }
+    return new DependencySourcesResult(items);
   }
 
   /**

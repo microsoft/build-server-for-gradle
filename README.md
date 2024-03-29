@@ -17,6 +17,7 @@ Following BSP requests are supported in the current implementation:
 - `buildTarget/resources`
 - `buildTarget/outputPaths`
 - `buildTarget/dependencyModules`
+- `buildTarget/dependencySources`
 - `buildTarget/compile`
 - `buildTarget/cleanCache`
 - `buildTarget/javacOptions`

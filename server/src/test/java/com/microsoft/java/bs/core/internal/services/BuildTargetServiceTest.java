@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import ch.epfl.scala.bsp4j.DependencySourcesParams;
+import ch.epfl.scala.bsp4j.DependencySourcesResult;
 import ch.epfl.scala.bsp4j.JvmBuildTarget;
 import ch.epfl.scala.bsp4j.ScalaBuildTarget;
 import ch.epfl.scala.bsp4j.ScalacOptionsParams;
@@ -197,6 +199,27 @@ class BuildTargetServiceTest {
   }
 
   @Test
+  void testGetBuildTargetDependencySources() {
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+
+    Set<GradleModuleDependency> moduleDependencies = getGradleModuleDependencies();
+    when(gradleSourceSet.getModuleDependencies()).thenReturn(moduleDependencies);
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+            connector, preferenceManager);
+    DependencySourcesResult res = buildTargetService.getBuildTargetDependencySources(
+            new DependencySourcesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+    assertEquals(1, res.getItems().size());
+
+    List<String> sources = res.getItems().get(0).getSources();
+    assertEquals(1, sources.size());
+  }
+
+  @Test
   void testGetBuildTargetDependencyModules() {
     GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
     when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
@@ -204,6 +227,29 @@ class BuildTargetServiceTest {
     GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
 
+    Set<GradleModuleDependency> moduleDependencies = getGradleModuleDependencies();
+    when(gradleSourceSet.getModuleDependencies()).thenReturn(moduleDependencies);
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        connector, preferenceManager);
+    DependencyModulesResult res = buildTargetService.getBuildTargetDependencyModules(
+        new DependencyModulesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+    assertEquals(1, res.getItems().size());
+
+    List<DependencyModule> modules = res.getItems().get(0).getModules();
+    assertEquals(1, modules.size());
+
+    MavenDependencyModule module = (MavenDependencyModule) modules.get(0).getData();
+    assertEquals("group", module.getOrganization());
+    assertEquals("module", module.getName());
+    assertEquals("1.0.0", module.getVersion());
+    assertEquals(1, module.getArtifacts().size());
+
+    MavenDependencyModuleArtifact artifact = module.getArtifacts().get(0);
+    assertEquals("sources", artifact.getClassifier());
+  }
+
+  private static Set<GradleModuleDependency> getGradleModuleDependencies() {
     GradleModuleDependency moduleDependency = new GradleModuleDependency() {
       @Override
       public String getGroup() {
@@ -237,25 +283,7 @@ class BuildTargetServiceTest {
     };
     Set<GradleModuleDependency> moduleDependencies = new HashSet<>();
     moduleDependencies.add(moduleDependency);
-    when(gradleSourceSet.getModuleDependencies()).thenReturn(moduleDependencies);
-
-    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        connector, preferenceManager);
-    DependencyModulesResult res = buildTargetService.getBuildTargetDependencyModules(
-        new DependencyModulesParams(Arrays.asList(new BuildTargetIdentifier("test"))));
-    assertEquals(1, res.getItems().size());
-
-    List<DependencyModule> modules = res.getItems().get(0).getModules();
-    assertEquals(1, modules.size());
-    
-    MavenDependencyModule module = (MavenDependencyModule) modules.get(0).getData();
-    assertEquals("group", module.getOrganization());
-    assertEquals("module", module.getName());
-    assertEquals("1.0.0", module.getVersion());
-    assertEquals(1, module.getArtifacts().size());
-
-    MavenDependencyModuleArtifact artifact = module.getArtifacts().get(0);
-    assertEquals("sources", artifact.getClassifier());
+    return moduleDependencies;
   }
 
   @Test

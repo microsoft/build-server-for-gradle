@@ -103,6 +103,7 @@ public class LifecycleService {
     capabilities.setResourcesProvider(true);
     capabilities.setOutputPathsProvider(true);
     capabilities.setDependencyModulesProvider(true);
+    capabilities.setDependencySourcesProvider(true);
     capabilities.setCanReload(true);
     capabilities.setBuildTargetChangedProvider(true);
     capabilities.setCompileProvider(new CompileProvider(SupportedLanguages.allBspNames));

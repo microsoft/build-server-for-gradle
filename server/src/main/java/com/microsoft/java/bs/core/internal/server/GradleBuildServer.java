@@ -124,8 +124,8 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBui
   @Override
   public CompletableFuture<DependencySourcesResult> buildTargetDependencySources(
       DependencySourcesParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetDependencySources'");
+    return handleRequest("buildTarget/dependencySources", cc ->
+            buildTargetService.getBuildTargetDependencySources(params));
   }
 
   @Override
