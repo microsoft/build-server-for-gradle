@@ -249,15 +249,19 @@ public class BuildTargetService {
    * Compile the build targets.
    */
   public CompileResult compile(CompileParams params) {
-    StatusCode code = runTasks(params.getTargets(), this::getBuildTaskName);
-    CompileResult result = new CompileResult(code);
-    result.setOriginId(params.getOriginId());
+    if (params.getTargets().isEmpty()) {
+      return new CompileResult(StatusCode.OK);
+    } else {
+      StatusCode code = runTasks(params.getTargets(), this::getBuildTaskName);
+      CompileResult result = new CompileResult(code);
+      result.setOriginId(params.getOriginId());
 
-    // Schedule a task to refetch the build targets after compilation, this is to
-    // auto detect the source roots changes for those code generation framework,
-    // such as Protocol Buffer.
-    CompletableFuture.runAsync(new RefetchBuildTargetTask());
-    return result;
+      // Schedule a task to refetch the build targets after compilation, this is to
+      // auto detect the source roots changes for those code generation framework,
+      // such as Protocol Buffer.
+      CompletableFuture.runAsync(new RefetchBuildTargetTask());
+      return result;
+    }
   }
 
   /**
