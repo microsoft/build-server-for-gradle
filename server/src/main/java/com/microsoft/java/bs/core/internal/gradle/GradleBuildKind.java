@@ -22,9 +22,5 @@ public enum GradleBuildKind {
   /*
    * From the used TAPI.
    */
-  TAPI,
-  /**
-   * Temporarily fallback to the default Gradle version used by Buildship (7.4.2).
-   */
-  FALLBACK;
+  TAPI;
 }
