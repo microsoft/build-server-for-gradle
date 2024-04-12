@@ -104,8 +104,10 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBui
 
   @Override
   public CompletableFuture<Object> workspaceReload() {
-    return handleRequest("workspace/reload", cc ->
-        lifecycleService.reloadWorkspace());
+    return handleRequest("workspace/reload", cc -> {
+      buildTargetService.reloadWorkspace();
+      return null;
+    });
   }
 
   @Override

@@ -58,8 +58,7 @@ class BuildTargetServerIntegrationTest {
     BuildTargetManager buildTargetManager = new BuildTargetManager();
     PreferenceManager preferenceManager = new PreferenceManager();
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
-    LifecycleService lifecycleService = new LifecycleService(buildTargetManager,
-        connector, preferenceManager);
+    LifecycleService lifecycleService = new LifecycleService(connector, preferenceManager);
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
         connector, preferenceManager);
     gradleBuildServer = new GradleBuildServer(lifecycleService, buildTargetService);

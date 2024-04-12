@@ -19,13 +19,11 @@ import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.gradle.GradleBuildKind;
 import com.microsoft.java.bs.core.internal.gradle.Utils;
-import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
-import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 import ch.epfl.scala.bsp4j.BuildServerCapabilities;
@@ -40,8 +38,6 @@ public class LifecycleService {
 
   private Status status = Status.UNINITIALIZED;
 
-  private BuildTargetManager buildTargetManager;
-
   private GradleApiConnector connector;
 
   private PreferenceManager preferenceManager;
@@ -49,9 +45,7 @@ public class LifecycleService {
   /**
    * Constructor for {@link LifecycleService}.
    */
-  public LifecycleService(BuildTargetManager buildTargetManager,
-      GradleApiConnector connector, PreferenceManager preferenceManager) {
-    this.buildTargetManager = buildTargetManager;
+  public LifecycleService(GradleApiConnector connector, PreferenceManager preferenceManager) {
     this.connector = connector;
     this.preferenceManager = preferenceManager;
   }
@@ -61,7 +55,6 @@ public class LifecycleService {
    */
   public InitializeBuildResult initializeServer(InitializeBuildParams params) {
     initializePreferenceManager(params);
-    updateBuildTargetManager();
 
     BuildServerCapabilities capabilities = initializeServerCapabilities();
     return new InitializeBuildResult(
@@ -70,11 +63,6 @@ public class LifecycleService {
         Constants.BSP_VERSION,
         capabilities
     );
-  }
-
-  public Object reloadWorkspace() {
-    updateBuildTargetManager();
-    return null;
   }
 
   void initializePreferenceManager(InitializeBuildParams params) {
@@ -90,12 +78,6 @@ public class LifecycleService {
 
     preferenceManager.setPreferences(preferences);
     updateGradleJavaHomeIfNecessary(rootUri);
-  }
-
-  void updateBuildTargetManager() {
-    GradleSourceSets sourceSets = connector.getGradleSourceSets(
-          preferenceManager.getRootUri());
-    buildTargetManager.store(sourceSets);
   }
 
   private BuildServerCapabilities initializeServerCapabilities() {

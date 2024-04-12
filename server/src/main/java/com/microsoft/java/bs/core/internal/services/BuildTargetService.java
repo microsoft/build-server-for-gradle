@@ -86,6 +86,8 @@ public class BuildTargetService {
 
   private PreferenceManager preferenceManager;
 
+  private boolean firstTime;
+
   /**
    * Initialize the build target service.
    *
@@ -97,13 +99,50 @@ public class BuildTargetService {
     this.buildTargetManager = buildTargetManager;
     this.connector = connector;
     this.preferenceManager = preferenceManager;
+    this.firstTime = true;
+  }
+
+  private List<BuildTargetIdentifier> updateBuildTargets() {
+    GradleSourceSets sourceSets = connector.getGradleSourceSets(
+        preferenceManager.getRootUri());
+    return buildTargetManager.store(sourceSets);
+  }
+
+  private BuildTargetManager getBuildTargetManager() {
+    if (firstTime) {
+      updateBuildTargets();
+      firstTime = false;
+    }
+    return buildTargetManager;
+  }
+
+  /**
+   * reload the sourcesets from scratch and notify the BSP client if they have changed.
+   */
+  public void reloadWorkspace() {
+    List<BuildTargetIdentifier> changedTargets = updateBuildTargets();
+    if (!changedTargets.isEmpty()) {
+      notifyBuildTargetsChanged(changedTargets);
+    }
+  }
+  
+  private void notifyBuildTargetsChanged(List<BuildTargetIdentifier> changedTargets) {
+    List<BuildTargetEvent> events = changedTargets.stream()
+        .map(BuildTargetEvent::new)
+        .collect(Collectors.toList());
+    DidChangeBuildTarget param = new DidChangeBuildTarget(events);
+    Launcher.client.onBuildTargetDidChange(param);
+  }
+
+  private GradleBuildTarget getGradleBuildTarget(BuildTargetIdentifier btId) {
+    return getBuildTargetManager().getGradleBuildTarget(btId);
   }
 
   /**
    * Get the build targets of the workspace.
    */
   public WorkspaceBuildTargetsResult getWorkspaceBuildTargets() {
-    List<GradleBuildTarget> allTargets = buildTargetManager.getAllGradleBuildTargets();
+    List<GradleBuildTarget> allTargets = getBuildTargetManager().getAllGradleBuildTargets();
     List<BuildTarget> targets = allTargets.stream()
         .map(GradleBuildTarget::getBuildTarget)
         .collect(Collectors.toList());
@@ -119,7 +158,7 @@ public class BuildTargetService {
   public SourcesResult getBuildTargetSources(SourcesParams params) {
     List<SourcesItem> sourceItems = new ArrayList<>();
     for (BuildTargetIdentifier btId : params.getTargets()) {
-      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      GradleBuildTarget target = getGradleBuildTarget(btId);
       if (target == null) {
         LOGGER.warning("Skip sources collection for the build target: " + btId.getUri()
             + ". Because it cannot be found in the cache.");
@@ -148,7 +187,7 @@ public class BuildTargetService {
   public ResourcesResult getBuildTargetResources(ResourcesParams params) {
     List<ResourcesItem> items = new ArrayList<>();
     for (BuildTargetIdentifier btId : params.getTargets()) {
-      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      GradleBuildTarget target = getGradleBuildTarget(btId);
       if (target == null) {
         LOGGER.warning("Skip resources collection for the build target: " + btId.getUri()
             + ". Because it cannot be found in the cache.");
@@ -172,7 +211,7 @@ public class BuildTargetService {
   public OutputPathsResult getBuildTargetOutputPaths(OutputPathsParams params) {
     List<OutputPathsItem> items = new ArrayList<>();
     for (BuildTargetIdentifier btId : params.getTargets()) {
-      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      GradleBuildTarget target = getGradleBuildTarget(btId);
       if (target == null) {
         LOGGER.warning("Skip output collection for the build target: " + btId.getUri()
             + ". Because it cannot be found in the cache.");
@@ -242,7 +281,7 @@ public class BuildTargetService {
   public DependencyModulesResult getBuildTargetDependencyModules(DependencyModulesParams params) {
     List<DependencyModulesItem> items = new ArrayList<>();
     for (BuildTargetIdentifier btId : params.getTargets()) {
-      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      GradleBuildTarget target = getGradleBuildTarget(btId);
       if (target == null) {
         LOGGER.warning("Skip output collection for the build target: " + btId.getUri()
             + ". Because it cannot be found in the cache.");
@@ -290,7 +329,7 @@ public class BuildTargetService {
       // Schedule a task to refetch the build targets after compilation, this is to
       // auto detect the source roots changes for those code generation framework,
       // such as Protocol Buffer.
-      CompletableFuture.runAsync(new RefetchBuildTargetTask());
+      CompletableFuture.runAsync(this::reloadWorkspace);
       return result;
     }
   }
@@ -328,7 +367,7 @@ public class BuildTargetService {
   public JavacOptionsResult getBuildTargetJavacOptions(JavacOptionsParams params) {
     List<JavacOptionsItem> items = new ArrayList<>();
     for (BuildTargetIdentifier btId : params.getTargets()) {
-      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      GradleBuildTarget target = getGradleBuildTarget(btId);
       if (target == null) {
         LOGGER.warning("Skip javac options collection for the build target: " + btId.getUri()
             + ". Because it cannot be found in the cache.");
@@ -367,7 +406,7 @@ public class BuildTargetService {
   public ScalacOptionsResult getBuildTargetScalacOptions(ScalacOptionsParams params) {
     List<ScalacOptionsItem> items = new ArrayList<>();
     for (BuildTargetIdentifier btId : params.getTargets()) {
-      GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+      GradleBuildTarget target = getGradleBuildTarget(btId);
       if (target == null) {
         LOGGER.warning("Skip scalac options collection for the build target: " + btId.getUri()
             + ". Because it cannot be found in the cache.");
@@ -424,7 +463,7 @@ public class BuildTargetService {
    * return the uri of the build target.
    */
   private URI getRootProjectUri(BuildTargetIdentifier btId) {
-    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
+    GradleBuildTarget gradleBuildTarget = getGradleBuildTarget(btId);
     if (gradleBuildTarget == null) {
       // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
       throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
@@ -441,7 +480,7 @@ public class BuildTargetService {
    * Return the build task name - [project path]:[task].
    */
   private String getBuildTaskName(BuildTargetIdentifier btId) {
-    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
+    GradleBuildTarget gradleBuildTarget = getGradleBuildTarget(btId);
     if (gradleBuildTarget == null) {
       // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
       throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
@@ -464,7 +503,7 @@ public class BuildTargetService {
    * Return the clean task name - [project path]:[task].
    */
   private String getCleanTaskName(BuildTargetIdentifier btId) {
-    GradleBuildTarget gradleBuildTarget = buildTargetManager.getGradleBuildTarget(btId);
+    GradleBuildTarget gradleBuildTarget = getGradleBuildTarget(btId);
     if (gradleBuildTarget == null) {
       // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
       throw new IllegalArgumentException("The build target does not exist: " + btId.getUri());
@@ -477,26 +516,5 @@ public class BuildTargetService {
       return classesTaskName;
     }
     return modulePath + ":" + classesTaskName;
-  }
-
-  class RefetchBuildTargetTask implements Runnable {
-
-    @Override
-    public void run() {
-      GradleSourceSets sourceSets = connector.getGradleSourceSets(
-          preferenceManager.getRootUri());
-      List<BuildTargetIdentifier> changedTargets = buildTargetManager.store(sourceSets);
-      if (!changedTargets.isEmpty()) {
-        notifyBuildTargetsChanged(changedTargets);
-      }
-    }
-
-    private void notifyBuildTargetsChanged(List<BuildTargetIdentifier> changedTargets) {
-      List<BuildTargetEvent> events = changedTargets.stream()
-          .map(BuildTargetEvent::new)
-          .collect(Collectors.toList());
-      DidChangeBuildTarget param = new DidChangeBuildTarget(events);
-      Launcher.client.onBuildTargetDidChange(param);
-    }
   }
 }

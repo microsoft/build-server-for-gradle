@@ -48,8 +48,7 @@ public class Launcher {
     BuildTargetManager buildTargetManager = new BuildTargetManager();
     PreferenceManager preferenceManager = new PreferenceManager();
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
-    LifecycleService lifecycleService = new LifecycleService(buildTargetManager,
-        connector, preferenceManager);
+    LifecycleService lifecycleService = new LifecycleService(connector, preferenceManager);
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
         connector, preferenceManager);
     GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,

@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
-import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
@@ -44,7 +43,6 @@ class LifecycleServiceTest {
     );
 
     LifecycleService lifecycleService = mock(LifecycleService.class);
-    doNothing().when(lifecycleService).updateBuildTargetManager();
     doNothing().when(lifecycleService).initializePreferenceManager(any());
     when(lifecycleService.initializeServer(any())).thenCallRealMethod();
 
@@ -71,7 +69,7 @@ class LifecycleServiceTest {
     params.setData(preferences);
 
     PreferenceManager preferenceManager = new PreferenceManager();
-    LifecycleService lifecycleService = new LifecycleService(mock(BuildTargetManager.class),
+    LifecycleService lifecycleService = new LifecycleService(
         mock(GradleApiConnector.class), preferenceManager);
     lifecycleService.initializePreferenceManager(params);
 
