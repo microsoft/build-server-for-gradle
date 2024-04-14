@@ -72,10 +72,12 @@ public class GradleApiConnector {
       throw new IllegalStateException("Failed to get init script file.");
     }
     TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
+    ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     String summary = "";
     StatusCode statusCode = StatusCode.OK;
-    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      reporter.taskStarted("Connect to Gradle Daemon");
+    try (ProjectConnection connection = getGradleConnector(projectUri).connect();
+        errorOut;) {
+      reporter.taskStarted("Retrieve source sets");
       ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
           connection,
           preferenceManager.getPreferences(),
@@ -83,6 +85,7 @@ public class GradleApiConnector {
       );
       customModelBuilder.addProgressListener(reporter,
           OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
+          .setStandardError(errorOut)
           .addArguments("--init-script", initScript.getAbsolutePath());
       if (Boolean.getBoolean("bsp.plugin.debug.enabled")) {
         customModelBuilder.addJvmArguments(
@@ -93,10 +96,13 @@ public class GradleApiConnector {
       // since the model returned from Gradle TAPI is a wrapped object, here we re-construct it
       // via a copy constructor and return as a POJO.
       return new DefaultGradleSourceSets(customModelBuilder.get());
-    } catch (GradleConnectionException | IllegalStateException e) {
+    } catch (GradleConnectionException | IllegalStateException | IOException e) {
       summary = e.getMessage();
+      if (errorOut.size() > 0) {
+        summary += "\n" + errorOut.toString();
+      }
       statusCode = StatusCode.ERROR;
-      throw e;
+      throw new IllegalStateException("Error retrieving sourcesets \n" + summary, e);
     } finally {
       reporter.taskFinished(summary, statusCode);
     }
