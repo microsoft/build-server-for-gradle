@@ -5,8 +5,6 @@ package com.microsoft.java.bs.core.internal.reporter;
 
 import java.util.UUID;
 
-import com.microsoft.java.bs.core.Launcher;
-
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.StatusCode;
 import ch.epfl.scala.bsp4j.TaskFinishParams;
@@ -20,38 +18,37 @@ import ch.epfl.scala.bsp4j.TaskStartParams;
 public class DefaultProgressReporter implements ProgressReporter {
 
   private final TaskId taskId;
-  private BuildClient client;
+  private final BuildClient client;
 
-  public DefaultProgressReporter() {
+  public DefaultProgressReporter(BuildClient client) {
     this.taskId = new TaskId(UUID.randomUUID().toString());
-    client = Launcher.client;
+    this.client = client;
   }
 
   @Override
   public void taskStarted(String message) {
-    TaskStartParams startParam = new TaskStartParams(taskId);
-    startParam.setMessage(message);
     if (client != null) {
+      TaskStartParams startParam = new TaskStartParams(taskId);
+      startParam.setMessage(message);
       client.onBuildTaskStart(startParam);
     }
   }
 
   @Override
   public void taskInProgress(String message) {
-    TaskProgressParams progressParam = new TaskProgressParams(taskId);
-    progressParam.setMessage(message);
     if (client != null) {
+      TaskProgressParams progressParam = new TaskProgressParams(taskId);
+      progressParam.setMessage(message);
       client.onBuildTaskProgress(progressParam);
     }
   }
 
   @Override
   public void taskFinished(String message, StatusCode statusCode) {
-    TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
-    endParam.setMessage(message);
     if (client != null) {
+      TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
+      endParam.setMessage(message);
       client.onBuildTaskFinish(endParam);
     }
-    client = null;
   }
 }

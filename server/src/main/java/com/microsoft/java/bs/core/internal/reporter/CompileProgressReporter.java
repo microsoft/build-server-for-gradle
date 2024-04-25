@@ -5,8 +5,6 @@ package com.microsoft.java.bs.core.internal.reporter;
 
 import java.util.UUID;
 
-import com.microsoft.java.bs.core.Launcher;
-
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.CompileReport;
@@ -23,52 +21,52 @@ import ch.epfl.scala.bsp4j.TaskStartParams;
  */
 public class CompileProgressReporter implements ProgressReporter {
 
-  private BuildTargetIdentifier btId;
+  private final BuildTargetIdentifier btId;
   private final TaskId taskId;
-  private BuildClient client;
+  private final BuildClient client;
 
   /**
    * Instantiates a {@link CompileProgressReporter}.
    *
    * @param btId Build target identifier
    */
-  public CompileProgressReporter(BuildTargetIdentifier btId) {
+  public CompileProgressReporter(BuildClient client, BuildTargetIdentifier btId) {
     this.btId = btId;
     this.taskId = new TaskId(UUID.randomUUID().toString());
-    client = Launcher.client;
+    this.client = client;
   }
 
   @Override
   public void taskStarted(String message) {
-    TaskStartParams startParam = new TaskStartParams(taskId);
-    startParam.setMessage(message);
-    startParam.setDataKind(TaskDataKind.COMPILE_TASK);
-    startParam.setData(new CompileTask(this.btId));
     if (client != null) {
+      TaskStartParams startParam = new TaskStartParams(taskId);
+      startParam.setMessage(message);
+      startParam.setDataKind(TaskDataKind.COMPILE_TASK);
+      startParam.setData(new CompileTask(this.btId));
       client.onBuildTaskStart(startParam);
     }
   }
 
   @Override
   public void taskInProgress(String message) {
-    TaskProgressParams progressParam = new TaskProgressParams(taskId);
-    progressParam.setMessage(message);
-    progressParam.setDataKind(TaskDataKind.COMPILE_TASK);
     if (client != null) {
+      TaskProgressParams progressParam = new TaskProgressParams(taskId);
+      progressParam.setMessage(message);
+      progressParam.setDataKind(TaskDataKind.COMPILE_TASK);
+      progressParam.setData(new CompileTask(this.btId));
       client.onBuildTaskProgress(progressParam);
     }
   }
 
   @Override
   public void taskFinished(String message, StatusCode statusCode) {
-    TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
-    endParam.setMessage(message);
-    endParam.setDataKind(TaskDataKind.COMPILE_REPORT);
-    endParam.setData(new CompileReport(this.btId, 0, 0)); // TODO: parse the errors and warnings
     if (client != null) {
+      TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
+      endParam.setMessage(message);
+      endParam.setDataKind(TaskDataKind.COMPILE_REPORT);
+      endParam.setData(new CompileReport(this.btId, 0, 0)); // TODO: parse the errors and warnings
       client.onBuildTaskFinish(endParam);
     }
-    client = null;
   }
 }
 

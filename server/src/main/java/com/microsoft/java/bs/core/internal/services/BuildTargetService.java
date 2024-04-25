@@ -28,7 +28,6 @@ import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import org.apache.commons.lang3.StringUtils;
 
-import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
@@ -40,6 +39,7 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
+import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetEvent;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
@@ -80,11 +80,13 @@ public class BuildTargetService {
 
   private static final String MAVEN_DATA_KIND = "maven";
 
-  private BuildTargetManager buildTargetManager;
+  private final BuildTargetManager buildTargetManager;
 
-  private GradleApiConnector connector;
+  private final GradleApiConnector connector;
 
-  private PreferenceManager preferenceManager;
+  private final PreferenceManager preferenceManager;
+
+  private BuildClient client;
 
   private boolean firstTime;
 
@@ -131,11 +133,16 @@ public class BuildTargetService {
         .map(BuildTargetEvent::new)
         .collect(Collectors.toList());
     DidChangeBuildTarget param = new DidChangeBuildTarget(events);
-    Launcher.client.onBuildTargetDidChange(param);
+    client.onBuildTargetDidChange(param);
   }
 
   private GradleBuildTarget getGradleBuildTarget(BuildTargetIdentifier btId) {
     return getBuildTargetManager().getGradleBuildTarget(btId);
+  }
+
+  public void setClient(BuildClient client) {
+    this.client = client;
+    connector.setClient(client);
   }
 
   /**

@@ -29,6 +29,7 @@ import com.microsoft.java.bs.core.internal.reporter.TaskProgressReporter;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 
+import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.StatusCode;
 
@@ -36,12 +37,17 @@ import ch.epfl.scala.bsp4j.StatusCode;
  * Connect to Gradle Daemon via Gradle Tooling API.
  */
 public class GradleApiConnector {
-  private Map<File, GradleConnector> connectors;
-  private PreferenceManager preferenceManager;
+  private final Map<File, GradleConnector> connectors;
+  private final PreferenceManager preferenceManager;
+  private BuildClient client;
 
   public GradleApiConnector(PreferenceManager preferenceManager) {
     this.preferenceManager = preferenceManager;
     connectors = new HashMap<>();
+  }
+
+  public void setClient(BuildClient client) {
+    this.client = client;
   }
 
   /**
@@ -71,7 +77,7 @@ public class GradleApiConnector {
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
-    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter());
+    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter(client));
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     String summary = "";
     StatusCode statusCode = StatusCode.OK;
@@ -116,8 +122,8 @@ public class GradleApiConnector {
     // can only have one build target id. While we aggregate all compile related tasks into one
     // Gradle call for the perf consideration. So, the build target id passed into the reporter
     // is not accurate.
-    TaskProgressReporter reporter = new TaskProgressReporter(new CompileProgressReporter(
-        btIds.iterator().next()));
+    TaskProgressReporter reporter = new TaskProgressReporter(
+        new CompileProgressReporter(client, btIds.iterator().next()));
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     String summary = "BUILD SUCCESSFUL";
     StatusCode statusCode = StatusCode.OK;
