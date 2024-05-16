@@ -3,32 +3,74 @@
 
 package com.microsoft.java.bs.core.internal.reporter;
 
-import ch.epfl.scala.bsp4j.StatusCode;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.gradle.tooling.events.OperationDescriptor;
+import org.gradle.tooling.events.ProgressListener;
+import org.gradle.tooling.events.task.TaskOperationDescriptor;
+
+import ch.epfl.scala.bsp4j.BuildClient;
+import ch.epfl.scala.bsp4j.LogMessageParams;
+import ch.epfl.scala.bsp4j.MessageType;
+import ch.epfl.scala.bsp4j.TaskId;
 
 /**
- * A progress reporter that reports the progress of a task.
+ * An extension of {@link ProgressListener} that allows sending errors.
  */
-public interface ProgressReporter {
+public abstract class ProgressReporter implements ProgressListener {
+
+  protected final BuildClient client;
+  protected final String originId;
+  protected final TaskId taskId;
+  protected final List<String> taskIds;
 
   /**
-   * Notify the client that a task has been started.
+   * Instantiates a {@link ProgressReporter}.
    *
-   * @param message the message to be displayed.
+   * @param client BSP client to report to.
    */
-  void taskStarted(String message);
+  public ProgressReporter(BuildClient client, String originId) {
+    this.client = client;
+    this.originId = originId;
+    taskId = new TaskId(UUID.randomUUID().toString());
+    taskIds = new ArrayList<>();
+    taskIds.add(taskId.getId());
+  }
 
   /**
-   * Notify the progress of the task.
+   * Notify the client of an error.
    *
-   * @param message the message to be displayed.
+   * @param error the error message.
    */
-  void taskInProgress(String message);
+  public void sendError(String error) {
+    if (client != null) {
+      LogMessageParams messageParam = new LogMessageParams(MessageType.ERROR, error);
+      messageParam.setOriginId(originId);
+      messageParam.setTask(taskId);
+      client.onBuildLogMessage(messageParam);
+    }
+  }
 
-  /**
-   * Notify the client that a task has been finished.
-   *
-   * @param message the message to be displayed.
-   * @param statusCode the status code of the task.
-   */
-  void taskFinished(String message, StatusCode statusCode);
+  protected TaskId getTaskId(String taskPath) {
+    TaskId taskId = new TaskId(taskPath == null ? "null" : taskPath);
+    taskId.setParents(taskIds);
+    return taskId;
+  }
+
+  protected String getTaskPath(OperationDescriptor operationDescriptor) {
+    if (operationDescriptor == null) {
+      return null;
+    } else if (operationDescriptor instanceof TaskOperationDescriptor) {
+      return ((TaskOperationDescriptor) operationDescriptor).getTaskPath();
+    } else {
+      OperationDescriptor parent = operationDescriptor.getParent();
+      if (parent != operationDescriptor) {
+        return getTaskPath(operationDescriptor.getParent());
+      } else {
+        return null;
+      }
+    }
+  }
 }

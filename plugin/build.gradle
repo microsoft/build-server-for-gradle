@@ -12,9 +12,7 @@ dependencies {
     transitive = false
   }
 
-  testImplementation 'org.gradle:gradle-tooling-api:8.1.1'
-  testImplementation(platform('org.junit:junit-bom:5.9.2'))
-  testImplementation 'org.junit.jupiter:junit-jupiter'
+  testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
 }
 
 java {

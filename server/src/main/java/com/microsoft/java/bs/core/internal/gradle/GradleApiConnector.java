@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
@@ -23,14 +22,12 @@ import org.gradle.tooling.events.OperationType;
 import org.gradle.tooling.model.build.BuildEnvironment;
 
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
-import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
-import com.microsoft.java.bs.core.internal.reporter.TaskProgressReporter;
+import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildClient;
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.StatusCode;
 
 /**
@@ -39,15 +36,10 @@ import ch.epfl.scala.bsp4j.StatusCode;
 public class GradleApiConnector {
   private final Map<File, GradleConnector> connectors;
   private final PreferenceManager preferenceManager;
-  private BuildClient client;
 
   public GradleApiConnector(PreferenceManager preferenceManager) {
     this.preferenceManager = preferenceManager;
     connectors = new HashMap<>();
-  }
-
-  public void setClient(BuildClient client) {
-    this.client = client;
   }
 
   /**
@@ -70,20 +62,18 @@ public class GradleApiConnector {
    * Get the source sets of the Gradle project.
    *
    * @param projectUri uri of the project
+   * @param client connection to BSP client
    * @return an instance of {@link GradleSourceSets}
    */
-  public GradleSourceSets getGradleSourceSets(URI projectUri) {
+  public GradleSourceSets getGradleSourceSets(URI projectUri, BuildClient client) {
     File initScript = Utils.getInitScriptFile();
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
-    TaskProgressReporter reporter = new TaskProgressReporter(new DefaultProgressReporter(client));
+    ProgressReporter reporter = new DefaultProgressReporter(client);
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
-    String summary = "";
-    StatusCode statusCode = StatusCode.OK;
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut;) {
-      reporter.taskStarted("Retrieve source sets");
+        errorOut) {
       ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
           connection,
           preferenceManager.getPreferences(),
@@ -103,34 +93,29 @@ public class GradleApiConnector {
       // via a copy constructor and return as a POJO.
       return new DefaultGradleSourceSets(customModelBuilder.get());
     } catch (GradleConnectionException | IllegalStateException | IOException e) {
-      summary = e.getMessage();
+      String summary = e.getMessage();
       if (errorOut.size() > 0) {
-        summary += "\n" + errorOut.toString();
+        summary += "\n" + errorOut;
       }
-      statusCode = StatusCode.ERROR;
+      reporter.sendError(summary);
       throw new IllegalStateException("Error retrieving sourcesets \n" + summary, e);
-    } finally {
-      reporter.taskFinished(summary, statusCode);
     }
   }
 
   /**
    * Request Gradle daemon to run the tasks.
+   *
+   * @param projectUri uri of the project
+   * @param reporter reporter on feedback from Gradle
+   * @param tasks tasks to run
    */
-  public StatusCode runTasks(URI projectUri, Set<BuildTargetIdentifier> btIds, String... tasks) {
-    // Note: this might be anti-sepc, because the spec limits that one compile task report
-    // can only have one build target id. While we aggregate all compile related tasks into one
-    // Gradle call for the perf consideration. So, the build target id passed into the reporter
-    // is not accurate.
-    TaskProgressReporter reporter = new TaskProgressReporter(
-        new CompileProgressReporter(client, btIds.iterator().next()));
+  public StatusCode runTasks(URI projectUri, ProgressReporter reporter, String... tasks) {
+    // Don't issue a start progress update - the listener will pick that up automatically
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
-    String summary = "BUILD SUCCESSFUL";
     StatusCode statusCode = StatusCode.OK;
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut;
+        errorOut
     ) {
-      reporter.taskStarted("Start to build: " + String.join(" ", tasks));
       BuildLauncher launcher = Utils.getBuildLauncher(connection,
           preferenceManager.getPreferences());
       // TODO: consider to use outputstream to capture the output.
@@ -142,12 +127,12 @@ public class GradleApiConnector {
       // caused by close the output stream, just simply log the error.
       LOGGER.severe(e.getMessage());
     } catch (BuildException e) {
-      summary = errorOut.toString();
+      String summary = e.getMessage();
+      if (errorOut.size() > 0) {
+        summary += "\n" + errorOut;
+      }
+      reporter.sendError(summary);
       statusCode = StatusCode.ERROR;
-    } finally {
-      // If a build/taskStart notification has been sent,
-      // the server must send build/taskFinish on completion of the same task.
-      reporter.taskFinished(summary, statusCode);
     }
 
     return statusCode;
@@ -157,11 +142,11 @@ public class GradleApiConnector {
     connectors.values().forEach(GradleConnector::disconnect);
   }
 
-  protected GradleConnector getGradleConnector(URI projectUri) {
+  private GradleConnector getGradleConnector(URI projectUri) {
     return getGradleConnector(new File(projectUri));
   }
 
-  protected GradleConnector getGradleConnector(File project) {
+  private GradleConnector getGradleConnector(File project) {
     return connectors.computeIfAbsent(project,
         p -> Utils.getProjectConnector(p, preferenceManager.getPreferences()));
   }

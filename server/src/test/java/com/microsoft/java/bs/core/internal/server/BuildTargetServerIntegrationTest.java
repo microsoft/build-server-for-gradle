@@ -4,7 +4,6 @@
 package com.microsoft.java.bs.core.internal.server;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,20 +13,42 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
 
+import ch.epfl.scala.bsp4j.BuildClient;
+import ch.epfl.scala.bsp4j.BuildClientCapabilities;
+import ch.epfl.scala.bsp4j.BuildServer;
+import ch.epfl.scala.bsp4j.BuildTarget;
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.CleanCacheParams;
+import ch.epfl.scala.bsp4j.CleanCacheResult;
+import ch.epfl.scala.bsp4j.CompileParams;
+import ch.epfl.scala.bsp4j.CompileReport;
+import ch.epfl.scala.bsp4j.CompileResult;
 import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.DependencySourcesParams;
 import ch.epfl.scala.bsp4j.DependencySourcesResult;
+import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
+import ch.epfl.scala.bsp4j.InitializeBuildParams;
+import ch.epfl.scala.bsp4j.JavaBuildServer;
+import ch.epfl.scala.bsp4j.JvmBuildServer;
+import ch.epfl.scala.bsp4j.LogMessageParams;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
+import ch.epfl.scala.bsp4j.MessageType;
+import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
+import ch.epfl.scala.bsp4j.ShowMessageParams;
+import ch.epfl.scala.bsp4j.StatusCode;
+import ch.epfl.scala.bsp4j.TaskFinishParams;
+import ch.epfl.scala.bsp4j.TaskProgressParams;
+import ch.epfl.scala.bsp4j.TaskStartParams;
+import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,29 +62,6 @@ import com.microsoft.java.bs.core.internal.services.LifecycleService;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
-import ch.epfl.scala.bsp4j.BuildClient;
-import ch.epfl.scala.bsp4j.BuildClientCapabilities;
-import ch.epfl.scala.bsp4j.BuildServer;
-import ch.epfl.scala.bsp4j.BuildTarget;
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
-import ch.epfl.scala.bsp4j.CleanCacheParams;
-import ch.epfl.scala.bsp4j.CleanCacheResult;
-import ch.epfl.scala.bsp4j.CompileParams;
-import ch.epfl.scala.bsp4j.CompileReport;
-import ch.epfl.scala.bsp4j.CompileResult;
-import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
-import ch.epfl.scala.bsp4j.InitializeBuildParams;
-import ch.epfl.scala.bsp4j.JavaBuildServer;
-import ch.epfl.scala.bsp4j.JvmBuildServer;
-import ch.epfl.scala.bsp4j.LogMessageParams;
-import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
-import ch.epfl.scala.bsp4j.ShowMessageParams;
-import ch.epfl.scala.bsp4j.StatusCode;
-import ch.epfl.scala.bsp4j.TaskFinishParams;
-import ch.epfl.scala.bsp4j.TaskProgressParams;
-import ch.epfl.scala.bsp4j.TaskStartParams;
-import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
-
 // TODO: Move to a dedicated source set for integration tests
 class BuildTargetServerIntegrationTest {
 
@@ -74,23 +72,49 @@ class BuildTargetServerIntegrationTest {
 
     private final List<TaskStartParams> startReports = new ArrayList<>();
     private final List<TaskFinishParams> finishReports = new ArrayList<>();
-    private final Set<CompileReport> compileReports = new HashSet<>();
+    private final List<CompileReport> compileReports = new ArrayList<>();
+    private final List<CompileResult> compileResults = new ArrayList<>();
+    private final List<LogMessageParams> logMessages = new ArrayList<>();
 
     void clearMessages() {
       startReports.clear();
       finishReports.clear();
       compileReports.clear();
+      compileResults.clear();
+      logMessages.clear();
     }
 
-    void waitOnMessages(int startMessagesSize,
-                        int finishMessagesSize,
-                        int compileReportsSize) {
+    void waitOnStartReports(int size) {
+      waitOnMessages("Start Reports", size, startReports::size);
+    }
+
+    void waitOnFinishReports(int size) {
+      waitOnMessages("Finish Reports", size, finishReports::size);
+    }
+
+    void waitOnCompileReports(int size) {
+      waitOnMessages("Compile Reports", size, compileReports::size);
+    }
+
+    void waitOnCompileResults(int size) {
+      waitOnMessages("Compile Results", size, compileResults::size);
+    }
+
+    void waitOnLogMessages(int size) {
+      waitOnMessages("Log Messages", size, logMessages::size);
+    }
+
+    long finishReportErrorCount() {
+      return finishReports.stream()
+          .filter(report -> report.getStatus() == StatusCode.ERROR)
+          .count();
+    }
+
+    private void waitOnMessages(String message, int size, IntSupplier sizeSupplier) {
       // set to 5000ms because it seems reasonable
       long timeoutMs = 5000;
       long endTime = System.currentTimeMillis() + timeoutMs;
-      while ((startReports.size() < startMessagesSize
-              || finishReports.size() < finishMessagesSize
-              || compileReports.size() < compileReportsSize)
+      while (sizeSupplier.getAsInt() < size
               && System.currentTimeMillis() < endTime) {
         synchronized (this) {
           long waitTime = endTime - System.currentTimeMillis();
@@ -103,9 +127,7 @@ class BuildTargetServerIntegrationTest {
           }
         }
       }
-      assertEquals(startMessagesSize, startReports.size(), "Start Report count error");
-      assertEquals(finishMessagesSize, finishReports.size(), "Finish Reports count error");
-      assertEquals(compileReportsSize, compileReports.size(), "Compile Reports count error");
+      assertEquals(size, sizeSupplier.getAsInt(), message + " count error");
     }
 
     private CompileReport findCompileReport(BuildTargetIdentifier btId) {
@@ -129,7 +151,10 @@ class BuildTargetServerIntegrationTest {
 
     @Override
     public void onBuildLogMessage(LogMessageParams params) {
-      // do nothing
+      logMessages.add(params);
+      synchronized (this) {
+        notify();
+      }
     }
 
     @Override
@@ -150,6 +175,8 @@ class BuildTargetServerIntegrationTest {
       if (params.getDataKind() != null) {
         if (params.getDataKind().equals("compile-report")) {
           compileReports.add(JsonUtils.toModel(params.getData(), CompileReport.class));
+        } else if (params.getDataKind().equals("compile-result")) {
+          compileResults.add(JsonUtils.toModel(params.getData(), CompileResult.class));
         }
       }
       finishReports.add(params);
@@ -174,11 +201,13 @@ class BuildTargetServerIntegrationTest {
     String pluginDir = Paths.get(System.getProperty("user.dir"),
         "build", "libs", "plugins").toString();
     System.setProperty(Launcher.PROP_PLUGIN_DIR, pluginDir);
+    System.setProperty("bsp.plugin.reloadworkspace.disabled", "true");
   }
 
   @AfterAll
   static void afterClass() {
     System.clearProperty(Launcher.PROP_PLUGIN_DIR);
+    System.clearProperty("bsp.plugin.reloadworkspace.disabled");
   }
 
   private InitializeBuildParams getInitializeBuildParams(String projectDir) {
@@ -257,22 +286,6 @@ class BuildTargetServerIntegrationTest {
     }
   }
 
-  private BuildTargetIdentifier getBt(List<BuildTargetIdentifier> btIds,
-      String projectPathSection, String sourceSetName) {
-    String sourceSet = "?sourceset=" + sourceSetName;
-    List<BuildTargetIdentifier> matching = btIds.stream()
-            .filter(id -> id.getUri().contains(projectPathSection))
-            .filter(id -> id.getUri().endsWith(sourceSet))
-            .collect(Collectors.toList());
-    assertFalse(matching.isEmpty(), () -> "Build Target " + projectPathSection
-            + " with source set " + sourceSetName + " not found in "
-            + btIds.stream().map(Object::toString).collect(Collectors.joining(", ")));
-    assertEquals(1, matching.size(), () -> "Too many Build Targets like " + projectPathSection
-            + " with source set " + sourceSetName + " found in "
-            + btIds.stream().map(Object::toString).collect(Collectors.joining(", ")));
-    return matching.get(0);
-  }
-
   @Test
   void testCompilingSingleProjectServer() {
     withNewTestServer("junit5-jupiter-starter-gradle", (gradleBuildServer, client) -> {
@@ -283,6 +296,15 @@ class BuildTargetServerIntegrationTest {
           .map(BuildTarget::getId)
           .collect(Collectors.toList());
       assertEquals(2, btIds.size());
+      client.waitOnStartReports(1);
+      client.waitOnFinishReports(1);
+      client.waitOnCompileReports(0);
+      client.waitOnCompileResults(0);
+      client.waitOnLogMessages(0);
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      client.clearMessages();
 
       // check dependency sources
       DependencySourcesParams dependencySourcesParams = new DependencySourcesParams(btIds);
@@ -314,18 +336,97 @@ class BuildTargetServerIntegrationTest {
       CleanCacheResult cleanResult = gradleBuildServer
           .buildTargetCleanCache(cleanCacheParams).join();
       assertTrue(cleanResult.getCleaned());
-      client.waitOnMessages(2, 2, 1);
+      client.waitOnStartReports(1);
+      client.waitOnFinishReports(1);
+      client.waitOnCompileReports(0);
+      client.waitOnCompileResults(0);
+      client.waitOnLogMessages(0);
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
       client.clearMessages();
 
       // compile targets
       CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
       CompileResult compileResult = gradleBuildServer.buildTargetCompile(compileParams).join();
       assertEquals(StatusCode.OK, compileResult.getStatusCode());
-      client.waitOnMessages(2, 2, 1);
-      BuildTargetIdentifier testBt = getBt(btIds, "/junit5-jupiter-starter-gradle/", "test");
-      CompileReport compileReportTest = client.findCompileReport(testBt);
-      assertEquals(0, compileReportTest.getWarnings());
-      assertEquals(0, compileReportTest.getErrors());
+      client.waitOnStartReports(6);
+      client.waitOnFinishReports(6);
+      client.waitOnCompileReports(6);
+      client.waitOnCompileResults(0);
+      client.waitOnLogMessages(0);
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      for (BuildTargetIdentifier btId : btIds) {
+        CompileReport compileReport = client.findCompileReport(btId);
+        assertEquals("originId", compileReport.getOriginId());
+        // TODO compile results are not yet implemented so always zero for now.
+        assertEquals(0, compileReport.getWarnings());
+        assertEquals(0, compileReport.getErrors());
+      }
+      client.clearMessages();
+    });
+  }
+
+  @Test
+  void testFailingServer() {
+    withNewTestServer("fail-compilation", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+      assertEquals(2, btIds.size());
+      client.waitOnStartReports(1);
+      client.waitOnFinishReports(1);
+      client.waitOnCompileReports(0);
+      client.waitOnCompileResults(0);
+      client.waitOnLogMessages(0);
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      client.clearMessages();
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      CleanCacheResult cleanResult = gradleBuildServer
+          .buildTargetCleanCache(cleanCacheParams).join();
+      assertTrue(cleanResult.getCleaned());
+      client.waitOnStartReports(1);
+      client.waitOnFinishReports(1);
+      client.waitOnCompileReports(0);
+      client.waitOnCompileResults(0);
+      client.waitOnLogMessages(0);
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      client.clearMessages();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      CompileResult compileResult = gradleBuildServer.buildTargetCompile(compileParams).join();
+      assertEquals(StatusCode.ERROR, compileResult.getStatusCode());
+      client.waitOnStartReports(4);
+      client.waitOnFinishReports(4);
+      client.waitOnCompileReports(4);
+      client.waitOnCompileResults(0);
+      client.waitOnLogMessages(1);
+      assertEquals(1, client.finishReportErrorCount());
+      for (BuildTargetIdentifier btId : btIds) {
+        CompileReport compileReport = client.findCompileReport(btId);
+        assertEquals("originId", compileReport.getOriginId());
+        // TODO compile results are not yet implemented so always zero for now.
+        assertEquals(0, compileReport.getWarnings());
+        assertEquals(0, compileReport.getErrors());
+      }
+      for (LogMessageParams message : client.logMessages) {
+        assertEquals("originId", message.getOriginId());
+        assertEquals(MessageType.ERROR, message.getType());
+      }
       client.clearMessages();
     });
   }

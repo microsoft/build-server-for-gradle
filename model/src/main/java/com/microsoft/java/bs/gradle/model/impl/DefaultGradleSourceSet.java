@@ -37,6 +37,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private String classesTaskName;
 
+  private String cleanTaskName;
+
+  private Set<String> taskNames;
+
   private Set<File> sourceDirs;
 
   private Set<File> generatedSourceDirs;
@@ -73,6 +77,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.rootDir = gradleSourceSet.getRootDir();
     this.sourceSetName = gradleSourceSet.getSourceSetName();
     this.classesTaskName = gradleSourceSet.getClassesTaskName();
+    this.cleanTaskName = gradleSourceSet.getCleanTaskName();
+    this.taskNames = gradleSourceSet.getTaskNames();
     this.sourceDirs = gradleSourceSet.getSourceDirs();
     this.generatedSourceDirs = gradleSourceSet.getGeneratedSourceDirs();
     this.sourceOutputDir = gradleSourceSet.getSourceOutputDir();
@@ -165,7 +171,22 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.classesTaskName = classesTaskName;
   }
 
-  @Override
+  public String getCleanTaskName() {
+    return cleanTaskName;
+  }
+
+  public void setCleanTaskName(String cleanTaskName) {
+    this.cleanTaskName = cleanTaskName;
+  }
+
+  public void setTaskNames(Set<String> taskNames) {
+    this.taskNames = taskNames;
+  }
+
+  public Set<String> getTaskNames() {
+    return taskNames;
+  }
+
   public Set<File> getSourceDirs() {
     return sourceDirs;
   }
@@ -258,7 +279,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   @Override
   public int hashCode() {
     return Objects.hash(gradleVersion, displayName, projectName, projectPath,
-        projectDir, rootDir, sourceSetName, classesTaskName, sourceDirs,
+        projectDir, rootDir, sourceSetName, classesTaskName, cleanTaskName, taskNames, sourceDirs,
         generatedSourceDirs, sourceOutputDir, resourceDirs, resourceOutputDir,
         compileClasspath, moduleDependencies, buildTargetDependencies,
         hasTests, extensions);
@@ -284,6 +305,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(rootDir, other.rootDir)
         && Objects.equals(sourceSetName, other.sourceSetName)
         && Objects.equals(classesTaskName, other.classesTaskName)
+        && Objects.equals(cleanTaskName, other.cleanTaskName)
+        && Objects.equals(taskNames, other.taskNames)
         && Objects.equals(sourceDirs, other.sourceDirs)
         && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
         && Objects.equals(sourceOutputDir, other.sourceOutputDir)

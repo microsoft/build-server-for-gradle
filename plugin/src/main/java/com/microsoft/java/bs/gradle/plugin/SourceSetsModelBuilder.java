@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.file.CopySpec;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
@@ -64,11 +65,20 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         cache.addProject(sourceSet, project);
         gradleSourceSet.setGradleVersion(project.getGradle().getGradleVersion());
         gradleSourceSet.setProjectName(project.getName());
-        gradleSourceSet.setProjectPath(project.getPath());
+        String projectPath = project.getPath();
+        gradleSourceSet.setProjectPath(projectPath);
         gradleSourceSet.setProjectDir(project.getProjectDir());
         gradleSourceSet.setRootDir(project.getRootDir());
         gradleSourceSet.setSourceSetName(sourceSet.getName());
-        gradleSourceSet.setClassesTaskName(sourceSet.getClassesTaskName());
+        String classesTaskName = getFullTaskName(projectPath, sourceSet.getClassesTaskName());
+        gradleSourceSet.setClassesTaskName(classesTaskName);
+        String cleanTaskName = getFullTaskName(projectPath, "clean");
+        gradleSourceSet.setCleanTaskName(cleanTaskName);
+        Set<String> taskNames = new HashSet<>();
+        gradleSourceSet.setTaskNames(taskNames);
+        taskNames.add(classesTaskName);
+        taskNames.add(cleanTaskName);
+        taskNames.add(getFullTaskName(projectPath, sourceSet.getProcessResourcesTaskName()));
         String projectName = stripPathPrefix(gradleSourceSet.getProjectPath());
         if (projectName == null || projectName.length() == 0) {
           projectName = gradleSourceSet.getProjectName();
@@ -82,6 +92,11 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         for (LanguageModelBuilder languageModelBuilder :
             GradleBuildServerPlugin.SUPPORTED_LANGUAGE_BUILDERS) {
           if (languageModelBuilder.appliesFor(project, sourceSet)) {
+            Task compileTask = languageModelBuilder.getLanguageCompileTask(project, sourceSet);
+            if (compileTask != null) {
+              String compileTaskName = getFullTaskName(projectPath, compileTask.getName());
+              taskNames.add(compileTaskName);
+            }
             srcDirs.addAll(languageModelBuilder.getSourceFoldersFor(project, sourceSet));
             generatedSrcDirs.addAll(
                 languageModelBuilder.getGeneratedSourceFoldersFor(project, sourceSet));
@@ -257,6 +272,24 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       }
     }
     return null;
+  }
+
+  /**
+   * Return a project task name - [project path]:[task].
+   */
+  private String getFullTaskName(String modulePath, String taskName) {
+    if (taskName == null) {
+      return null;
+    }
+    if (taskName.isEmpty()) {
+      return taskName;
+    }
+
+    if (modulePath == null || modulePath.equals(":")) {
+      // must be prefixed with ":" as taskPaths are reported back like that in progress messages
+      return ":" + taskName;
+    }
+    return modulePath + ":" + taskName;
   }
 
   private String stripPathPrefix(String projectPath) {
