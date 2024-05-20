@@ -53,8 +53,11 @@ public abstract class ProgressReporter implements ProgressListener {
     }
   }
 
-  protected TaskId getTaskId(String taskPath) {
-    TaskId taskId = new TaskId(taskPath == null ? "null" : taskPath);
+  protected TaskId getTaskId(String description) {
+    if (description == null) {
+      return taskId;
+    }
+    TaskId taskId = new TaskId(description);
     taskId.setParents(taskIds);
     return taskId;
   }

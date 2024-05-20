@@ -89,6 +89,7 @@ public class LifecycleService {
     capabilities.setCanReload(true);
     capabilities.setBuildTargetChangedProvider(true);
     capabilities.setCompileProvider(new CompileProvider(SupportedLanguages.allBspNames));
+    capabilities.setJvmTestEnvironmentProvider(true);
     return capabilities;
   }
 

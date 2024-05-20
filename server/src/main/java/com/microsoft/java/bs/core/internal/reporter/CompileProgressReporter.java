@@ -24,6 +24,8 @@ import org.gradle.tooling.events.OperationResult;
 import org.gradle.tooling.events.ProgressEvent;
 import org.gradle.tooling.events.ProgressListener;
 import org.gradle.tooling.events.StartEvent;
+import org.gradle.tooling.events.task.TaskSkippedResult;
+import org.gradle.tooling.events.task.TaskSuccessResult;
 
 /**
  * An implementation of {@link ProgressReporter}
@@ -64,7 +66,11 @@ public class CompileProgressReporter extends ProgressReporter {
           Long compileStartTime = startTimes.get(taskPath);
           Long compileTimeDuration = compileStartTime == null ? null
               : event.getEventTime() - compileStartTime;
-          taskFinished(taskId, targets, event.getDisplayName(), compileTimeDuration, status);
+          boolean skipped = result instanceof TaskSkippedResult;
+          boolean upToDate = result instanceof TaskSuccessResult
+              && ((TaskSuccessResult) result).isUpToDate();
+          taskFinished(taskId, targets, event.getDisplayName(), compileTimeDuration, status,
+              skipped || upToDate);
         } else {
           taskInProgress(taskId, targets, event.getDisplayName());
         }
@@ -97,7 +103,7 @@ public class CompileProgressReporter extends ProgressReporter {
   }
 
   private void taskFinished(TaskId taskId, Set<BuildTargetIdentifier> targets, String message,
-      Long compileTimeDuration, StatusCode statusCode) {
+      Long compileTimeDuration, StatusCode statusCode, boolean noOp) {
     long eventTime = System.currentTimeMillis();
     targets.forEach(btId -> {
       TaskFinishParams endParam = new TaskFinishParams(taskId, statusCode);
@@ -106,6 +112,7 @@ public class CompileProgressReporter extends ProgressReporter {
       endParam.setDataKind(TaskDataKind.COMPILE_REPORT);
       // TODO Gradle > 8.8 Problems API will allow errors/warnings to be reported on
       CompileReport compileReport = new CompileReport(btId, 0, 0);
+      compileReport.setNoOp(noOp);
       compileReport.setOriginId(originId);
       compileReport.setTime(compileTimeDuration);
       endParam.setData(compileReport);

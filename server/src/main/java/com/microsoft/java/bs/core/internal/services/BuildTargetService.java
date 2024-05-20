@@ -8,6 +8,7 @@ import static com.microsoft.java.bs.core.Launcher.LOGGER;
 import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,11 +26,14 @@ import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
+import com.microsoft.java.bs.core.internal.model.GradleTestEntity;
+import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleTestTask;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
@@ -52,6 +56,10 @@ import ch.epfl.scala.bsp4j.DependencySourcesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsItem;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.JvmEnvironmentItem;
+import ch.epfl.scala.bsp4j.JvmMainClass;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentResult;
 import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
@@ -63,15 +71,24 @@ import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesItem;
 import ch.epfl.scala.bsp4j.ResourcesParams;
 import ch.epfl.scala.bsp4j.ResourcesResult;
+import ch.epfl.scala.bsp4j.RunParams;
+import ch.epfl.scala.bsp4j.RunParamsDataKind;
+import ch.epfl.scala.bsp4j.RunResult;
 import ch.epfl.scala.bsp4j.ScalacOptionsItem;
 import ch.epfl.scala.bsp4j.ScalacOptionsParams;
 import ch.epfl.scala.bsp4j.ScalacOptionsResult;
+import ch.epfl.scala.bsp4j.ScalaMainClass;
+import ch.epfl.scala.bsp4j.ScalaTestClassesItem;
+import ch.epfl.scala.bsp4j.ScalaTestParams;
 import ch.epfl.scala.bsp4j.SourceItem;
 import ch.epfl.scala.bsp4j.SourceItemKind;
 import ch.epfl.scala.bsp4j.SourcesItem;
 import ch.epfl.scala.bsp4j.SourcesParams;
 import ch.epfl.scala.bsp4j.SourcesResult;
 import ch.epfl.scala.bsp4j.StatusCode;
+import ch.epfl.scala.bsp4j.TestParams;
+import ch.epfl.scala.bsp4j.TestParamsDataKind;
+import ch.epfl.scala.bsp4j.TestResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 import org.apache.commons.lang3.StringUtils;
 
@@ -467,6 +484,141 @@ public class BuildTargetService {
       ));
     }
     return new ScalacOptionsResult(items);
+  }
+
+  /**
+   * get the test classes.
+   */
+  public JvmTestEnvironmentResult getBuildTargetJvmTestEnvironment(
+      JvmTestEnvironmentParams params) {
+    Map<BuildTargetIdentifier, List<GradleTestEntity>> mainClassesMap = new HashMap<>();
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets =
+        groupBuildTargetsByRootDir(params.getTargets());
+    // retrieving tests can trigger compilation that must be reported on
+    CompileProgressReporter compileProgressReporter = new CompileProgressReporter(client,
+            params.getOriginId(), getFullTaskPathMap());
+    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
+      Map<BuildTargetIdentifier, Set<GradleTestTask>> testTaskMap = new HashMap<>();
+      for (BuildTargetIdentifier btId : entry.getValue()) {
+        GradleBuildTarget target = buildTargetManager.getGradleBuildTarget(btId);
+        if (target == null) {
+          LOGGER.warning("Skip test collection for the build target: " + btId.getUri()
+              + ". Because it cannot be found in the cache.");
+          continue;
+        }
+        testTaskMap.put(btId, target.getSourceSet().getTestTasks());
+      }
+      URI projectUri = entry.getKey();
+      Map<BuildTargetIdentifier, List<GradleTestEntity>> partialMainClassesMap =
+          connector.getTestClasses(projectUri, testTaskMap, client, compileProgressReporter);
+      mainClassesMap.putAll(partialMainClassesMap);
+    }
+    List<JvmEnvironmentItem> items = new ArrayList<>();
+    for (Map.Entry<BuildTargetIdentifier, List<GradleTestEntity>> entry :
+        mainClassesMap.entrySet()) {
+      for (GradleTestEntity gradleTestEntity : entry.getValue()) {
+        GradleTestTask gradleTestTask = gradleTestEntity.getGradleTestTask();
+        List<String> classpath = gradleTestTask.getClasspath()
+            .stream()
+            .map(file -> file.toURI().toString())
+            .collect(Collectors.toList());
+        List<String> jvmOptions = gradleTestTask.getJvmOptions();
+        String workingDirectory = gradleTestTask.getWorkingDirectory().toURI().toString();
+        Map<String, String> environmentVariables = gradleTestTask.getEnvironmentVariables();
+        List<JvmMainClass> mainClasses = gradleTestEntity.getTestClasses()
+            .stream()
+            .map(mainClass -> new JvmMainClass(mainClass, Collections.emptyList()))
+            .collect(Collectors.toList());
+        JvmEnvironmentItem item = new JvmEnvironmentItem(entry.getKey(),
+            classpath, jvmOptions, workingDirectory, environmentVariables);
+        item.setMainClasses(mainClasses);
+        items.add(item);
+      }
+    }
+    return new JvmTestEnvironmentResult(items);
+  }
+
+  /**
+   * Run the test classes.
+   */
+  public TestResult buildTargetTest(TestParams params) {
+    TestResult testResult = new TestResult(StatusCode.OK);
+    testResult.setOriginId(params.getOriginId());
+    if (!TestParamsDataKind.SCALA_TEST.equals(params.getDataKind())) {
+      LOGGER.warning("Test Data Kind " + params.getDataKind() + " not supported");
+      testResult.setStatusCode(StatusCode.ERROR);
+    } else {
+      // running tests can trigger compilation that must be reported on
+      CompileProgressReporter compileProgressReporter = new CompileProgressReporter(client,
+              params.getOriginId(), getFullTaskPathMap());
+      Map<URI, Set<BuildTargetIdentifier>> groupedTargets =
+          groupBuildTargetsByRootDir(params.getTargets());
+      for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
+        // ideally BSP would have a jvmTestEnv style testkind for executing tests, not scala.
+        ScalaTestParams testParams = JsonUtils.toModel(params.getData(), ScalaTestParams.class);
+        Map<BuildTargetIdentifier, Set<String>> testClasses =
+            testParams.getTestClasses().stream()
+              .collect(Collectors.toMap(ScalaTestClassesItem::getTarget,
+                item -> item.getClasses().stream().collect(Collectors.toSet())));
+
+        StatusCode statusCode = connector.runTestClasses(entry.getKey(), testClasses,
+            client, params.getOriginId(), compileProgressReporter);
+
+        if (statusCode != StatusCode.OK) {
+          testResult.setStatusCode(statusCode);
+        }
+      }
+    }
+    return testResult;    
+  }
+
+  /**
+   * Run the main class.
+   */
+  public RunResult buildTargetRun(RunParams params) {
+    RunResult runResult = new RunResult(StatusCode.OK);
+    runResult.setOriginId(params.getOriginId());
+    if (!RunParamsDataKind.SCALA_MAIN_CLASS.equals(params.getDataKind())) {
+      LOGGER.warning("Run Data Kind " + params.getDataKind() + " not supported");
+      runResult.setStatusCode(StatusCode.ERROR);
+    } else {
+      // running tests can trigger compilation that must be reported on
+      CompileProgressReporter compileProgressReporter = new CompileProgressReporter(client,
+              params.getOriginId(), getFullTaskPathMap());
+      GradleBuildTarget buildTarget = getGradleBuildTarget(params.getTarget());
+      if (buildTarget == null) {
+        // TODO: https://github.com/microsoft/build-server-for-gradle/issues/50
+        throw new IllegalArgumentException("The build target does not exist: "
+          + params.getTarget().getUri());
+      }
+      URI projectUri = getRootProjectUri(params.getTarget());
+      // ideally BSP would have a jvmRunEnv style runkind for executing tests, not scala.
+      ScalaMainClass mainClass = JsonUtils.toModel(params.getData(), ScalaMainClass.class);
+      // TODO it's not clear which argument set takes precedence
+      List<String> arguments1 = params.getArguments();
+      List<String> arguments2 = mainClass.getArguments();
+      List<String> argumentsToUse;
+      if (arguments1 == null || arguments1.isEmpty()) {
+        argumentsToUse = arguments2;
+      } else {
+        argumentsToUse = arguments1;
+      }
+      // TODO upgrade to later BSP version and then env vars can be passed to runMainClass
+      StatusCode statusCode = connector.runMainClass(projectUri,
+              buildTarget.getSourceSet().getProjectPath(),
+              buildTarget.getSourceSet().getSourceSetName(),
+              mainClass.getClassName(),
+              null,
+              mainClass.getJvmOptions(),
+              argumentsToUse,
+              client,
+              compileProgressReporter);
+
+      if (statusCode != StatusCode.OK) {
+        runResult.setStatusCode(statusCode);
+      }
+    }
+    return runResult;
   }
 
   /**

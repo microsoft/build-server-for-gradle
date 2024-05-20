@@ -12,18 +12,29 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.microsoft.java.bs.gradle.model.ScalaExtension;
-import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
+import com.microsoft.java.bs.core.internal.model.GradleTestEntity;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleTestTask;
+import com.microsoft.java.bs.gradle.model.ScalaExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.StatusCode;
 
 class GradleApiConnectorTest {
 
@@ -41,31 +52,27 @@ class GradleApiConnectorTest {
     System.setProperty(Launcher.PROP_PLUGIN_DIR, pluginDir);
   }
 
-  private GradleApiConnector getConnector() {
+  private <A> A withConnector(Function<GradleApiConnector, A> function) {
     PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setClientSupportedLanguages(SupportedLanguages.allBspNames);
     preferenceManager.setPreferences(new Preferences());
-    return new GradleApiConnector(preferenceManager);
-  }
-
-  private GradleSourceSets getGradleSourceSets(File projectDir) {
-    GradleApiConnector connector = getConnector();
+    preferenceManager.setClientSupportedLanguages(SupportedLanguages.allBspNames);
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     try {
-      return connector.getGradleSourceSets(projectDir.toURI(), null);
+      return function.apply(connector);
     } finally {
       connector.shutdown();
     }
+  }
+
+  private GradleSourceSets getGradleSourceSets(File projectDir) {
+    return withConnector(connector -> connector.getGradleSourceSets(projectDir.toURI(), null));
   }
 
   @Test
   void testGetGradleVersion() {
     File projectDir = projectPath.resolve("gradle-4.3-with-wrapper").toFile();
-    GradleApiConnector connector = getConnector();
-    try {
-      assertEquals("4.3", connector.getGradleVersion(projectDir.toURI()));
-    } finally {
-      connector.shutdown();
-    }
+    String version = withConnector(connector -> connector.getGradleVersion(projectDir.toURI()));
+    assertEquals("4.3", version);
   }
 
   @Test
@@ -102,6 +109,14 @@ class GradleApiConnectorTest {
     return sourceSet;
   }
 
+  private void assertHasTaskPath(Set<GradleTestTask> paths, String path) {
+    assertTrue(paths.stream().anyMatch(task -> task.getTaskPath().equals(path)), () -> {
+      String pathsAsStr = paths.stream().map(task -> task.getTaskPath())
+          .collect(Collectors.joining(", "));
+      return "Task path not found [" + path + "] in [" + pathsAsStr + ']';
+    });
+  }
+
   @Test
   void testGetGradleDuplicateNestedProjectNames() {
     File projectDir = projectPath.resolve("duplicate-nested-project-names").toFile();
@@ -126,11 +141,21 @@ class GradleApiConnectorTest {
     File projectDir = projectPath.resolve("test-tag").toFile();
     GradleSourceSets gradleSourceSets = getGradleSourceSets(projectDir);
     assertEquals(5, gradleSourceSets.getGradleSourceSets().size());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [main]").hasTests());
-    assertTrue(findSourceSet(gradleSourceSets, "test-tag [test]").hasTests());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [noTests]").hasTests());
-    assertTrue(findSourceSet(gradleSourceSets, "test-tag [intTest]").hasTests());
-    assertFalse(findSourceSet(gradleSourceSets, "test-tag [testFixtures]").hasTests());
+
+    GradleSourceSet main = findSourceSet(gradleSourceSets, "test-tag [main]");
+    assertFalse(main.hasTests());
+    GradleSourceSet test = findSourceSet(gradleSourceSets, "test-tag [test]");
+    assertTrue(test.hasTests());
+    assertEquals(1, test.getTestTasks().size());
+    assertHasTaskPath(test.getTestTasks(), ":test");
+    GradleSourceSet noTests = findSourceSet(gradleSourceSets, "test-tag [noTests]");
+    assertFalse(noTests.hasTests());
+    GradleSourceSet intTest = findSourceSet(gradleSourceSets, "test-tag [intTest]");
+    assertTrue(intTest.hasTests());
+    assertEquals(1, intTest.getTestTasks().size());
+    assertHasTaskPath(intTest.getTestTasks(), ":integrationTest");
+    GradleSourceSet testFixtures = findSourceSet(gradleSourceSets, "test-tag [testFixtures]");
+    assertFalse(testFixtures.hasTests());
   }
 
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,
@@ -273,5 +298,68 @@ class GradleApiConnectorTest {
     assertFalse(scalaExtension.getScalaCompilerArgs().isEmpty());
     assertTrue(scalaExtension.getScalaCompilerArgs().stream()
         .anyMatch(arg -> arg.equals("-deprecation")));
+  }
+
+  @Test
+  void testGetJvmTestEnviroment() {
+    File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
+    withConnector(connector -> {
+      GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+
+      Map<BuildTargetIdentifier, Set<GradleTestTask>> testTaskMap = new HashMap<>();
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        BuildTargetIdentifier fakeBt = new BuildTargetIdentifier(gradleSourceSet.getDisplayName());
+        testTaskMap.put(fakeBt, gradleSourceSet.getTestTasks());
+      }
+      Map<BuildTargetIdentifier, List<GradleTestEntity>> tests =
+            connector.getTestClasses(projectDir.toURI(), testTaskMap, null, null);
+      assertHasTestClass(tests, "junit5-jupiter-starter-gradle [test]",
+          "com.example.project.CalculatorTests");
+      return null;
+    });
+  }
+
+  private void assertHasTestClass(Map<BuildTargetIdentifier, List<GradleTestEntity>> tests,
+      String sourceSetDisplayName, String className) {
+    List<GradleTestEntity> btTests = tests.entrySet().stream()
+        .filter(entry -> entry.getKey().getUri().equals(sourceSetDisplayName))
+        .flatMap(entry -> entry.getValue().stream())
+        .collect(Collectors.toList());
+    assertFalse(btTests.isEmpty(),
+        () -> "SourceSet " + sourceSetDisplayName + " not found in "
+        + tests.keySet().stream()
+          .map(BuildTargetIdentifier::getUri)
+          .collect(Collectors.joining(", ")));
+
+    List<String> btTestClasses = btTests.stream()
+        .flatMap(entity -> entity.getTestClasses().stream())
+        .collect(Collectors.toList());
+    assertTrue(btTestClasses.contains(className),
+        () -> "Test class " + className + " not found in "
+        + String.join(", ", btTestClasses));
+  }
+
+  @Test
+  void testBuildTargetTest() {
+    File projectDir = projectPath.resolve("java-tests").toFile();
+    withConnector(connector -> {
+      GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+      GradleSourceSet testSourceSet =
+          findSourceSet(gradleSourceSets, "java-tests [test]");
+      Map<BuildTargetIdentifier, Set<String>> testClassesMap = new HashMap<>();
+      BuildTargetIdentifier fakeBt = new BuildTargetIdentifier(testSourceSet.getDisplayName());
+      Set<String> classes = new HashSet<>();
+      testClassesMap.put(fakeBt, classes);
+      classes.add("com.example.project.PassingTests");
+      StatusCode passingTest = connector.runTestClasses(projectDir.toURI(),
+          testClassesMap, null, null, null);
+      assertEquals(StatusCode.OK, passingTest);
+      classes.clear();
+      classes.add("com.example.project.FailingTests");
+      StatusCode failingTest = connector.runTestClasses(projectDir.toURI(),
+          testClassesMap, null, null, null);
+      assertEquals(StatusCode.ERROR, failingTest);
+      return null;
+    });
   }
 }
