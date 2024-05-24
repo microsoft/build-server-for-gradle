@@ -25,6 +25,7 @@ import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
+import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
@@ -63,6 +64,10 @@ import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesItem;
 import ch.epfl.scala.bsp4j.ResourcesParams;
 import ch.epfl.scala.bsp4j.ResourcesResult;
+import ch.epfl.scala.bsp4j.ScalaTestClassesItem;
+import ch.epfl.scala.bsp4j.ScalaTestParams;
+import ch.epfl.scala.bsp4j.ScalaTestSuiteSelection;
+import ch.epfl.scala.bsp4j.ScalaTestSuites;
 import ch.epfl.scala.bsp4j.ScalacOptionsItem;
 import ch.epfl.scala.bsp4j.ScalacOptionsParams;
 import ch.epfl.scala.bsp4j.ScalacOptionsResult;
@@ -72,6 +77,9 @@ import ch.epfl.scala.bsp4j.SourcesItem;
 import ch.epfl.scala.bsp4j.SourcesParams;
 import ch.epfl.scala.bsp4j.SourcesResult;
 import ch.epfl.scala.bsp4j.StatusCode;
+import ch.epfl.scala.bsp4j.TestParams;
+import ch.epfl.scala.bsp4j.TestParamsDataKind;
+import ch.epfl.scala.bsp4j.TestResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 import org.apache.commons.lang3.StringUtils;
 
@@ -467,6 +475,86 @@ public class BuildTargetService {
       ));
     }
     return new ScalacOptionsResult(items);
+  }
+
+  /**
+   * Run the test classes.
+   */
+  public TestResult buildTargetTest(TestParams params) {
+    TestResult testResult = new TestResult(StatusCode.OK);
+    testResult.setOriginId(params.getOriginId());
+    // running tests can trigger compilation that must be reported on
+    CompileProgressReporter compileProgressReporter = new CompileProgressReporter(client,
+            params.getOriginId(), getFullTaskPathMap());
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets =
+        groupBuildTargetsByRootDir(params.getTargets());
+    for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
+      // TODO ideally BSP would have a jvmTestEnv style testkind for executing tests, not scala.
+      StatusCode statusCode;
+      if (TestParamsDataKind.SCALA_TEST.equals(params.getDataKind())) {
+        // ScalaTestParams is for a list of classes only
+        ScalaTestParams testParams = JsonUtils.toModel(params.getData(), ScalaTestParams.class);
+        Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
+        for (ScalaTestClassesItem testClassesItem : testParams.getTestClasses()) {
+          Map<String, Set<String>> classesMethods = new HashMap<>();
+          for (String classNames : testClassesItem.getClasses()) {
+            classesMethods.put(classNames, null);
+          }
+          testClasses.put(testClassesItem.getTarget(), classesMethods);
+        }
+        statusCode = connector.runTests(entry.getKey(), testClasses, testParams.getJvmOptions(),
+            params.getArguments(), null, client, params.getOriginId(),
+            compileProgressReporter);
+      } else if ("scala-test-suites-selection".equals(params.getDataKind())) {
+        // ScalaTestSuites is for a list of classes + methods
+        // Since it doesn't supply the specific BuildTarget we require a single
+        // build target in the params and reject any request that doesn't match this
+        if (params.getTargets().size() != 1) {
+          LOGGER.warning("Test params with Test Data Kind " + params.getDataKind()
+              + " must contain only 1 build target");
+          statusCode = StatusCode.ERROR;
+        } else {
+          ScalaTestSuites testSuites = JsonUtils.toModel(params.getData(), ScalaTestSuites.class);
+          Map<String, String> envVars = null;
+          boolean argsValid = true;
+          if (testSuites.getEnvironmentVariables() != null) {
+            // arg is of the form KEY=VALUE
+            List<String[]> splitArgs = testSuites.getEnvironmentVariables()
+                .stream()
+                .map(arg -> arg.split("="))
+                .collect(Collectors.toList());
+            argsValid = splitArgs.stream().allMatch(arg -> arg.length == 2);
+            if (argsValid) {
+              envVars = splitArgs.stream().collect(Collectors.toMap(arg -> arg[0], arg -> arg[1]));
+            }
+          }
+          if (!argsValid) {
+            LOGGER.warning("Test params arguments must each be in the form KEY=VALUE. "
+                + testSuites.getEnvironmentVariables());
+            statusCode = StatusCode.ERROR;
+          } else {
+            Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
+            for (ScalaTestSuiteSelection testSuiteSelection : testSuites.getSuites()) {
+              Map<String, Set<String>> classesMethods = new HashMap<>();
+              Set<String> methods = new HashSet<>(testSuiteSelection.getTests());
+              classesMethods.put(testSuiteSelection.getClassName(), methods);
+              testClasses.put(params.getTargets().get(0), classesMethods);
+            }
+            statusCode = connector.runTests(entry.getKey(), testClasses, testSuites.getJvmOptions(),
+              params.getArguments(), envVars, client, params.getOriginId(),
+              compileProgressReporter);
+          }
+        }
+      } else {
+        LOGGER.warning("Test Data Kind " + params.getDataKind() + " not supported");
+        statusCode = StatusCode.ERROR;
+      }
+
+      if (statusCode != StatusCode.OK) {
+        testResult.setStatusCode(statusCode);
+      }
+    }
+    return testResult;
   }
 
   /**

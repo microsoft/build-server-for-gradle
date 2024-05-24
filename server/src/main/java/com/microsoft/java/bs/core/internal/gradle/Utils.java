@@ -13,9 +13,11 @@ import java.util.Optional;
 
 import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
 import org.gradle.tooling.BuildLauncher;
+import org.gradle.tooling.ConfigurableLauncher;
 import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
+import org.gradle.tooling.TestLauncher;
 import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.core.Launcher;
@@ -90,23 +92,7 @@ public class Utils {
    */
   public static <T> ModelBuilder<T> getModelBuilder(ProjectConnection connection,
       Preferences preferences, Class<T> clazz) {
-    ModelBuilder<T> modelBuilder = connection.model(clazz);
-
-    File gradleJavaHomeFile = getGradleJavaHomeFile(preferences.getGradleJavaHome());
-    if (gradleJavaHomeFile != null && gradleJavaHomeFile.exists()) {
-      modelBuilder.setJavaHome(gradleJavaHomeFile);
-    }
-
-    List<String> gradleJvmArguments = preferences.getGradleJvmArguments();
-    if (gradleJvmArguments != null && !gradleJvmArguments.isEmpty()) {
-      modelBuilder.setJvmArguments(gradleJvmArguments);
-    }
-
-    List<String> gradleArguments = preferences.getGradleArguments();
-    if (gradleArguments != null && !gradleArguments.isEmpty()) {
-      modelBuilder.withArguments(gradleArguments);
-    }
-    return modelBuilder;
+    return setLauncherProperties(connection.model(clazz), preferences);
   }
 
   /**
@@ -117,7 +103,28 @@ public class Utils {
    */
   public static BuildLauncher getBuildLauncher(ProjectConnection connection,
       Preferences preferences) {
-    BuildLauncher launcher = connection.newBuild();
+    return setLauncherProperties(connection.newBuild(), preferences);
+  }
+
+  /**
+   * Get the Test Launcher.
+   *
+   * @param connection The project connection.
+   * @param preferences The preferences.
+   */
+  public static TestLauncher getTestLauncher(ProjectConnection connection,
+      Preferences preferences) {
+    return setLauncherProperties(connection.newTestLauncher(), preferences);
+  }
+
+  /**
+   * Set the Launcher properties.
+   *
+   * @param launcher The launcher.
+   * @param preferences The preferences.
+   */
+  public static <T extends ConfigurableLauncher<T>> T setLauncherProperties(T launcher,
+      Preferences preferences) {
 
     File gradleJavaHomeFile = getGradleJavaHomeFile(preferences.getGradleJavaHome());
     if (gradleJavaHomeFile != null && gradleJavaHomeFile.exists()) {

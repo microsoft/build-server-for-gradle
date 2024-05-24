@@ -76,9 +76,6 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setCleanTaskName(cleanTaskName);
         Set<String> taskNames = new HashSet<>();
         gradleSourceSet.setTaskNames(taskNames);
-        taskNames.add(classesTaskName);
-        taskNames.add(cleanTaskName);
-        taskNames.add(getFullTaskName(projectPath, sourceSet.getProcessResourcesTaskName()));
         String projectName = stripPathPrefix(gradleSourceSet.getProjectPath());
         if (projectName == null || projectName.length() == 0) {
           projectName = gradleSourceSet.getProjectName();

@@ -4,8 +4,10 @@
 package com.microsoft.java.bs.core.internal.server;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +15,10 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
@@ -30,6 +35,7 @@ import ch.epfl.scala.bsp4j.CleanCacheResult;
 import ch.epfl.scala.bsp4j.CompileParams;
 import ch.epfl.scala.bsp4j.CompileReport;
 import ch.epfl.scala.bsp4j.CompileResult;
+import ch.epfl.scala.bsp4j.CompileTask;
 import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.DependencySourcesParams;
@@ -43,12 +49,23 @@ import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.MessageType;
 import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
+import ch.epfl.scala.bsp4j.ScalaTestClassesItem;
+import ch.epfl.scala.bsp4j.ScalaTestParams;
+import ch.epfl.scala.bsp4j.ScalaTestSuiteSelection;
+import ch.epfl.scala.bsp4j.ScalaTestSuites;
 import ch.epfl.scala.bsp4j.ShowMessageParams;
 import ch.epfl.scala.bsp4j.StatusCode;
 import ch.epfl.scala.bsp4j.TaskFinishParams;
 import ch.epfl.scala.bsp4j.TaskProgressParams;
 import ch.epfl.scala.bsp4j.TaskStartParams;
+import ch.epfl.scala.bsp4j.TestParams;
+import ch.epfl.scala.bsp4j.TestParamsDataKind;
+import ch.epfl.scala.bsp4j.TestReport;
+import ch.epfl.scala.bsp4j.TestResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
+import ch.epfl.scala.bsp4j.extended.TestFinishEx;
+import ch.epfl.scala.bsp4j.extended.TestStartEx;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -73,15 +90,22 @@ class BuildTargetServerIntegrationTest {
     private final List<TaskStartParams> startReports = new ArrayList<>();
     private final List<TaskFinishParams> finishReports = new ArrayList<>();
     private final List<CompileReport> compileReports = new ArrayList<>();
-    private final List<CompileResult> compileResults = new ArrayList<>();
+    private final List<CompileTask> compileTasks = new ArrayList<>();
     private final List<LogMessageParams> logMessages = new ArrayList<>();
+    private final List<TestReport> testReports = new ArrayList<>();
+    private final List<TestStartEx> testStarts = new ArrayList<>();
+    private final List<TestFinishEx> testFinishes = new ArrayList<>();
+
 
     void clearMessages() {
       startReports.clear();
       finishReports.clear();
       compileReports.clear();
-      compileResults.clear();
+      compileTasks.clear();
       logMessages.clear();
+      testReports.clear();
+      testStarts.clear();
+      testFinishes.clear();
     }
 
     void waitOnStartReports(int size) {
@@ -96,18 +120,46 @@ class BuildTargetServerIntegrationTest {
       waitOnMessages("Compile Reports", size, compileReports::size);
     }
 
-    void waitOnCompileResults(int size) {
-      waitOnMessages("Compile Results", size, compileResults::size);
+    void waitOnCompileTasks(int size) {
+      waitOnMessages("Compile Tasks", size, compileTasks::size);
     }
 
     void waitOnLogMessages(int size) {
       waitOnMessages("Log Messages", size, logMessages::size);
     }
 
+    void waitOnTestReports(int size) {
+      waitOnMessages("Test Reports", size, testReports::size);
+    }
+
+    void waitOnTestStarts(int size) {
+      waitOnMessages("Test Starts", size, testStarts::size);
+    }
+
+    void waitOnTestFinishes(int size) {
+      waitOnMessages("Test Finishes", size, testFinishes::size);
+    }
+
     long finishReportErrorCount() {
       return finishReports.stream()
           .filter(report -> report.getStatus() == StatusCode.ERROR)
           .count();
+    }
+
+    TestStartEx getTestStart(String suiteName, String className, String methodName) {
+      return testStarts.stream().filter(ts -> Objects.equals(ts.getSuiteName(), suiteName)
+          && Objects.equals(ts.getClassName(), className)
+          && Objects.equals(ts.getMethodName(), methodName)).findAny()
+          .orElseThrow(() -> new IllegalStateException("Missing test start for []" + suiteName
+             + "," + className + "," + methodName + "] only found " + testStarts));
+    }
+
+    TestFinishEx getTestFinish(String suiteName, String className, String methodName) {
+      return testFinishes.stream().filter(ts -> Objects.equals(ts.getSuiteName(), suiteName)
+          && Objects.equals(ts.getClassName(), className)
+          && Objects.equals(ts.getMethodName(), methodName)).findAny()
+          .orElseThrow(() -> new IllegalStateException("Missing test finish for []" + suiteName
+             + "," + className + "," + methodName + "] only found " + testFinishes));
     }
 
     private void waitOnMessages(String message, int size, IntSupplier sizeSupplier) {
@@ -159,6 +211,15 @@ class BuildTargetServerIntegrationTest {
 
     @Override
     public void onBuildTaskStart(TaskStartParams params) {
+      if (params.getDataKind() != null) {
+        if (params.getDataKind().equals("compile-task")) {
+          compileTasks.add(JsonUtils.toModel(params.getData(), CompileTask.class));
+        } else if (params.getDataKind().equals("test-start")) {
+          testStarts.add(JsonUtils.toModel(params.getData(), TestStartEx.class));
+        } else {
+          fail("Task Start kind not handled " + params.getDataKind());
+        }
+      }
       startReports.add(params);
       synchronized (this) {
         notify();
@@ -175,8 +236,12 @@ class BuildTargetServerIntegrationTest {
       if (params.getDataKind() != null) {
         if (params.getDataKind().equals("compile-report")) {
           compileReports.add(JsonUtils.toModel(params.getData(), CompileReport.class));
-        } else if (params.getDataKind().equals("compile-result")) {
-          compileResults.add(JsonUtils.toModel(params.getData(), CompileResult.class));
+        } else if (params.getDataKind().equals("test-report")) {
+          testReports.add(JsonUtils.toModel(params.getData(), TestReport.class));
+        } else if (params.getDataKind().equals("test-finish")) {
+          testFinishes.add(JsonUtils.toModel(params.getData(), TestFinishEx.class));
+        } else {
+          fail("Task Finish kind not handled " + params.getDataKind());
         }
       }
       finishReports.add(params);
@@ -286,6 +351,20 @@ class BuildTargetServerIntegrationTest {
     }
   }
 
+  private static BuildTargetIdentifier findTarget(List<BuildTarget> targets,
+      String displayName) {
+    Optional<BuildTarget> matchingTargets = targets.stream()
+            .filter(res -> displayName.equals(res.getDisplayName()))
+            .findAny();
+    assertFalse(matchingTargets.isEmpty(), () -> {
+      List<String> targetNames = targets.stream()
+              .map(BuildTarget::getDisplayName)
+              .collect(Collectors.toList());
+      return "Target " + displayName + " not found in " + targetNames;
+    });
+    return matchingTargets.get().getId();
+  }
+
   @Test
   void testCompilingSingleProjectServer() {
     withNewTestServer("junit5-jupiter-starter-gradle", (gradleBuildServer, client) -> {
@@ -298,8 +377,8 @@ class BuildTargetServerIntegrationTest {
       assertEquals(2, btIds.size());
       client.waitOnStartReports(1);
       client.waitOnFinishReports(1);
+      client.waitOnCompileTasks(0);
       client.waitOnCompileReports(0);
-      client.waitOnCompileResults(0);
       client.waitOnLogMessages(0);
       for (TaskFinishParams message : client.finishReports) {
         assertEquals(StatusCode.OK, message.getStatus());
@@ -338,8 +417,8 @@ class BuildTargetServerIntegrationTest {
       assertTrue(cleanResult.getCleaned());
       client.waitOnStartReports(1);
       client.waitOnFinishReports(1);
+      client.waitOnCompileTasks(0);
       client.waitOnCompileReports(0);
-      client.waitOnCompileResults(0);
       client.waitOnLogMessages(0);
       for (TaskFinishParams message : client.finishReports) {
         assertEquals(StatusCode.OK, message.getStatus());
@@ -351,10 +430,10 @@ class BuildTargetServerIntegrationTest {
       compileParams.setOriginId("originId");
       CompileResult compileResult = gradleBuildServer.buildTargetCompile(compileParams).join();
       assertEquals(StatusCode.OK, compileResult.getStatusCode());
-      client.waitOnStartReports(6);
-      client.waitOnFinishReports(6);
-      client.waitOnCompileReports(6);
-      client.waitOnCompileResults(0);
+      client.waitOnStartReports(2);
+      client.waitOnFinishReports(2);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
       client.waitOnLogMessages(0);
       for (TaskFinishParams message : client.finishReports) {
         assertEquals(StatusCode.OK, message.getStatus());
@@ -365,6 +444,235 @@ class BuildTargetServerIntegrationTest {
         // TODO compile results are not yet implemented so always zero for now.
         assertEquals(0, compileReport.getWarnings());
         assertEquals(0, compileReport.getErrors());
+      }
+      client.clearMessages();
+    });
+  }
+
+  @Test
+  void testRunTestsProjectServer() {
+    withNewTestServer("java-tests", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      // run passing tests
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
+      List<String> passingTestMainClasses = new LinkedList<>();
+      passingTestMainClasses.add("com.example.project.PassingTests");
+      ScalaTestClassesItem passingTestClassesItem =
+          new ScalaTestClassesItem(btId, passingTestMainClasses);
+      List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
+      passingTestClasses.add(passingTestClassesItem);
+      ScalaTestParams passingScalaTestParams = new ScalaTestParams();
+      passingScalaTestParams.setTestClasses(passingTestClasses);
+      TestParams passingTestParams = new TestParams(btIds);
+      passingTestParams.setOriginId("originId");
+      passingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      passingTestParams.setData(passingScalaTestParams);
+      TestResult passingTestResult =
+          gradleBuildServer.buildTargetTest(passingTestParams).join();
+      assertEquals(StatusCode.OK, passingTestResult.getStatusCode());
+      assertEquals("originId", passingTestResult.getOriginId());
+      client.waitOnStartReports(7);
+      client.waitOnFinishReports(8);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(5);
+      client.waitOnTestFinishes(5);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      TestReport passingTestsReport = client.testReports.get(0);
+      assertEquals(5, passingTestsReport.getPassed());
+      assertEquals(0, passingTestsReport.getCancelled());
+      assertEquals(0, passingTestsReport.getFailed());
+      assertEquals(0, passingTestsReport.getIgnored());
+      assertEquals(0, passingTestsReport.getSkipped());
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "isBasicTest()"));
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "hasDisplayName()"));
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "isParameterized(int)[1]"));
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "isParameterized(int)[2]"));
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "isParameterized(int)[3]"));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "isBasicTest()"));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "hasDisplayName()"));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "isParameterized(int)[1]"));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "isParameterized(int)[2]"));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "isParameterized(int)[3]"));
+      client.clearMessages();
+
+      // run failing tests
+      List<String> failingMainClasses = new LinkedList<>();
+      failingMainClasses.add("com.example.project.FailingTests");
+      ScalaTestClassesItem failingTestClassesItem =
+          new ScalaTestClassesItem(btId, failingMainClasses);
+      List<ScalaTestClassesItem> failingTestClasses = new LinkedList<>();
+      failingTestClasses.add(failingTestClassesItem);
+      ScalaTestParams failingScalaTestParams = new ScalaTestParams();
+      failingScalaTestParams.setTestClasses(failingTestClasses);
+      TestParams failingTestParams = new TestParams(btIds);
+      failingTestParams.setOriginId("originId");
+      failingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      failingTestParams.setData(failingScalaTestParams);
+      TestResult failingTestResult = gradleBuildServer.buildTargetTest(failingTestParams).join();
+      assertEquals(StatusCode.ERROR, failingTestResult.getStatusCode());
+      assertEquals("originId", failingTestResult.getOriginId());
+      client.waitOnStartReports(3);
+      client.waitOnFinishReports(4);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(1);
+      client.waitOnTestFinishes(1);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      assertEquals(2, client.finishReportErrorCount());
+      TestReport failingTestsReport = client.testReports.get(0);
+      assertEquals(0, failingTestsReport.getPassed());
+      assertEquals(0, failingTestsReport.getCancelled());
+      assertEquals(1, failingTestsReport.getFailed());
+      assertEquals(0, failingTestsReport.getIgnored());
+      assertEquals(0, failingTestsReport.getSkipped());
+      assertNotNull(client.getTestStart(null, "com.example.project.FailingTests", "failingTest()"));
+      TestFinishEx failingTestsFinish = client.getTestFinish(null,
+          "com.example.project.FailingTests", "failingTest()");
+      failingTestsFinish.getStackTrace()
+          .contains("at com.example.project.FailingTests.failingTest(FailingTests.java:21)");
+      client.clearMessages();
+
+      // run single method tests
+      List<BuildTargetIdentifier> singleBt = new ArrayList<>();
+      singleBt.add(btId);
+      TestParams singleMethodTestParams = new TestParams(singleBt);
+      singleMethodTestParams.setOriginId("originId");
+      singleMethodTestParams.setDataKind("scala-test-suites-selection");
+      List<String> singleTestMethods = new ArrayList<>();
+      singleTestMethods.add("envVarSetTest");
+      ScalaTestSuiteSelection singleScalaTestSuiteSelection =
+          new ScalaTestSuiteSelection("com.example.project.EnvVarTests", singleTestMethods);
+      List<ScalaTestSuiteSelection> singleScalaTestSuiteSelections = new LinkedList<>();
+      singleScalaTestSuiteSelections.add(singleScalaTestSuiteSelection);
+      List<String> emptyJvmOptions = new ArrayList<>();
+      List<String> environmentVariables = new ArrayList<>();
+      environmentVariables.add("EnvVar=Test");
+      // Running Gradle tests on Windows seems to require the SystemRoot env var
+      // Otherwise Windows complains "Unrecognized Windows Sockets error: 10106"
+      String systemRoot = System.getenv("SystemRoot");
+      if (systemRoot != null) {
+        environmentVariables.add("SystemRoot=" + systemRoot);
+      }
+      // or whatever is relevant to that operating system
+      ScalaTestSuites singleScalaTestSuites = new ScalaTestSuites(singleScalaTestSuiteSelections,
+          emptyJvmOptions, environmentVariables);
+      singleMethodTestParams.setData(singleScalaTestSuites);
+      TestResult singleMethodTestResult =
+          gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
+      assertEquals(StatusCode.OK, singleMethodTestResult.getStatusCode());
+      assertEquals("originId", singleMethodTestResult.getOriginId());
+      client.waitOnStartReports(3);
+      client.waitOnFinishReports(4);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(1);
+      client.waitOnTestFinishes(1);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      TestReport singleMethodTestsReport = client.testReports.get(0);
+      assertEquals(1, singleMethodTestsReport.getPassed());
+      assertEquals(0, singleMethodTestsReport.getCancelled());
+      assertEquals(0, singleMethodTestsReport.getFailed());
+      assertEquals(0, singleMethodTestsReport.getIgnored());
+      assertEquals(0, singleMethodTestsReport.getSkipped());
+      assertNotNull(client.getTestStart(null, "com.example.project.EnvVarTests",
+          "envVarSetTest()"));
+      assertNotNull(client.getTestFinish(null, "com.example.project.EnvVarTests",
+              "envVarSetTest()"));
+      client.clearMessages();
+    });
+  }
+
+  @Test
+  void testCleanStraightToTest() {
+    withNewTestServer("java-tests", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+      client.clearMessages();
+      
+      // a request to run tests straight after a clean should produce compile results/reports
+      // run tests
+      List<String> mainClasses = new LinkedList<>();
+      mainClasses.add("com.example.project.PassingTests");
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
+      ScalaTestClassesItem scalaTestClassesItem =
+              new ScalaTestClassesItem(btId, mainClasses);
+      List<ScalaTestClassesItem> testClasses = new LinkedList<>();
+      testClasses.add(scalaTestClassesItem);
+      ScalaTestParams scalaTestParams = new ScalaTestParams();
+      scalaTestParams.setTestClasses(testClasses);
+      TestParams testParams = new TestParams(btIds);
+      testParams.setOriginId("originId");
+      testParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      testParams.setData(scalaTestParams);
+      TestResult testResult = gradleBuildServer.buildTargetTest(testParams).join();
+      assertEquals(StatusCode.OK, testResult.getStatusCode());
+      assertEquals("originId", testResult.getOriginId());
+      client.waitOnStartReports(7);
+      client.waitOnFinishReports(8);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(5);
+      client.waitOnTestFinishes(5);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertFalse(message.getNoOp());
+      }
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
       }
       client.clearMessages();
     });
@@ -382,8 +690,8 @@ class BuildTargetServerIntegrationTest {
       assertEquals(2, btIds.size());
       client.waitOnStartReports(1);
       client.waitOnFinishReports(1);
+      client.waitOnCompileTasks(0);
       client.waitOnCompileReports(0);
-      client.waitOnCompileResults(0);
       client.waitOnLogMessages(0);
       for (TaskFinishParams message : client.finishReports) {
         assertEquals(StatusCode.OK, message.getStatus());
@@ -397,8 +705,8 @@ class BuildTargetServerIntegrationTest {
       assertTrue(cleanResult.getCleaned());
       client.waitOnStartReports(1);
       client.waitOnFinishReports(1);
+      client.waitOnCompileTasks(0);
       client.waitOnCompileReports(0);
-      client.waitOnCompileResults(0);
       client.waitOnLogMessages(0);
       for (TaskFinishParams message : client.finishReports) {
         assertEquals(StatusCode.OK, message.getStatus());
@@ -410,10 +718,10 @@ class BuildTargetServerIntegrationTest {
       compileParams.setOriginId("originId");
       CompileResult compileResult = gradleBuildServer.buildTargetCompile(compileParams).join();
       assertEquals(StatusCode.ERROR, compileResult.getStatusCode());
-      client.waitOnStartReports(4);
-      client.waitOnFinishReports(4);
-      client.waitOnCompileReports(4);
-      client.waitOnCompileResults(0);
+      client.waitOnStartReports(2);
+      client.waitOnFinishReports(2);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
       client.waitOnLogMessages(1);
       assertEquals(1, client.finishReportErrorCount());
       for (BuildTargetIdentifier btId : btIds) {

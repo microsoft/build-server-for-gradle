@@ -58,17 +58,15 @@ public class BuildTargetManager {
       List<String> tags = getBuildTargetTags(sourceSet.hasTests());
       BuildTargetIdentifier btId = new BuildTargetIdentifier(uri.toString());
       List<String> languages = new LinkedList<>(sourceSet.getExtensions().keySet());
+      BuildTargetCapabilities buildTargetCapabilities = new BuildTargetCapabilities();
+      buildTargetCapabilities.setCanCompile(true);
+      buildTargetCapabilities.setCanTest(true);
       BuildTarget bt = new BuildTarget(
           btId,
           tags,
           languages,
           Collections.emptyList(),
-          new BuildTargetCapabilities(
-            true /* canCompile */,
-            false /* canTest */,
-            false /* canRun */,
-            false /* canDebug */
-          )
+          buildTargetCapabilities
       );
       bt.setBaseDirectory(sourceSet.getRootDir().toURI().toString());
       bt.setDisplayName(sourceSet.getDisplayName());
