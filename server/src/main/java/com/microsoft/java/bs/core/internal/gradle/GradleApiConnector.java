@@ -74,7 +74,11 @@ public class GradleApiConnector {
     return model.getGradle().getGradleVersion();
   }
 
-  private List<GradleSourceSet> getIncludedBuildGradleSourceSets(File initScript, URI projectUri, BuildClient client) {
+  private List<GradleSourceSet> getIncludedBuildGradleSourceSets(
+          File initScript,
+          URI projectUri,
+          BuildClient client
+  ) {
     // add source sets for this project
     List<GradleSourceSet> allSourceSets = new ArrayList<>();
     GradleSourceSets gradleSourceSets = getGradleSourceSets(initScript, projectUri, client);
@@ -82,7 +86,9 @@ public class GradleApiConnector {
     // check included builds for more source sets to add
     for (GradleIncludedBuild includedBuild : gradleSourceSets.getGradleIncludedBuilds()) {
       URI includedProjectUri = includedBuild.getProjectDir().toURI();
-      allSourceSets.addAll(getIncludedBuildGradleSourceSets(initScript, includedProjectUri, client));
+      allSourceSets.addAll(
+              getIncludedBuildGradleSourceSets(initScript, includedProjectUri, client)
+      );
     }
     return allSourceSets;
   }
@@ -99,12 +105,17 @@ public class GradleApiConnector {
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
-    List<GradleSourceSet> allSourceSets = getIncludedBuildGradleSourceSets(initScript, projectUri, client);
+    List<GradleSourceSet> allSourceSets =
+            getIncludedBuildGradleSourceSets(initScript, projectUri, client);
 
     return new DefaultGradleSourceSets(Collections.emptyList(), allSourceSets);
   }
 
-  private GradleSourceSets getGradleSourceSets(File initScript, URI projectUri, BuildClient client) {
+  private GradleSourceSets getGradleSourceSets(
+          File initScript,
+          URI projectUri,
+          BuildClient client
+  ) {
     ProgressReporter reporter = new DefaultProgressReporter(client);
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
