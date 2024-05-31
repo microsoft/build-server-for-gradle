@@ -143,7 +143,7 @@ class GradleApiConnectorTest {
     PreferenceManager preferenceManager = new PreferenceManager();
     preferenceManager.setPreferences(new Preferences());
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
-    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI());
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
     assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
     findSourceSet(gradleSourceSets, "projectA [main]");
     findSourceSet(gradleSourceSets, "projectA [test]");
