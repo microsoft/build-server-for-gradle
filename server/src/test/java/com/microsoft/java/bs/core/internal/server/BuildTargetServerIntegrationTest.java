@@ -150,7 +150,7 @@ class BuildTargetServerIntegrationTest {
       return testStarts.stream().filter(ts -> Objects.equals(ts.getSuiteName(), suiteName)
           && Objects.equals(ts.getClassName(), className)
           && Objects.equals(ts.getMethodName(), methodName)).findAny()
-          .orElseThrow(() -> new IllegalStateException("Missing test start for []" + suiteName
+          .orElseThrow(() -> new IllegalStateException("Missing test start for [" + suiteName
              + "," + className + "," + methodName + "] only found " + testStarts));
     }
 
@@ -158,8 +158,24 @@ class BuildTargetServerIntegrationTest {
       return testFinishes.stream().filter(ts -> Objects.equals(ts.getSuiteName(), suiteName)
           && Objects.equals(ts.getClassName(), className)
           && Objects.equals(ts.getMethodName(), methodName)).findAny()
-          .orElseThrow(() -> new IllegalStateException("Missing test finish for []" + suiteName
+          .orElseThrow(() -> new IllegalStateException("Missing test finish for [" + suiteName
              + "," + className + "," + methodName + "] only found " + testFinishes));
+    }
+
+    TaskStartParams getTaskStartTaskId(String taskId) {
+      return startReports.stream().filter(ts -> Objects.equals(ts.getTaskId().getId(), taskId))
+          .findAny()
+          .orElseThrow(() -> new IllegalStateException("Missing task start for [" + taskId
+             + "] only found " + startReports.stream().map(report -> report.getTaskId().getId())
+             .collect(Collectors.joining("\n"))));
+    }
+
+    TaskFinishParams getTaskFinishTaskId(String taskId) {
+      return finishReports.stream().filter(ts -> Objects.equals(ts.getTaskId().getId(), taskId))
+          .findAny()
+          .orElseThrow(() -> new IllegalStateException("Missing task finish for [" + taskId
+             + "] only found " + finishReports.stream().map(report -> report.getTaskId().getId())
+             .collect(Collectors.joining("\n"))));
     }
 
     private void waitOnMessages(String message, int size, IntSupplier sizeSupplier) {
@@ -623,6 +639,94 @@ class BuildTargetServerIntegrationTest {
           "envVarSetTest()"));
       assertNotNull(client.getTestFinish(null, "com.example.project.EnvVarTests",
               "envVarSetTest()"));
+      client.clearMessages();
+
+      // run complex tests
+      List<String> complexTestMainClasses = new LinkedList<>();
+      complexTestMainClasses.add("com.example.project.TestFactoryTests");
+      ScalaTestClassesItem complexTestClassesItem =
+          new ScalaTestClassesItem(btId, complexTestMainClasses);
+      List<ScalaTestClassesItem> complexTestClasses = new LinkedList<>();
+      complexTestClasses.add(complexTestClassesItem);
+      ScalaTestParams complexScalaTestParams = new ScalaTestParams();
+      complexScalaTestParams.setTestClasses(complexTestClasses);
+      TestParams complexTestParams = new TestParams(btIds);
+      complexTestParams.setOriginId("originId");
+      complexTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      complexTestParams.setData(complexScalaTestParams);
+      TestResult complexTestResult =
+          gradleBuildServer.buildTargetTest(complexTestParams).join();
+      assertEquals(StatusCode.OK, complexTestResult.getStatusCode());
+      assertEquals("originId", complexTestResult.getOriginId());
+      client.waitOnStartReports(6);
+      client.waitOnFinishReports(7);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(4);
+      client.waitOnTestFinishes(4);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      TestReport complexTestsReport = client.testReports.get(0);
+      assertEquals(4, complexTestsReport.getPassed());
+      assertEquals(0, complexTestsReport.getCancelled());
+      assertEquals(0, complexTestsReport.getFailed());
+      assertEquals(0, complexTestsReport.getIgnored());
+      assertEquals(0, complexTestsReport.getSkipped());
+      TestStartEx containerStart11 = client.getTestStart(null,
+          "com.example.project.TestFactoryTests", "testContainer()[1][1]");
+      assertNotNull(containerStart11);
+      assertEquals("First test of first container started", containerStart11.getDisplayName());
+      TestStartEx containerStart12 = client.getTestStart(null,
+          "com.example.project.TestFactoryTests", "testContainer()[1][2]");
+      assertNotNull(containerStart12);
+      assertEquals("Second test of first container started", containerStart12.getDisplayName());
+      TestStartEx containerStart21 = client.getTestStart(null,
+          "com.example.project.TestFactoryTests", "testContainer()[2][1]");
+      assertNotNull(containerStart21);
+      assertEquals("First test of second container started", containerStart21.getDisplayName());
+      TestStartEx containerStart22 = client.getTestStart(null,
+          "com.example.project.TestFactoryTests", "testContainer()[2][2]");
+      assertNotNull(containerStart22);
+      assertEquals("Second test of second container started", containerStart22.getDisplayName());
+      TestFinishEx containerFinish11 = client.getTestFinish(null,
+          "com.example.project.TestFactoryTests", "testContainer()[1][1]");
+      assertNotNull(containerFinish11);
+      assertEquals("First test of first container succeeded", containerFinish11.getDisplayName());
+      TestFinishEx containerFinish12 = client.getTestFinish(null,
+          "com.example.project.TestFactoryTests", "testContainer()[1][2]");
+      assertNotNull(containerFinish12);
+      assertEquals("Second test of first container succeeded", containerFinish12.getDisplayName());
+      TestFinishEx containerFinish21 = client.getTestFinish(null,
+          "com.example.project.TestFactoryTests", "testContainer()[2][1]");
+      assertNotNull(containerFinish21);
+      assertEquals("First test of second container succeeded", containerFinish21.getDisplayName());
+      TestFinishEx containerFinish22 = client.getTestFinish(null,
+          "com.example.project.TestFactoryTests", "testContainer()[2][2]");
+      assertNotNull(containerFinish22);
+      assertEquals("Second test of second container succeeded", containerFinish22.getDisplayName());
+      
+      assertNotNull(client.getTaskStartTaskId("com.example.project.TestFactoryTests/"
+          + "testContainer()/testContainer()[1]/testContainer()[1][1]"));
+      assertNotNull(client.getTaskStartTaskId("com.example.project.TestFactoryTests/"
+          + "testContainer()/testContainer()[1]/testContainer()[1][2]"));
+      assertNotNull(client.getTaskStartTaskId("com.example.project.TestFactoryTests/"
+          + "testContainer()/testContainer()[2]/testContainer()[2][1]"));
+      assertNotNull(client.getTaskStartTaskId("com.example.project.TestFactoryTests/"
+          + "testContainer()/testContainer()[2]/testContainer()[2][2]"));
+      assertNotNull(client.getTaskFinishTaskId("com.example.project.TestFactoryTests/"
+          + "testContainer()/testContainer()[1]/testContainer()[1][1]"));
+      assertNotNull(client.getTaskFinishTaskId("com.example.project.TestFactoryTests/"
+          + "testContainer()/testContainer()[1]/testContainer()[1][2]"));
+      assertNotNull(client.getTaskFinishTaskId("com.example.project.TestFactoryTests/"
+          + "testContainer()/testContainer()[2]/testContainer()[2][1]"));
+      assertNotNull(client.getTaskFinishTaskId("com.example.project.TestFactoryTests/"
+          + "testContainer()/testContainer()[2]/testContainer()[2][2]"));
       client.clearMessages();
     });
   }
