@@ -20,9 +20,9 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.internal.file.copy.DefaultCopySpec;
-import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.SourceSetOutput;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.testing.Test;
@@ -134,10 +134,24 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         if (sourceOutputDir != null) {
           TaskCollection<Test> testTasks = project.getTasks().withType(Test.class);
           for (Test testTask : testTasks) {
-            FileCollection files = testTask.getTestClassesDirs();
-            if (files.contains(sourceOutputDir)) {
-              gradleSourceSet.setHasTests(true);
-              break;
+            if (GradleVersion.current().compareTo(GradleVersion.version("4.0")) >= 0) {
+              FileCollection files = testTask.getTestClassesDirs();
+              if (files.contains(sourceOutputDir)) {
+                gradleSourceSet.setHasTests(true);
+                break;
+              }
+            } else {
+              try {
+                Method getTestClassesDir = testTask.getClass().getMethod("getTestClassesDir");
+                Object testClassesDir = getTestClassesDir.invoke(testTask);
+                if (sourceOutputDir.equals(testClassesDir)) {
+                  gradleSourceSet.setHasTests(true);
+                  break;
+                }
+              } catch (NoSuchMethodException | SecurityException | IllegalAccessException
+                       | IllegalArgumentException | InvocationTargetException  e) {
+                // ignore
+              }
             }
           }
         }
@@ -249,27 +263,30 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   }
 
   private SourceSetContainer getSourceSetContainer(Project project) {
-    if (!project.getPlugins().hasPlugin("java")) {
-      return null;
+    if (GradleVersion.current().compareTo(GradleVersion.version("5.0")) >= 0) {
+      SourceSetContainer sourceSetContainer = project.getExtensions()
+              .findByType(SourceSetContainer.class);
+      if (sourceSetContainer != null) {
+        return sourceSetContainer;
+      }
     }
-
-    if (GradleVersion.current().compareTo(GradleVersion.version("7.1")) >= 0) {
-      JavaPluginExtension javaPlugin = project.getExtensions()
-          .findByType(JavaPluginExtension.class);
-      if (javaPlugin != null) {
-        return javaPlugin.getSourceSets();
+    try {
+      // query the java plugin.  This limits support to Java only if other
+      // languages add their own sourcesets
+      // use reflection because `getConvention` will be removed in Gradle 9.0
+      Method getConvention = project.getClass().getMethod("getConvention");
+      Object convention = getConvention.invoke(project);
+      Method getPlugins = convention.getClass().getMethod("getPlugins");
+      Object plugins = getPlugins.invoke(convention);
+      Method getGet = plugins.getClass().getMethod("get", Object.class);
+      Object pluginConvention = getGet.invoke(plugins, "java");
+      if (pluginConvention != null) {
+        Method getSourceSetsMethod = pluginConvention.getClass().getMethod("getSourceSets");
+        return (SourceSetContainer) getSourceSetsMethod.invoke(pluginConvention);
       }
-    } else {
-      Object javaPluginConvention = project.getConvention().getPlugins().get("java");
-      if (javaPluginConvention != null) {
-        try {
-          Method getSourceSetsMethod = javaPluginConvention.getClass().getMethod("getSourceSets");
-          return (SourceSetContainer) getSourceSetsMethod.invoke(javaPluginConvention);
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-          | IllegalArgumentException | InvocationTargetException e) {
-        // ignore
-        }
-      }
+    } catch (NoSuchMethodException | SecurityException | IllegalAccessException
+             | IllegalArgumentException | InvocationTargetException  e) {
+      // ignore
     }
     return null;
   }
@@ -315,6 +332,15 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
           | IllegalArgumentException | InvocationTargetException e) {
         // ignore
       }
+    } else {
+      // get all output dirs and filter out resources output
+      SourceSetOutput output = sourceSet.getOutput();
+      Set<File> allOutputDirs = output.getFiles();
+      File resourceOutputDir = output.getResourcesDir();
+      allOutputDirs.remove(resourceOutputDir);
+      if (!allOutputDirs.isEmpty()) {
+        return allOutputDirs.iterator().next();
+      }
     }
 
     return null;
@@ -353,7 +379,9 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   private Set<String> getClasspathConfigurationNames(SourceSet sourceSet) {
     Set<String> configurationNames = new HashSet<>();
     configurationNames.add(sourceSet.getCompileClasspathConfigurationName());
-    configurationNames.add(sourceSet.getRuntimeClasspathConfigurationName());
+    if (GradleVersion.current().compareTo(GradleVersion.version("3.4")) >= 0) {
+      configurationNames.add(sourceSet.getRuntimeClasspathConfigurationName());
+    }
     return configurationNames;
   }
 }
