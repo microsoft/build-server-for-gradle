@@ -98,7 +98,7 @@ public class GradleApiConnector {
         summary += "\n" + errorOut;
       }
       reporter.sendError(summary);
-      throw new IllegalStateException("Error retrieving sourcesets \n" + summary, e);
+      throw new IllegalStateException(e);
     }
   }
 
