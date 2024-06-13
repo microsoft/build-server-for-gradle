@@ -138,8 +138,8 @@ class GradleApiConnectorTest {
   }
 
   @Test
-  void testCompositeBuild() {
-    File projectDir = projectPath.resolve("composite-build").toFile();
+  void testCompositeBuild1() {
+    File projectDir = projectPath.resolve("composite-build-1").toFile();
     PreferenceManager preferenceManager = new PreferenceManager();
     preferenceManager.setPreferences(new Preferences());
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
@@ -149,6 +149,20 @@ class GradleApiConnectorTest {
     findSourceSet(gradleSourceSets, "projectA [test]");
     findSourceSet(gradleSourceSets, "projectB [main]");
     findSourceSet(gradleSourceSets, "projectB [test]");
+  }
+
+  @Test
+  void testCompositeBuild2() {
+    File projectDir = projectPath.resolve("composite-build-2").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
+    /*findSourceSet(gradleSourceSets, "projectA [main]");
+    findSourceSet(gradleSourceSets, "projectA [test]");
+    findSourceSet(gradleSourceSets, "projectB [main]");
+    findSourceSet(gradleSourceSets, "projectB [test]");*/
   }
 
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,

@@ -1,0 +1,4 @@
+rootProject.name = 'my-composite-2'
+
+includeBuild 'my-app'
+includeBuild 'my-utils'

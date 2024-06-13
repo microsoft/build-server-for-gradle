@@ -1,4 +1,4 @@
-rootProject.name = 'composite-build'
+rootProject.name = 'composite-build-1'
 
 includeBuild 'projectA'
 includeBuild 'projectB'
