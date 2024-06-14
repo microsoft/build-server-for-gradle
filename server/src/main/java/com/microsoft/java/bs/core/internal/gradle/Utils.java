@@ -144,7 +144,9 @@ public class Utils {
    */
   public static String getHighestCompatibleJavaVersion(String gradleVersion) {
     GradleVersion version = GradleVersion.version(gradleVersion);
-    if (version.compareTo(GradleVersion.version("8.5")) >= 0) {
+    if (version.compareTo(GradleVersion.version("8.8")) >= 0) {
+      return "22";
+    } else if (version.compareTo(GradleVersion.version("8.5")) >= 0) {
       return "21";
     } else if (version.compareTo(GradleVersion.version("8.3")) >= 0) {
       return "20";
