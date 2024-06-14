@@ -116,6 +116,11 @@ public class BuildTargetService {
     if (firstTime) {
       updateBuildTargets();
       firstTime = false;
+      int buildTargetCount = buildTargetManager.getAllGradleBuildTargets().size();
+      Map<String, String> map = TelemetryUtils.getMetadataMap("buildTargetCount",
+          String.valueOf(buildTargetCount));
+      LOGGER.log(Level.INFO, "Found " + buildTargetCount + " build targets during initialization.",
+          map);
     }
     return buildTargetManager;
   }
@@ -154,9 +159,6 @@ public class BuildTargetService {
     List<BuildTarget> targets = allTargets.stream()
         .map(GradleBuildTarget::getBuildTarget)
         .collect(Collectors.toList());
-    Map<String, String> map = TelemetryUtils.getMetadataMap("buildTargetCount",
-        String.valueOf(targets.size()));
-    LOGGER.log(Level.INFO, "Found " + targets.size() + " build targets", map);
     return new WorkspaceBuildTargetsResult(targets);
   }
 
