@@ -17,48 +17,27 @@ import ch.epfl.scala.bsp4j.TestStatus;
  * {@link TestFinish} only contains file location which Gradle doesn't have.
  */
 public class TestFinishEx extends TestFinish {
-  
-  private String suiteName;
 
-  private String className;
-
-  private String methodName;
+  private TestName testName;
 
   private String stackTrace;
 
   /**
    * Create a new instance of {@link TestFinishEx}.
    */
-  public TestFinishEx(@NonNull String displayName, @NonNull TestStatus status, String suiteName,
-      String className, String methodName) {
+  public TestFinishEx(@NonNull String displayName, @NonNull TestStatus status,
+      @NonNull TestName testName) {
     super(displayName, status);
-    this.suiteName = suiteName;
-    this.className = className;
-    this.methodName = methodName;
+    this.testName = testName;
   }
 
-  public String getSuiteName() {
-    return suiteName;
+
+  public TestName getTestName() {
+    return testName;
   }
 
-  public void setSuiteName(String suiteName) {
-    this.suiteName = suiteName;
-  }
-
-  public String getClassName() {
-    return className;
-  }
-
-  public void setClassName(String className) {
-    this.className = className;
-  }
-
-  public String getMethodName() {
-    return methodName;
-  }
-
-  public void setMethodName(String methodName) {
-    this.methodName = methodName;
+  public void setTestName(TestName testName) {
+    this.testName = testName;
   }
 
   public String getStackTrace() {
@@ -74,9 +53,8 @@ public class TestFinishEx extends TestFinish {
   public String toString() {
     ToStringBuilder b = new ToStringBuilder(this);
     b.add(super.toString());
-    b.add("suiteName", this.suiteName);
-    b.add("className", this.className);
-    b.add("methodName", this.methodName);
+    b.add("testName", this.testName);
+    b.add("stackTrace", this.stackTrace);
     return b.toString();
   }
 
@@ -84,7 +62,7 @@ public class TestFinishEx extends TestFinish {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + Objects.hash(suiteName, className, methodName, stackTrace);
+    result = prime * result + Objects.hash(testName, stackTrace);
     return result;
   }
 
@@ -100,9 +78,7 @@ public class TestFinishEx extends TestFinish {
       return false;
     }
     TestFinishEx other = (TestFinishEx) obj;
-    return Objects.equals(suiteName, other.suiteName)
-        && Objects.equals(className, other.className)
-        && Objects.equals(methodName, other.methodName)
+    return Objects.equals(testName, other.testName)
         && Objects.equals(stackTrace, other.stackTrace);
   }
 }

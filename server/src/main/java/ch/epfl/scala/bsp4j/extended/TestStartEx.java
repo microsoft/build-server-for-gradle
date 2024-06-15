@@ -16,46 +16,23 @@ import ch.epfl.scala.bsp4j.TestStart;
  * {@link TestStart} only contains file location which Gradle doesn't have.
  */
 public class TestStartEx extends TestStart {
-  
-  private String suiteName;
 
-  private String className;
-
-  private String methodName;
+  private TestName testName;
 
   /**
    * Create a new instance of {@link TestStartEx}.
    */
-  public TestStartEx(@NonNull String displayName, String suiteName,
-      String className, String methodName) {
+  public TestStartEx(@NonNull String displayName, @NonNull TestName testName) {
     super(displayName);
-    this.suiteName = suiteName;
-    this.className = className;
-    this.methodName = methodName;
+    this.testName = testName;
   }
 
-  public String getSuiteName() {
-    return suiteName;
+  public TestName getTestName() {
+    return testName;
   }
 
-  public void setSuiteName(String suiteName) {
-    this.suiteName = suiteName;
-  }
-
-  public String getClassName() {
-    return className;
-  }
-
-  public void setClassName(String className) {
-    this.className = className;
-  }
-
-  public String getMethodName() {
-    return methodName;
-  }
-
-  public void setMethodName(String methodName) {
-    this.methodName = methodName;
+  public void setTestName(TestName testName) {
+    this.testName = testName;
   }
 
   @Override
@@ -63,9 +40,7 @@ public class TestStartEx extends TestStart {
   public String toString() {
     ToStringBuilder b = new ToStringBuilder(this);
     b.add(super.toString());
-    b.add("suiteName", this.suiteName);
-    b.add("className", this.className);
-    b.add("methodName", this.methodName);
+    b.add("testName", this.testName);
     return b.toString();
   }
 
@@ -73,7 +48,7 @@ public class TestStartEx extends TestStart {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + Objects.hash(suiteName, className, methodName);
+    result = prime * result + Objects.hashCode(testName);
     return result;
   }
 
@@ -89,8 +64,6 @@ public class TestStartEx extends TestStart {
       return false;
     }
     TestStartEx other = (TestStartEx) obj;
-    return Objects.equals(suiteName, other.suiteName)
-        && Objects.equals(className, other.className)
-        && Objects.equals(methodName, other.methodName);
+    return Objects.equals(testName, other.testName);
   }
 }

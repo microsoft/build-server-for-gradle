@@ -7,11 +7,11 @@ import ch.epfl.scala.bsp4j.TaskId;
 import ch.epfl.scala.bsp4j.TaskStartParams;
 import ch.epfl.scala.bsp4j.TestStatus;
 import ch.epfl.scala.bsp4j.extended.TestFinishEx;
+import ch.epfl.scala.bsp4j.extended.TestName;
 import ch.epfl.scala.bsp4j.extended.TestStartEx;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.gradle.tooling.events.FinishEvent;
 import org.gradle.tooling.events.OperationDescriptor;
@@ -58,18 +58,7 @@ public class TestReportReporter extends ProgressReporter {
     testDuration = 0;
   }
 
-  /**
-   * create a description which encodes the hierarchy of the tests.
-   */
-  private TaskId getTaskId(JvmTestOperationDescriptor eventDescriptor) {
-    String names = getTestStack(eventDescriptor).stream()
-        .map(desc -> desc.getName())
-        .collect(Collectors.joining("/"));
-    return getTaskId(names);
-  }
-
-  private List<JvmTestOperationDescriptor> getTestStack(
-      JvmTestOperationDescriptor eventDescriptor) {
+  private TestName getTestName(JvmTestOperationDescriptor eventDescriptor) {
     List<JvmTestOperationDescriptor> fullStack = new ArrayList<>();
     fullStack.add(eventDescriptor);
     OperationDescriptor descriptor = eventDescriptor.getParent();
@@ -92,28 +81,33 @@ public class TestReportReporter extends ProgressReporter {
     }
     // earlier check means that classname will always be found so can't have i < 0
     // reverse list order
-    List<JvmTestOperationDescriptor> result = new ArrayList<>(i + 1);
+    TestName testName = null;
     while (i >= 0) {
-      result.add(fullStack.get(i));
+      JvmTestOperationDescriptor desc = fullStack.get(i);
+      TestName currentTestName = new TestName(desc.getDisplayName(), desc.getSuiteName(),
+          desc.getClassName(), desc.getMethodName());
+      currentTestName.setParent(testName);
+      testName = currentTestName;
       i--;
     }
-    return result;
+    return testName;
   }
 
   @Override
   public void statusChanged(ProgressEvent event) {
     if (client != null) {
       if (event.getDescriptor() instanceof JvmTestOperationDescriptor descriptor) {
-        // only report on methods
-        if (descriptor.getClassName() != null && descriptor.getMethodName() != null) {
-          TaskId taskId = getTaskId(descriptor);
+        TestName testName = getTestName(descriptor);
+        // do not send reports on Gradle internal test tasks
+        if (testName != null) {
+          String taskPath = getTaskPath(event.getDescriptor());
+          TaskId taskId = getTaskId(taskPath);
           if (event instanceof StartEvent) {
             TaskStartParams startParam = new TaskStartParams(taskId);
             startParam.setMessage("Start test");
             startParam.setDataKind("test-start");
             startParam.setEventTime(event.getEventTime());
-            TestStartEx testStart = new TestStartEx(event.getDisplayName(),
-                descriptor.getSuiteName(), descriptor.getClassName(), descriptor.getMethodName());
+            TestStartEx testStart = new TestStartEx(event.getDisplayName(), testName);
             startParam.setData(testStart);
             client.onBuildTaskStart(startParam);
           } else if (event instanceof FinishEvent finishEvent) {
@@ -132,19 +126,25 @@ public class TestReportReporter extends ProgressReporter {
                   .map(DefaultTestAssertionFailure::getStacktrace)
                   .findFirst()
                   .orElse(null);
-              failureCount += 1;
+              if (descriptor.getMethodName() != null) {
+                failureCount += 1;
+              }
             } else if (result instanceof TestSkippedResult) {
               testStatus = TestStatus.SKIPPED;
-              skippedCount += 1;
+              if (descriptor.getMethodName() != null) {
+                skippedCount += 1;
+              }
             } else if (result instanceof TestSuccessResult) {
-              successCount += 1;
+              if (descriptor.getMethodName() != null) {
+                successCount += 1;
+              }
             }
             TaskFinishParams finishParam = new TaskFinishParams(taskId, statusCode);
             finishParam.setMessage("Finish test");
             finishParam.setDataKind("test-finish");
             finishParam.setEventTime(event.getEventTime());
             TestFinishEx testFinish = new TestFinishEx(event.getDisplayName(), testStatus,
-                descriptor.getSuiteName(), descriptor.getClassName(), descriptor.getMethodName());
+                testName);
             testFinish.setStackTrace(stackTrace);
             finishParam.setData(testFinish);
             client.onBuildTaskFinish(finishParam);
