@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+    id 'groovy'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+  testImplementation 'org.spockframework:spock-core:2.3-groovy-4.0'
+  testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "started", "passed", "skipped", "failed"
+    }
+}

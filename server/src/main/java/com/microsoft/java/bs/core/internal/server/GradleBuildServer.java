@@ -149,8 +149,7 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBui
 
   @Override
   public CompletableFuture<TestResult> buildTargetTest(TestParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetTest'");
+    return handleRequest("buildTarget/test", cc -> buildTargetService.buildTargetTest(params));
   }
 
   @Override
@@ -267,7 +266,8 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBui
     }
     return CompletableFuture.failedFuture(
         new ResponseErrorException(
-            new ResponseError(ResponseErrorCode.InternalError, throwable.getMessage(), null)));
+            new ResponseError(ResponseErrorCode.InternalError,
+            rootCauseMessage == null ? throwable.getMessage() : rootCauseMessage, null)));
   }
 
   private String escapeMethodName(String name) {

@@ -22,6 +22,7 @@ Following BSP requests are supported in the current implementation:
 - `buildTarget/cleanCache`
 - `buildTarget/javacOptions`
 - `buildTarget/scalacOptions`
+- `buildTarget/test`
 - `workspace/buildTargets`
 - `workspace/reload`
 

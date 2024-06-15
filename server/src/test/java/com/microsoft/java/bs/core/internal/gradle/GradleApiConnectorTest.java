@@ -12,18 +12,26 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import com.microsoft.java.bs.gradle.model.ScalaExtension;
-import com.microsoft.java.bs.gradle.model.SupportedLanguages;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.ScalaExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.StatusCode;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 class GradleApiConnectorTest {
 
@@ -41,31 +49,27 @@ class GradleApiConnectorTest {
     System.setProperty(Launcher.PROP_PLUGIN_DIR, pluginDir);
   }
 
-  private GradleApiConnector getConnector() {
+  private <A> A withConnector(Function<GradleApiConnector, A> function) {
     PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setClientSupportedLanguages(SupportedLanguages.allBspNames);
     preferenceManager.setPreferences(new Preferences());
-    return new GradleApiConnector(preferenceManager);
-  }
-
-  private GradleSourceSets getGradleSourceSets(File projectDir) {
-    GradleApiConnector connector = getConnector();
+    preferenceManager.setClientSupportedLanguages(SupportedLanguages.allBspNames);
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     try {
-      return connector.getGradleSourceSets(projectDir.toURI(), null);
+      return function.apply(connector);
     } finally {
       connector.shutdown();
     }
+  }
+  
+  private GradleSourceSets getGradleSourceSets(File projectDir) {
+    return withConnector(connector -> connector.getGradleSourceSets(projectDir.toURI(), null));
   }
 
   @Test
   void testGetGradleVersion() {
     File projectDir = projectPath.resolve("gradle-4.3-with-wrapper").toFile();
-    GradleApiConnector connector = getConnector();
-    try {
-      assertEquals("4.3", connector.getGradleVersion(projectDir.toURI()));
-    } finally {
-      connector.shutdown();
-    }
+    String version = withConnector(connector -> connector.getGradleVersion(projectDir.toURI()));
+    assertEquals("4.3", version);
   }
 
   @Test
@@ -273,5 +277,30 @@ class GradleApiConnectorTest {
     assertFalse(scalaExtension.getScalaCompilerArgs().isEmpty());
     assertTrue(scalaExtension.getScalaCompilerArgs().stream()
         .anyMatch(arg -> arg.equals("-deprecation")));
+  }
+  
+  @Test
+  void testBuildTargetTest() {
+    File projectDir = projectPath.resolve("java-tests").toFile();
+    withConnector(connector -> {
+      GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+      GradleSourceSet testSourceSet =
+          findSourceSet(gradleSourceSets, "java-tests [test]");
+      Map<BuildTargetIdentifier, Map<String, Set<String>>> testClassesMap = new HashMap<>();
+      BuildTargetIdentifier fakeBt = new BuildTargetIdentifier(testSourceSet.getDisplayName());
+      Map<String, Set<String>> classes = new HashMap<>();
+      testClassesMap.put(fakeBt, classes);
+      Set<String> methods = new HashSet<>();
+      classes.put("com.example.project.PassingTests", methods);
+      StatusCode passingTest = connector.runTests(projectDir.toURI(),
+          testClassesMap, null, null, null, null, null, null);
+      assertEquals(StatusCode.OK, passingTest);
+      classes.clear();
+      classes.put("com.example.project.FailingTests", methods);
+      StatusCode failingTest = connector.runTests(projectDir.toURI(),
+          testClassesMap, null, null, null, null, null, null);
+      assertEquals(StatusCode.ERROR, failingTest);
+      return null;
+    });
   }
 }

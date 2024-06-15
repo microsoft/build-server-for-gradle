@@ -4,12 +4,24 @@ plugins {
 group = 'org.example'
 version = '1.0-SNAPSHOT'
 
-tasks.register('copySource', Copy) {
-    from layout.projectDirectory.file("src/main/resources/B.java")
-    into layout.buildDirectory.file("generated/sources/a")
-}
+if (org.gradle.util.GradleVersion.current().compareTo(org.gradle.util.GradleVersion.version("4.9")) >= 0) {
+    tasks.register('copySource', Copy) {
+        from layout.projectDirectory.file("src/main/resources/B.java")
+        into layout.buildDirectory.file("generated/sources/a")
+    }
 
-tasks.withType(JavaCompile).configureEach {
-    dependsOn(':copySource')
-    it.source(layout.buildDirectory.file("generated/sources/a/B.java"))
+    tasks.withType(JavaCompile).configureEach {
+        dependsOn(':copySource')
+        it.source(layout.buildDirectory.file("generated/sources/a/B.java"))
+    }
+} else {
+    task "copySource" (type: Copy) {
+        from file("${projectDir}/src/main/resources/B.java")
+        into file("${buildDir}/generated/sources/a")
+    }
+
+    tasks.withType(JavaCompile) {
+        dependsOn(':copySource')
+        it.source(file("${buildDir}/generated/sources/a/B.java"))
+    }
 }

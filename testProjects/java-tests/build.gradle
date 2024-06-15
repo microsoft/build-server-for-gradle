@@ -1,0 +1,38 @@
+plugins {
+	id 'java'
+}
+
+repositories {
+	mavenCentral()
+}
+
+sourceSets {
+    extraTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    extraTestImplementation.extendsFrom implementation
+    extraTestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+dependencies {
+	testImplementation(platform('org.junit:junit-bom:5.9.2'))
+	testImplementation('org.junit.jupiter:junit-jupiter')
+	extraTestImplementation(platform('org.junit:junit-bom:5.9.2'))
+	extraTestImplementation('org.junit.jupiter:junit-jupiter')
+}
+
+test {
+	useJUnitPlatform()
+}
+
+tasks.register('extraTest', Test) {
+    testClassesDirs = sourceSets.extraTest.output.classesDirs
+    classpath = sourceSets.extraTest.runtimeClasspath
+    shouldRunAfter test
+
+    useJUnitPlatform()
+}

@@ -6,6 +6,9 @@ package com.microsoft.java.bs.core;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.log.LogHandler;
@@ -15,7 +18,7 @@ import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.server.GradleBuildServer;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
-
+import com.microsoft.java.bs.core.internal.utils.ServerNamedPipeStream;
 import ch.epfl.scala.bsp4j.BuildClient;
 
 /**
@@ -26,7 +29,8 @@ public class Launcher {
   public static final Logger LOGGER = Logger.getLogger("GradleBuildServerLogger");
 
   /**
-   * The property name for the directory location storing the plugin and init script.
+   * The property name for the directory location storing the plugin and init
+   * script.
    */
   public static final String PROP_PLUGIN_DIR = "plugin.dir";
 
@@ -36,12 +40,34 @@ public class Launcher {
   public static void main(String[] args) {
     checkRequiredProperties();
 
-    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher = createLauncher();
+    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher;
+    if (args.length > 0 && args[0] != null && !args[0].isEmpty()) {
+      launcher = createLauncherUsingPipe(args[0]);
+    } else {
+      launcher = createLauncherUsingStdIo();
+    }
+
     setupLoggers(launcher.getRemoteProxy());
     launcher.startListening();
   }
 
-  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> createLauncher() {
+  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> 
+      createLauncherUsingPipe(String pipePath) {
+    ServerNamedPipeStream pipeStream = new ServerNamedPipeStream(pipePath);
+    try {
+      return createLauncher(pipeStream.getOutputStream(), pipeStream.getInputStream());
+    } catch (IOException e) {
+      throw new IllegalStateException("Error initializing the named pipe", e);
+    }
+  }
+
+  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> createLauncherUsingStdIo() {
+    return createLauncher(System.out, System.in);
+  }
+
+  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> 
+      createLauncher(OutputStream outputStream,
+      InputStream inputStream) {
     BuildTargetManager buildTargetManager = new BuildTargetManager();
     PreferenceManager preferenceManager = new PreferenceManager();
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
@@ -50,14 +76,14 @@ public class Launcher {
         connector, preferenceManager);
     GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
         buildTargetService);
-    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher =
-        new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
-          .setOutput(System.out)
-          .setInput(System.in)
-          .setLocalService(gradleBuildServer)
-          .setRemoteInterface(BuildClient.class)
-          .setExecutorService(Executors.newCachedThreadPool())
-          .create();
+    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher = new 
+        org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
+        .setOutput(outputStream)
+        .setInput(inputStream)
+        .setLocalService(gradleBuildServer)
+        .setRemoteInterface(BuildClient.class)
+        .setExecutorService(Executors.newCachedThreadPool())
+        .create();
     buildTargetService.setClient(launcher.getRemoteProxy());
     return launcher;
   }
