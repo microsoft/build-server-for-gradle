@@ -614,8 +614,65 @@ class BuildTargetServerIntegrationTest {
       TestFinishEx failingTestsFinish = client.getTestFinish(null,
           "com.example.project.FailingTests", "failingTest()",
           List.of("Test failingTest()(com.example.project.FailingTests)", "FailingTests"));
-      failingTestsFinish.getStackTrace()
-          .contains("at com.example.project.FailingTests.failingTest(FailingTests.java:21)");
+      assertTrue(failingTestsFinish.getStackTrace()
+          .contains("at com.example.project.FailingTests.failingTest(FailingTests.java:14)"));
+
+      client.clearMessages();
+
+      // run stacktrace test
+      List<String> stacktraceMainClasses = new LinkedList<>();
+      stacktraceMainClasses.add("com.example.project.ExceptionInBefore");
+      ScalaTestClassesItem stacktraceTestClassesItem =
+              new ScalaTestClassesItem(btId, stacktraceMainClasses);
+      List<ScalaTestClassesItem> stacktraceTestClasses = new LinkedList<>();
+      stacktraceTestClasses.add(stacktraceTestClassesItem);
+      ScalaTestParams stacktraceScalaTestParams = new ScalaTestParams();
+      stacktraceScalaTestParams.setTestClasses(stacktraceTestClasses);
+      TestParams stacktraceTestParams = new TestParams(btIds);
+      stacktraceTestParams.setOriginId("originId");
+      stacktraceTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      stacktraceTestParams.setData(stacktraceScalaTestParams);
+      TestResult stacktraceTestResult = gradleBuildServer
+              .buildTargetTest(stacktraceTestParams).join();
+      assertEquals(StatusCode.ERROR, stacktraceTestResult.getStatusCode());
+      assertEquals("originId", stacktraceTestResult.getOriginId());
+      client.waitOnStartReports(4);
+      client.waitOnFinishReports(5);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(2);
+      client.waitOnTestFinishes(2);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      assertEquals(3, client.finishReportErrorCount());
+      TestReport stacktraceTestsReport = client.testReports.get(0);
+      assertEquals(0, stacktraceTestsReport.getPassed());
+      assertEquals(0, stacktraceTestsReport.getCancelled());
+      assertEquals(1, stacktraceTestsReport.getFailed());
+      assertEquals(0, stacktraceTestsReport.getIgnored());
+      assertEquals(0, stacktraceTestsReport.getSkipped());
+
+      assertNotNull(client.getTestStart("com.example.project.ExceptionInBefore",
+          "com.example.project.ExceptionInBefore", null,
+          List.of("ExceptionInBefore")));
+
+      assertNotNull(client.getTestStart(null, "com.example.project.ExceptionInBefore",
+          "initializationError",
+          List.of("Test initializationError(com.example.project.ExceptionInBefore)",
+          "ExceptionInBefore")));
+
+      assertNotNull(client.getTestFinish("com.example.project.ExceptionInBefore",
+          "com.example.project.ExceptionInBefore", null,
+          List.of("ExceptionInBefore")));
+      TestFinishEx stacktraceTestsFinish = client.getTestFinish(null,
+          "com.example.project.ExceptionInBefore", "initializationError",
+          List.of("Test initializationError(com.example.project.ExceptionInBefore)",
+            "ExceptionInBefore"));
+      assertTrue(stacktraceTestsFinish.getStackTrace().contains(
+          "at com.example.project.ExceptionInBefore.beforeAll(ExceptionInBefore.java:13)"));
 
       client.clearMessages();
 

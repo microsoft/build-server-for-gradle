@@ -13,6 +13,7 @@ import ch.epfl.scala.bsp4j.extended.TestStartEx;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.gradle.tooling.TestFailure;
 import org.gradle.tooling.events.FinishEvent;
 import org.gradle.tooling.events.OperationDescriptor;
 import org.gradle.tooling.events.OperationResult;
@@ -28,7 +29,6 @@ import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
 import ch.epfl.scala.bsp4j.StatusCode;
 import ch.epfl.scala.bsp4j.TaskFinishParams;
 import ch.epfl.scala.bsp4j.TestReport;
-import org.gradle.tooling.internal.consumer.DefaultTestAssertionFailure;
 
 /**
  * Implements {@link ProgressReporter} to record test results.
@@ -121,9 +121,9 @@ public class TestReportReporter extends ProgressReporter {
               testStatus = TestStatus.FAILED;
               stackTrace = testFailureResult.getFailures()
                   .stream()
-                  .filter(f -> f instanceof DefaultTestAssertionFailure)
-                  .map(f -> (DefaultTestAssertionFailure) f)
-                  .map(DefaultTestAssertionFailure::getStacktrace)
+                  .filter(f -> f instanceof TestFailure)
+                  .map(f -> (TestFailure) f)
+                  .map(TestFailure::getStacktrace)
                   .findFirst()
                   .orElse(null);
               if (descriptor.getMethodName() != null) {
