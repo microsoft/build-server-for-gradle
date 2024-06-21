@@ -267,7 +267,8 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBui
     }
     return CompletableFuture.failedFuture(
         new ResponseErrorException(
-            new ResponseError(ResponseErrorCode.InternalError, throwable.getMessage(), null)));
+            new ResponseError(ResponseErrorCode.InternalError,
+            rootCauseMessage == null ? throwable.getMessage() : rootCauseMessage, null)));
   }
 
   private String escapeMethodName(String name) {
