@@ -158,11 +158,13 @@ class GradleApiConnectorTest {
     preferenceManager.setPreferences(new Preferences());
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
-    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
-    /*findSourceSet(gradleSourceSets, "projectA [main]");
-    findSourceSet(gradleSourceSets, "projectA [test]");
-    findSourceSet(gradleSourceSets, "projectB [main]");
-    findSourceSet(gradleSourceSets, "projectB [test]");*/
+    assertEquals(6, gradleSourceSets.getGradleSourceSets().size());
+    findSourceSet(gradleSourceSets, "app [main]");
+    findSourceSet(gradleSourceSets, "app [test]");
+    findSourceSet(gradleSourceSets, "string-utils [main]");
+    findSourceSet(gradleSourceSets, "string-utils [test]");
+    findSourceSet(gradleSourceSets, "number-utils [test]");
+    findSourceSet(gradleSourceSets, "number-utils [test]");
   }
 
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,

@@ -9,19 +9,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import com.microsoft.java.bs.core.internal.gradle.actions.GetSourceSetsAction;
+import org.gradle.tooling.BuildActionExecuter;
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnectionException;
 import org.gradle.tooling.GradleConnector;
-import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.TestLauncher;
 import org.gradle.tooling.events.OperationType;
@@ -33,8 +31,6 @@ import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TestReportReporter;
-import com.microsoft.java.bs.gradle.model.GradleIncludedBuild;
-import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 
@@ -74,30 +70,11 @@ public class GradleApiConnector {
     return model.getGradle().getGradleVersion();
   }
 
-  private List<GradleSourceSet> getIncludedBuildGradleSourceSets(
-          File initScript,
-          URI projectUri,
-          BuildClient client
-  ) {
-    // add source sets for this project
-    List<GradleSourceSet> allSourceSets = new ArrayList<>();
-    GradleSourceSets gradleSourceSets = getGradleSourceSets(initScript, projectUri, client);
-    allSourceSets.addAll(gradleSourceSets.getGradleSourceSets());
-    // check included builds for more source sets to add
-    for (GradleIncludedBuild includedBuild : gradleSourceSets.getGradleIncludedBuilds()) {
-      URI includedProjectUri = includedBuild.getProjectDir().toURI();
-      allSourceSets.addAll(
-              getIncludedBuildGradleSourceSets(initScript, includedProjectUri, client)
-      );
-    }
-    return allSourceSets;
-  }
-
   /**
    * Get the source sets of the Gradle project.
    *
    * @param projectUri uri of the project
-   * @param client connection to BSP client
+   * @param client     connection to BSP client
    * @return an instance of {@link GradleSourceSets}
    */
   public GradleSourceSets getGradleSourceSets(URI projectUri, BuildClient client) {
@@ -105,39 +82,25 @@ public class GradleApiConnector {
     if (!initScript.exists()) {
       throw new IllegalStateException("Failed to get init script file.");
     }
-    List<GradleSourceSet> allSourceSets =
-            getIncludedBuildGradleSourceSets(initScript, projectUri, client);
-
-    return new DefaultGradleSourceSets(Collections.emptyList(), allSourceSets);
-  }
-
-  private GradleSourceSets getGradleSourceSets(
-          File initScript,
-          URI projectUri,
-          BuildClient client
-  ) {
     ProgressReporter reporter = new DefaultProgressReporter(client);
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut) {
-      ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
-          connection,
-          preferenceManager.getPreferences(),
-          GradleSourceSets.class
-      );
-      customModelBuilder.addProgressListener(reporter,
-          OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
+         errorOut) {
+      BuildActionExecuter<GradleSourceSets> buildExecutor
+          = connection.action(new GetSourceSetsAction());
+      buildExecutor.addProgressListener(reporter,
+              OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
           .setStandardError(errorOut)
           .addArguments("--init-script", initScript.getAbsolutePath());
       if (Boolean.getBoolean("bsp.plugin.debug.enabled")) {
-        customModelBuilder.addJvmArguments(
+        buildExecutor.addJvmArguments(
             "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005");
       }
-      customModelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages="
+      buildExecutor.addJvmArguments("-Dbsp.gradle.supportedLanguages="
           + String.join(",", preferenceManager.getClientSupportedLanguages()));
       // since the model returned from Gradle TAPI is a wrapped object, here we re-construct it
       // via a copy constructor and return as a POJO.
-      return new DefaultGradleSourceSets(customModelBuilder.get());
+      return new DefaultGradleSourceSets(buildExecutor.run());
     } catch (GradleConnectionException | IllegalStateException | IOException e) {
       String summary = e.getMessage();
       if (errorOut.size() > 0) {
@@ -152,15 +115,15 @@ public class GradleApiConnector {
    * Request Gradle daemon to run the tasks.
    *
    * @param projectUri uri of the project
-   * @param reporter reporter on feedback from Gradle
-   * @param tasks tasks to run
+   * @param reporter   reporter on feedback from Gradle
+   * @param tasks      tasks to run
    */
   public StatusCode runTasks(URI projectUri, ProgressReporter reporter, String... tasks) {
     // Don't issue a start progress update - the listener will pick that up automatically
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     StatusCode statusCode = StatusCode.OK;
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut
+         errorOut
     ) {
       BuildLauncher launcher = Utils.getBuildLauncher(connection,
           preferenceManager.getPreferences());

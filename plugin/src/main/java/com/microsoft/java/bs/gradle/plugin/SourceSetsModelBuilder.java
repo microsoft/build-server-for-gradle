@@ -54,21 +54,12 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   @Override
   public Object buildAll(String modelName, Project rootProject) {
     Set<Project> allProject = rootProject.getAllprojects();
-    List<GradleIncludedBuild> includedBuilds = new ArrayList<>();
     SourceSetCache cache = new SourceSetCache();
     // this set is used to eliminate the source, resource and output
     // directories from the module dependencies.
     Set<File> exclusionFromDependencies = new HashSet<>();
     // mapping Gradle source set to our customized model.
     for (Project project : allProject) {
-      // lookup included builds regardless of sourcesets existing
-      Gradle gradle = project.getGradle();
-      includedBuilds.addAll(
-          gradle.getIncludedBuilds()
-          .stream().map(includedBuild ->
-            new DefaultGradleIncludedBuild(includedBuild.getName(), includedBuild.getProjectDir()))
-          .collect(Collectors.toList()));
-
       SourceSetContainer sourceSets = getSourceSetContainer(project);
       if (sourceSets == null || sourceSets.isEmpty()) {
         continue;
@@ -199,8 +190,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
 
     }
 
-    return new DefaultGradleSourceSets(includedBuilds,
-        new LinkedList<>(cache.getAllGradleSourceSets()));
+    return new DefaultGradleSourceSets(new LinkedList<>(cache.getAllGradleSourceSets()));
   }
 
   private void setModuleDependencies(SourceSetCache cache, Set<File> exclusionFromDependencies) {

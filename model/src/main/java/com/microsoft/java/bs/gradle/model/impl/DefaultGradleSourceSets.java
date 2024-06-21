@@ -21,9 +21,7 @@ public class DefaultGradleSourceSets implements GradleSourceSets {
 
   private List<GradleSourceSet> gradleSourceSets;
 
-  public DefaultGradleSourceSets(List<GradleIncludedBuild> gradleIncludedBuilds,
-      List<GradleSourceSet> gradleSourceSets) {
-    this.gradleIncludedBuilds = gradleIncludedBuilds;
+  public DefaultGradleSourceSets(List<GradleSourceSet> gradleSourceSets) {
     this.gradleSourceSets = gradleSourceSets;
   }
 
@@ -31,19 +29,8 @@ public class DefaultGradleSourceSets implements GradleSourceSets {
    * Copy constructor.
    */
   public DefaultGradleSourceSets(GradleSourceSets sourceSets) {
-    this(sourceSets.getGradleIncludedBuilds().stream()
-        .map(DefaultGradleIncludedBuild::new).collect(Collectors.toList()),
-         sourceSets.getGradleSourceSets().stream()
+    this(sourceSets.getGradleSourceSets().stream()
         .map(DefaultGradleSourceSet::new).collect(Collectors.toList()));
-  }
-
-  @Override
-  public List<GradleIncludedBuild> getGradleIncludedBuilds() {
-    return gradleIncludedBuilds;
-  }
-
-  public void setGradleIncludedBuilds(List<GradleIncludedBuild> gradleIncludedBuilds) {
-    this.gradleIncludedBuilds = gradleIncludedBuilds;
   }
 
   @Override
