@@ -164,20 +164,29 @@ class BuildTargetServerIntegrationTest {
           && Objects.equals(getTestNameHierarchy(testName), testNames);
     }
 
+    private static String testNameAsString(TestName testName) {
+      return testName.getSuiteName() + "," + testName.getClassName() + ","
+        + testName.getMethodName() + "," + getTestNameHierarchy(testName);
+    }
+
     TestStartEx getTestStart(String suiteName, String className, String methodName,
         List<String> testNames) {
       return testStarts.stream().filter(ts -> matchesTest(ts.getTestName(),
         suiteName, className, methodName, testNames)).findAny()
-          .orElseThrow(() -> new IllegalStateException("Missing test start for [" + suiteName
-          + "," + className + "," + methodName + "," + testNames + "] only found " + testStarts));
+          .orElseThrow(() -> new IllegalStateException("Missing test start for \n" + suiteName
+          + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testStarts
+          .stream().map(ts -> testNameAsString(ts.getTestName()))
+          .collect(Collectors.joining("\n"))));
     }
 
     TestFinishEx getTestFinish(String suiteName, String className, String methodName,
         List<String> testNames) {
       return testFinishes.stream().filter(ts -> matchesTest(ts.getTestName(),
         suiteName, className, methodName, testNames)).findAny()
-          .orElseThrow(() -> new IllegalStateException("Missing test finish for [" + suiteName
-          + "," + className + "," + methodName + "," + testNames + "] only found " + testFinishes));
+          .orElseThrow(() -> new IllegalStateException("Missing test finish for\n" + suiteName
+          + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testFinishes
+          .stream().map(ts -> testNameAsString(ts.getTestName()))
+          .collect(Collectors.joining("\n"))));
     }
 
     private void waitOnMessages(String message, int size, IntSupplier sizeSupplier) {
@@ -951,6 +960,382 @@ class BuildTargetServerIntegrationTest {
         assertEquals("originId", message.getOriginId());
         assertEquals(MessageType.ERROR, message.getType());
       }
+      client.clearMessages();
+    });
+  }
+
+  @Test
+  void testTestNg() {
+    withNewTestServer("testng", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+      client.clearMessages();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      // run passing tests
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "testng [test]");
+      List<String> passingTestMainClasses = new LinkedList<>();
+      passingTestMainClasses.add("com.example.project.PassingTests");
+      ScalaTestClassesItem passingTestClassesItem =
+          new ScalaTestClassesItem(btId, passingTestMainClasses);
+      List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
+      passingTestClasses.add(passingTestClassesItem);
+      ScalaTestParams passingScalaTestParams = new ScalaTestParams();
+      passingScalaTestParams.setTestClasses(passingTestClasses);
+      TestParams passingTestParams = new TestParams(btIds);
+      passingTestParams.setOriginId("originId");
+      passingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      passingTestParams.setData(passingScalaTestParams);
+      TestResult passingTestResult =
+          gradleBuildServer.buildTargetTest(passingTestParams).join();
+      assertEquals(StatusCode.OK, passingTestResult.getStatusCode());
+      assertEquals("originId", passingTestResult.getOriginId());
+      client.waitOnStartReports(8);
+      client.waitOnFinishReports(9);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(6);
+      client.waitOnTestFinishes(6);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      TestReport passingTestsReport = client.testReports.get(0);
+      assertEquals(5, passingTestsReport.getPassed());
+      assertEquals(0, passingTestsReport.getCancelled());
+      assertEquals(0, passingTestsReport.getFailed());
+      assertEquals(0, passingTestsReport.getIgnored());
+      assertEquals(0, passingTestsReport.getSkipped());
+
+      assertNotNull(client.getTestStart("com.example.project.PassingTests",
+          "com.example.project.PassingTests", null,
+          List.of("Test class com.example.project.PassingTests")));
+
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "isBasicTest", List.of("Test method isBasicTest(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "hasDisplayName", List.of("Test method hasDisplayName(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "isParameterized[0](0)",
+            List.of("Test method isParameterized[0](0)(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "isParameterized[1](1)",
+            List.of("Test method isParameterized[1](1)(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          "isParameterized[2](2)",
+            List.of("Test method isParameterized[2](2)(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+
+      assertNotNull(client.getTestFinish("com.example.project.PassingTests",
+          "com.example.project.PassingTests", null,
+          List.of("Test class com.example.project.PassingTests")));
+
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "isBasicTest", List.of("Test method isBasicTest(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "hasDisplayName", List.of("Test method hasDisplayName(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "isParameterized[0](0)",
+            List.of("Test method isParameterized[0](0)(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "isParameterized[1](1)",
+            List.of("Test method isParameterized[1](1)(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          "isParameterized[2](2)",
+            List.of("Test method isParameterized[2](2)(com.example.project.PassingTests)",
+            "Test class com.example.project.PassingTests")));
+      client.clearMessages();
+
+      // run failing tests
+      List<String> failingMainClasses = new LinkedList<>();
+      failingMainClasses.add("com.example.project.FailingTests");
+      ScalaTestClassesItem failingTestClassesItem =
+          new ScalaTestClassesItem(btId, failingMainClasses);
+      List<ScalaTestClassesItem> failingTestClasses = new LinkedList<>();
+      failingTestClasses.add(failingTestClassesItem);
+      ScalaTestParams failingScalaTestParams = new ScalaTestParams();
+      failingScalaTestParams.setTestClasses(failingTestClasses);
+      TestParams failingTestParams = new TestParams(btIds);
+      failingTestParams.setOriginId("originId");
+      failingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      failingTestParams.setData(failingScalaTestParams);
+      TestResult failingTestResult = gradleBuildServer.buildTargetTest(failingTestParams).join();
+      assertEquals(StatusCode.ERROR, failingTestResult.getStatusCode());
+      assertEquals("originId", failingTestResult.getOriginId());
+      client.waitOnStartReports(4);
+      client.waitOnFinishReports(5);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(2);
+      client.waitOnTestFinishes(2);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      assertEquals(3, client.finishReportErrorCount());
+      TestReport failingTestsReport = client.testReports.get(0);
+      assertEquals(0, failingTestsReport.getPassed());
+      assertEquals(0, failingTestsReport.getCancelled());
+      assertEquals(1, failingTestsReport.getFailed());
+      assertEquals(0, failingTestsReport.getIgnored());
+      assertEquals(0, failingTestsReport.getSkipped());
+      
+      assertNotNull(client.getTestStart("com.example.project.FailingTests",
+          "com.example.project.FailingTests", null,
+          List.of("Test class com.example.project.FailingTests")));
+
+      assertNotNull(client.getTestStart(null, "com.example.project.FailingTests",
+          "failingTest", List.of("Test method failingTest(com.example.project.FailingTests)",
+            "Test class com.example.project.FailingTests")));
+
+      assertNotNull(client.getTestFinish("com.example.project.FailingTests",
+          "com.example.project.FailingTests", null,
+          List.of("Test class com.example.project.FailingTests")));
+      TestFinishEx failingTestsFinish = client.getTestFinish(null,
+          "com.example.project.FailingTests", "failingTest",
+          List.of("Test method failingTest(com.example.project.FailingTests)",
+          "Test class com.example.project.FailingTests"));
+      assertTrue(failingTestsFinish.getStackTrace()
+          .contains("at com.example.project.FailingTests.failingTest(FailingTests.java:13)"));
+
+      client.clearMessages();
+
+      // run stacktrace test
+      List<String> stacktraceMainClasses = new LinkedList<>();
+      stacktraceMainClasses.add("com.example.project.ExceptionInBefore");
+      ScalaTestClassesItem stacktraceTestClassesItem =
+              new ScalaTestClassesItem(btId, stacktraceMainClasses);
+      List<ScalaTestClassesItem> stacktraceTestClasses = new LinkedList<>();
+      stacktraceTestClasses.add(stacktraceTestClassesItem);
+      ScalaTestParams stacktraceScalaTestParams = new ScalaTestParams();
+      stacktraceScalaTestParams.setTestClasses(stacktraceTestClasses);
+      TestParams stacktraceTestParams = new TestParams(btIds);
+      stacktraceTestParams.setOriginId("originId");
+      stacktraceTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      stacktraceTestParams.setData(stacktraceScalaTestParams);
+      TestResult stacktraceTestResult = gradleBuildServer
+              .buildTargetTest(stacktraceTestParams).join();
+      assertEquals(StatusCode.ERROR, stacktraceTestResult.getStatusCode());
+      assertEquals("originId", stacktraceTestResult.getOriginId());
+      client.waitOnStartReports(5);
+      client.waitOnFinishReports(6);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(3);
+      client.waitOnTestFinishes(3);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      assertEquals(3, client.finishReportErrorCount());
+      TestReport stacktraceTestsReport = client.testReports.get(0);
+      assertEquals(0, stacktraceTestsReport.getPassed());
+      assertEquals(0, stacktraceTestsReport.getCancelled());
+      assertEquals(1, stacktraceTestsReport.getFailed());
+      assertEquals(0, stacktraceTestsReport.getIgnored());
+      assertEquals(1, stacktraceTestsReport.getSkipped());
+
+      assertNotNull(client.getTestStart("com.example.project.ExceptionInBefore",
+          "com.example.project.ExceptionInBefore", null,
+          List.of("Test class com.example.project.ExceptionInBefore")));
+
+      assertNotNull(client.getTestStart(null, "com.example.project.ExceptionInBefore",
+          "beforeAll",
+          List.of("Test method beforeAll(com.example.project.ExceptionInBefore)",
+          "Test class com.example.project.ExceptionInBefore")));
+      assertNotNull(client.getTestStart(null, "com.example.project.ExceptionInBefore",
+          "test",
+          List.of("Test method test(com.example.project.ExceptionInBefore)",
+          "Test class com.example.project.ExceptionInBefore")));
+
+      assertNotNull(client.getTestFinish("com.example.project.ExceptionInBefore",
+          "com.example.project.ExceptionInBefore", null,
+          List.of("Test class com.example.project.ExceptionInBefore")));
+
+      TestFinishEx stacktraceTestsFinish = client.getTestFinish(null,
+          "com.example.project.ExceptionInBefore", "beforeAll",
+          List.of("Test method beforeAll(com.example.project.ExceptionInBefore)",
+          "Test class com.example.project.ExceptionInBefore"));
+      assertTrue(stacktraceTestsFinish.getStackTrace().contains(
+              "at com.example.project.ExceptionInBefore.beforeAll(ExceptionInBefore.java:12)"));
+      assertNotNull(client.getTestFinish(null, "com.example.project.ExceptionInBefore",
+          "test",
+          List.of("Test method test(com.example.project.ExceptionInBefore)",
+          "Test class com.example.project.ExceptionInBefore")));
+
+      client.clearMessages();
+
+      // run single method tests
+      List<BuildTargetIdentifier> singleBt = new ArrayList<>();
+      singleBt.add(btId);
+      TestParams singleMethodTestParams = new TestParams(singleBt);
+      singleMethodTestParams.setOriginId("originId");
+      singleMethodTestParams.setDataKind("scala-test-suites-selection");
+      List<String> singleTestMethods = new ArrayList<>();
+      singleTestMethods.add("envVarSetTest");
+      ScalaTestSuiteSelection singleScalaTestSuiteSelection =
+          new ScalaTestSuiteSelection("com.example.project.EnvVarTests", singleTestMethods);
+      List<ScalaTestSuiteSelection> singleScalaTestSuiteSelections = new LinkedList<>();
+      singleScalaTestSuiteSelections.add(singleScalaTestSuiteSelection);
+      List<String> emptyJvmOptions = new ArrayList<>();
+      List<String> environmentVariables = new ArrayList<>();
+      environmentVariables.add("EnvVar=Test");
+      // Running Gradle tests on Windows seems to require the SystemRoot env var
+      // Otherwise Windows complains "Unrecognized Windows Sockets error: 10106"
+      String systemRoot = System.getenv("SystemRoot");
+      if (systemRoot != null) {
+        environmentVariables.add("SystemRoot=" + systemRoot);
+      }
+      // or whatever is relevant to that operating system
+      ScalaTestSuites singleScalaTestSuites = new ScalaTestSuites(singleScalaTestSuiteSelections,
+          emptyJvmOptions, environmentVariables);
+      singleMethodTestParams.setData(singleScalaTestSuites);
+      TestResult singleMethodTestResult =
+          gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
+      assertEquals(StatusCode.OK, singleMethodTestResult.getStatusCode());
+      assertEquals("originId", singleMethodTestResult.getOriginId());
+      client.waitOnStartReports(4);
+      client.waitOnFinishReports(5);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(2);
+      client.waitOnTestFinishes(2);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      TestReport singleMethodTestsReport = client.testReports.get(0);
+      assertEquals(1, singleMethodTestsReport.getPassed());
+      assertEquals(0, singleMethodTestsReport.getCancelled());
+      assertEquals(0, singleMethodTestsReport.getFailed());
+      assertEquals(0, singleMethodTestsReport.getIgnored());
+      assertEquals(0, singleMethodTestsReport.getSkipped());
+      
+      assertNotNull(client.getTestStart("com.example.project.EnvVarTests",
+          "com.example.project.EnvVarTests", null,
+          List.of("Test class com.example.project.EnvVarTests")));
+
+      assertNotNull(client.getTestStart(null, "com.example.project.EnvVarTests",
+          "envVarSetTest", List.of("Test method envVarSetTest(com.example.project.EnvVarTests)",
+            "Test class com.example.project.EnvVarTests")));
+
+      assertNotNull(client.getTestFinish("com.example.project.EnvVarTests",
+          "com.example.project.EnvVarTests", null,
+          List.of("Test class com.example.project.EnvVarTests")));
+
+      assertNotNull(client.getTestFinish(null, "com.example.project.EnvVarTests",
+          "envVarSetTest", List.of("Test method envVarSetTest(com.example.project.EnvVarTests)",
+            "Test class com.example.project.EnvVarTests")));
+      client.clearMessages();
+    });
+  }
+  
+  @Test
+  void testSpock() {
+    withNewTestServer("spock", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+      client.clearMessages();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      // run tests
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "spock [test]");
+      List<String> passingTestMainClasses = new LinkedList<>();
+      passingTestMainClasses.add("com.example.project.SpockTest");
+      ScalaTestClassesItem passingTestClassesItem =
+          new ScalaTestClassesItem(btId, passingTestMainClasses);
+      List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
+      passingTestClasses.add(passingTestClassesItem);
+      ScalaTestParams passingScalaTestParams = new ScalaTestParams();
+      passingScalaTestParams.setTestClasses(passingTestClasses);
+      TestParams passingTestParams = new TestParams(btIds);
+      passingTestParams.setOriginId("originId");
+      passingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      passingTestParams.setData(passingScalaTestParams);
+      TestResult passingTestResult =
+          gradleBuildServer.buildTargetTest(passingTestParams).join();
+      assertEquals(StatusCode.OK, passingTestResult.getStatusCode());
+      assertEquals("originId", passingTestResult.getOriginId());
+      client.waitOnStartReports(4);
+      client.waitOnFinishReports(5);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(2);
+      client.waitOnTestFinishes(2);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      TestReport passingTestsReport = client.testReports.get(0);
+      assertEquals(1, passingTestsReport.getPassed());
+      assertEquals(0, passingTestsReport.getCancelled());
+      assertEquals(0, passingTestsReport.getFailed());
+      assertEquals(0, passingTestsReport.getIgnored());
+      assertEquals(0, passingTestsReport.getSkipped());
+
+      assertNotNull(client.getTestStart("com.example.project.SpockTest",
+          "com.example.project.SpockTest", null,
+          List.of("SpockTest")));
+
+      assertNotNull(client.getTestStart(null, "com.example.project.SpockTest",
+          "zero is zero", List.of("Test zero is zero(com.example.project.SpockTest)",
+            "SpockTest")));
+
+      assertNotNull(client.getTestFinish("com.example.project.SpockTest",
+          "com.example.project.SpockTest", null,
+          List.of("SpockTest")));
+
+      assertNotNull(client.getTestFinish(null, "com.example.project.SpockTest",
+          "zero is zero", List.of("Test zero is zero(com.example.project.SpockTest)",
+            "SpockTest")));
       client.clearMessages();
     });
   }
