@@ -533,13 +533,14 @@ public class BuildTargetService {
                 + testSuites.getEnvironmentVariables());
             statusCode = StatusCode.ERROR;
           } else {
-            Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
+            Map<String, Set<String>> classesMethods = new HashMap<>();
             for (ScalaTestSuiteSelection testSuiteSelection : testSuites.getSuites()) {
-              Map<String, Set<String>> classesMethods = new HashMap<>();
-              Set<String> methods = new HashSet<>(testSuiteSelection.getTests());
-              classesMethods.put(testSuiteSelection.getClassName(), methods);
-              testClasses.put(params.getTargets().get(0), classesMethods);
+              Set<String> methods = classesMethods
+                  .computeIfAbsent(testSuiteSelection.getClassName(), k -> new HashSet<>());
+              methods.addAll(testSuiteSelection.getTests());
             }
+            Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
+            testClasses.put(params.getTargets().get(0), classesMethods);
             statusCode = connector.runTests(entry.getKey(), testClasses, testSuites.getJvmOptions(),
               params.getArguments(), envVars, client, params.getOriginId(),
               compileProgressReporter);
