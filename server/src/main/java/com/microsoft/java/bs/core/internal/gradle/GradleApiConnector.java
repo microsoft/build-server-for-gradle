@@ -9,16 +9,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnectionException;
-import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.TestLauncher;
@@ -42,20 +41,35 @@ import ch.epfl.scala.bsp4j.StatusCode;
  * Connect to Gradle Daemon via Gradle Tooling API.
  */
 public class GradleApiConnector {
-  private final Map<File, GradleConnector> connectors;
   private final PreferenceManager preferenceManager;
+  private final ConnectorCache connectorCache;
+
+  public GradleApiConnector(PreferenceManager preferenceManager, boolean useConnectorCache) {
+    connectorCache = new ConnectorCache(preferenceManager, useConnectorCache);
+    this.preferenceManager = preferenceManager;
+  }
 
   public GradleApiConnector(PreferenceManager preferenceManager) {
-    this.preferenceManager = preferenceManager;
-    connectors = new HashMap<>();
+    this(preferenceManager, true);
+  }
+
+  public void shutdown() {
+    connectorCache.shutdown();
+  }
+
+  private <T> T withConnection(URI projectUri, Function<ProjectConnection, T> func) {
+    try (ConnectorWrapper wrapper = connectorCache.getGradleConnector(new File(projectUri));
+         ProjectConnection connection = wrapper.connect()) {
+      return func.apply(connection);
+    }
   }
 
   /**
    * Get the Gradle version of the project.
    */
   public String getGradleVersion(URI projectUri) {
-    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      return getGradleVersion(connection);
+    try {
+      return withConnection(projectUri, connection -> getGradleVersion(connection));
     } catch (BuildException e) {
       LOGGER.severe("Failed to get Gradle version: " + e.getMessage());
       return "";
@@ -84,26 +98,28 @@ public class GradleApiConnector {
     }
     ProgressReporter reporter = new DefaultProgressReporter(client);
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
-    try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut) {
-      ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
-          connection,
-          preferenceManager.getPreferences(),
-          GradleSourceSets.class
-      );
-      customModelBuilder.addProgressListener(reporter,
-          OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
-          .setStandardError(errorOut)
-          .addArguments("--init-script", initScript.getAbsolutePath());
-      if (Boolean.getBoolean("bsp.plugin.debug.enabled")) {
-        customModelBuilder.addJvmArguments(
-            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005");
-      }
-      customModelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages="
-          + String.join(",", preferenceManager.getClientSupportedLanguages()));
-      // since the model returned from Gradle TAPI is a wrapped object, here we re-construct it
-      // via a copy constructor and return as a POJO.
-      return new DefaultGradleSourceSets(customModelBuilder.get());
+
+    try (errorOut) {
+      return withConnection(projectUri, connection -> {
+        ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
+            connection,
+            preferenceManager.getPreferences(),
+            GradleSourceSets.class
+        );
+        customModelBuilder.addProgressListener(reporter,
+            OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
+            .setStandardError(errorOut)
+            .addArguments("--init-script", initScript.getAbsolutePath());
+        if (Boolean.getBoolean("bsp.plugin.debug.enabled")) {
+          customModelBuilder.addJvmArguments(
+              "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005");
+        }
+        customModelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages="
+            + String.join(",", preferenceManager.getClientSupportedLanguages()));
+        // since the model returned from Gradle TAPI is a wrapped object, here we re-construct it
+        // via a copy constructor and return as a POJO.
+        return new DefaultGradleSourceSets(customModelBuilder.get());
+      });
     } catch (GradleConnectionException | IllegalStateException | IOException e) {
       String summary = e.getMessage();
       if (errorOut.size() > 0) {
@@ -124,30 +140,29 @@ public class GradleApiConnector {
   public StatusCode runTasks(URI projectUri, ProgressReporter reporter, String... tasks) {
     // Don't issue a start progress update - the listener will pick that up automatically
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
-    StatusCode statusCode = StatusCode.OK;
-    try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut
-    ) {
-      BuildLauncher launcher = Utils.getBuildLauncher(connection,
-          preferenceManager.getPreferences());
-      // TODO: consider to use outputstream to capture the output.
-      launcher.addProgressListener(reporter, OperationType.TASK)
-          .setStandardError(errorOut)
-          .forTasks(tasks)
-          .run();
+    try (errorOut) {
+      return withConnection(projectUri, connection -> {
+        BuildLauncher launcher = Utils.getBuildLauncher(connection,
+            preferenceManager.getPreferences());
+        // TODO: consider to use outputstream to capture the output.
+        launcher.addProgressListener(reporter, OperationType.TASK)
+            .setStandardError(errorOut)
+            .forTasks(tasks)
+            .run();
+        return StatusCode.OK;
+      });
     } catch (IOException e) {
       // caused by close the output stream, just simply log the error.
       LOGGER.severe(e.getMessage());
+      return StatusCode.OK;
     } catch (BuildException e) {
       String summary = e.getMessage();
       if (errorOut.size() > 0) {
         summary += "\n" + errorOut;
       }
       reporter.sendError(summary);
-      statusCode = StatusCode.ERROR;
+      return StatusCode.ERROR;
     }
-
-    return statusCode;
   }
 
   /**
@@ -161,76 +176,64 @@ public class GradleApiConnector {
       BuildClient client, String originId,
       CompileProgressReporter compileProgressReporter) {
 
-    StatusCode statusCode = StatusCode.OK;
     ProgressReporter reporter = new DefaultProgressReporter(client);
-    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      String gradleVersion = getGradleVersion(connection);
-      if (GradleVersion.version(gradleVersion).compareTo(GradleVersion.version("2.6")) < 0) {
-        reporter.sendError("Error running test classes: Gradle version "
-            + gradleVersion + " must be >= 2.6");
-      } else if (envVars != null && !envVars.isEmpty()
-          && GradleVersion.version(gradleVersion).compareTo(GradleVersion.version("3.5")) < 0) {
-        reporter.sendError("Error running test classes With Environment Variables: Gradle version "
-            + gradleVersion + " must be >= 3.5");
-      } else {
-        for (Map.Entry<BuildTargetIdentifier, Map<String, Set<String>>> entry :
-            testClassesMethodsMap.entrySet()) {
-          TestReportReporter testReportReporter = new TestReportReporter(entry.getKey(),
-              client, originId);
-          final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
-          try (errorOut) {
-            TestLauncher launcher = Utils
-                .getTestLauncher(connection, preferenceManager.getPreferences())
-                .setStandardError(errorOut)
-                .addProgressListener(testReportReporter, OperationType.TEST);
-            if (compileProgressReporter != null) {
-              launcher.addProgressListener(compileProgressReporter, OperationType.TASK);
-            }
-            for (Map.Entry<String, Set<String>> classesMethods : entry.getValue().entrySet()) {
-              if (classesMethods.getValue() != null && !classesMethods.getValue().isEmpty()) {
-                launcher.withJvmTestMethods(classesMethods.getKey(), classesMethods.getValue());
-              } else {
-                launcher.withJvmTestClasses(classesMethods.getKey());
+    try {
+      return withConnection(projectUri, connection -> {
+        StatusCode statusCode = StatusCode.OK;
+        String gradleVersion = getGradleVersion(connection);
+        if (GradleVersion.version(gradleVersion).compareTo(GradleVersion.version("2.6")) < 0) {
+          reporter.sendError("Running test classes not supported: Gradle version "
+              + gradleVersion + " must be >= 2.6");
+        } else if (envVars != null && !envVars.isEmpty()
+            && GradleVersion.version(gradleVersion).compareTo(GradleVersion.version("3.5")) < 0) {
+          reporter.sendError("Environment Variables not supported: Gradle version "
+              + gradleVersion + " must be >= 3.5");
+        } else {
+          for (Map.Entry<BuildTargetIdentifier, Map<String, Set<String>>> entry :
+              testClassesMethodsMap.entrySet()) {
+            TestReportReporter testReportReporter = new TestReportReporter(entry.getKey(),
+                client, originId);
+            final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
+            try (errorOut) {
+              TestLauncher launcher = Utils
+                  .getTestLauncher(connection, preferenceManager.getPreferences())
+                  .setStandardError(errorOut)
+                  .addProgressListener(testReportReporter, OperationType.TEST);
+              if (compileProgressReporter != null) {
+                launcher.addProgressListener(compileProgressReporter, OperationType.TASK);
               }
+              for (Map.Entry<String, Set<String>> classesMethods : entry.getValue().entrySet()) {
+                if (classesMethods.getValue() != null && !classesMethods.getValue().isEmpty()) {
+                  launcher.withJvmTestMethods(classesMethods.getKey(), classesMethods.getValue());
+                } else {
+                  launcher.withJvmTestClasses(classesMethods.getKey());
+                }
+              }
+              launcher.withArguments(args);
+              launcher.setJvmArguments(jvmOptions);
+              // env vars requires Gradle >= 3.5
+              launcher.setEnvironmentVariables(envVars);
+              launcher.run();
+            } catch (IOException e) {
+              // caused by close the output stream, just simply log the error.
+              LOGGER.severe(e.getMessage());
+            } catch (GradleConnectionException | IllegalStateException e) {
+              String message = String.join("\n", ExceptionUtils.getRootCauseStackTraceList(e));
+              if (errorOut.size() > 0) {
+                message = message + '\n' + errorOut;
+              }
+              testReportReporter.addException(message);
+              statusCode = StatusCode.ERROR;
+            } finally {
+              testReportReporter.sendResult();
             }
-            launcher.withArguments(args);
-            launcher.setJvmArguments(jvmOptions);
-            // env vars requires Gradle >= 3.5
-            launcher.setEnvironmentVariables(envVars);
-            launcher.run();
-          } catch (IOException e) {
-            // caused by close the output stream, just simply log the error.
-            LOGGER.severe(e.getMessage());
-          } catch (GradleConnectionException | IllegalStateException e) {
-            String message = String.join("\n", ExceptionUtils.getRootCauseStackTraceList(e));
-            if (errorOut.size() > 0) {
-              message = message + '\n' + errorOut;
-            }
-            testReportReporter.addException(message);
-            statusCode = StatusCode.ERROR;
-          } finally {
-            testReportReporter.sendResult();
           }
         }
-      }
+        return statusCode;
+      });
     } catch (GradleConnectionException | IllegalStateException e) {
       reporter.sendError("Error running test classes: " + e.getMessage());
-      statusCode = StatusCode.ERROR;
+      return StatusCode.ERROR;
     }
-
-    return statusCode;
-  }
-
-  public void shutdown() {
-    connectors.values().forEach(GradleConnector::disconnect);
-  }
-
-  private GradleConnector getGradleConnector(URI projectUri) {
-    return getGradleConnector(new File(projectUri));
-  }
-
-  private GradleConnector getGradleConnector(File project) {
-    return connectors.computeIfAbsent(project,
-        p -> Utils.getProjectConnector(p, preferenceManager.getPreferences()));
   }
 }
