@@ -53,14 +53,14 @@ class GradleApiConnectorTest {
     PreferenceManager preferenceManager = new PreferenceManager();
     preferenceManager.setPreferences(new Preferences());
     preferenceManager.setClientSupportedLanguages(SupportedLanguages.allBspNames);
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager, false);
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     try {
       return function.apply(connector);
     } finally {
       connector.shutdown();
     }
   }
-
+  
   private GradleSourceSets getGradleSourceSets(File projectDir) {
     return withConnector(connector -> connector.getGradleSourceSets(projectDir.toURI(), null));
   }

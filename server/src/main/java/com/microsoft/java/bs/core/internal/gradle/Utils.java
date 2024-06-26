@@ -5,6 +5,7 @@ package com.microsoft.java.bs.core.internal.gradle;
 
 
 import java.io.File;
+import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
@@ -42,6 +43,16 @@ public class Utils {
    * The environment variable for Gradle user home.
    */
   private static final String GRADLE_USER_HOME = "GRADLE_USER_HOME";
+
+  /**
+   * Get the Gradle connector for the project.
+   *
+   * @param projectUri The project uri.
+   */ 
+  public static GradleConnector getProjectConnector(URI projectUri,
+      Preferences preferences) {
+    return getProjectConnector(new File(projectUri), preferences);
+  }
 
   /**
    * Get the Gradle connector for the project.
