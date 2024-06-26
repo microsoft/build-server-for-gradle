@@ -529,6 +529,8 @@ class BuildTargetServerIntegrationTest {
       for (TaskFinishParams message : client.finishReports) {
         assertEquals(StatusCode.OK, message.getStatus());
       }
+      // TODO - this check is for logging why github action fails.  Remove later
+      assertNotNull(client.getTestFinish("Nonsense", null, null, List.of("PassingTests")));
       TestReport passingTestsReport = client.testReports.get(0);
       assertEquals(5, passingTestsReport.getPassed());
       assertEquals(0, passingTestsReport.getCancelled());
@@ -557,8 +559,6 @@ class BuildTargetServerIntegrationTest {
           "isParameterized(int)[3]", List.of("2", "Test suite 'isParameterized(int)'",
             "PassingTests")));
 
-      // TODO - this check is for logging why github action fails.  Remove later
-      assertNotNull(client.getTestFinish("Nonsense", null, null, List.of("PassingTests")));
       assertNotNull(client.getTestFinish("com.example.project.PassingTests",
           "com.example.project.PassingTests", null,
           List.of("PassingTests")));
