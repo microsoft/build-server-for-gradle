@@ -188,9 +188,10 @@ public class GradleApiConnector {
             }
             for (Map.Entry<String, Set<String>> classesMethods : entry.getValue().entrySet()) {
               if (classesMethods.getValue() != null && !classesMethods.getValue().isEmpty()) {
-                launcher.withJvmTestMethods(classesMethods.getKey(), classesMethods.getValue());
+                launcher.withJvmTestMethods(classesMethods.getKey() + '*',
+                    classesMethods.getValue());
               } else {
-                launcher.withJvmTestClasses(classesMethods.getKey());
+                launcher.withJvmTestClasses(classesMethods.getKey() + '*');
               }
             }
             launcher.withArguments(args);

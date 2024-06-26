@@ -477,7 +477,7 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
-  void testRunTestsProjectServer() {
+  void testPassingJunit() {
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
       // get targets
       WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
@@ -496,8 +496,9 @@ class BuildTargetServerIntegrationTest {
       gradleBuildServer.buildTargetCompile(compileParams).join();
       client.clearMessages();
 
-      // run passing tests
       BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
+
+      // run passing tests
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.PassingTests");
       ScalaTestClassesItem passingTestClassesItem =
@@ -544,6 +545,8 @@ class BuildTargetServerIntegrationTest {
             "PassingTests")));
       assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
           "hasDisplayName()", List.of("Display Name", "PassingTests")));
+      assertNotNull(client.getTestStart("isParameterized(int)", null, null,
+          List.of("Test suite 'isParameterized(int)'", "PassingTests")));
       assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
           "isParameterized(int)[1]", List.of("0", "Test suite 'isParameterized(int)'",
             "PassingTests")));
@@ -554,15 +557,18 @@ class BuildTargetServerIntegrationTest {
           "isParameterized(int)[3]", List.of("2", "Test suite 'isParameterized(int)'",
             "PassingTests")));
 
+      // TODO - this check is for logging why github action fails.  Remove later
+      assertNotNull(client.getTestFinish("Nonsense", null, null, List.of("PassingTests")));
       assertNotNull(client.getTestFinish("com.example.project.PassingTests",
           "com.example.project.PassingTests", null,
           List.of("PassingTests")));
-
       assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
           "isBasicTest()", List.of("Test isBasicTest()(com.example.project.PassingTests)",
             "PassingTests")));
       assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
           "hasDisplayName()", List.of("Display Name", "PassingTests")));
+      assertNotNull(client.getTestFinish("isParameterized(int)", null, null,
+          List.of("Test suite 'isParameterized(int)'", "PassingTests")));
       assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
           "isParameterized(int)[1]", List.of("0", "Test suite 'isParameterized(int)'",
             "PassingTests")));
@@ -573,6 +579,30 @@ class BuildTargetServerIntegrationTest {
           "isParameterized(int)[3]", List.of("2", "Test suite 'isParameterized(int)'",
             "PassingTests")));
       client.clearMessages();
+    });
+  }
+
+  @Test
+  void testFailingJunit() {
+    withNewTestServer("java-tests", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
 
       // run failing tests
       List<String> failingMainClasses = new LinkedList<>();
@@ -627,6 +657,30 @@ class BuildTargetServerIntegrationTest {
           .contains("at com.example.project.FailingTests.failingTest(FailingTests.java:14)"));
 
       client.clearMessages();
+    });
+  }
+
+  @Test
+  void testStackTraceJunit() {
+    withNewTestServer("java-tests", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
 
       // run stacktrace test
       List<String> stacktraceMainClasses = new LinkedList<>();
@@ -684,6 +738,30 @@ class BuildTargetServerIntegrationTest {
           "at com.example.project.ExceptionInBefore.beforeAll(ExceptionInBefore.java:13)"));
 
       client.clearMessages();
+    });
+  }
+
+  @Test
+  void testSingleMethodJunit() {
+    withNewTestServer("java-tests", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
 
       // run single method tests
       List<BuildTargetIdentifier> singleBt = new ArrayList<>();
@@ -752,6 +830,30 @@ class BuildTargetServerIntegrationTest {
           "envVarSetTest()", List.of("Test envVarSetTest()(com.example.project.EnvVarTests)",
             "EnvVarTests")));
       client.clearMessages();
+    });
+  }
+
+  @Test
+  void testComplexHierarchyJunit() {
+    withNewTestServer("java-tests", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
 
       // run complex tests
       List<String> complexTestMainClasses = new LinkedList<>();
@@ -852,8 +954,163 @@ class BuildTargetServerIntegrationTest {
     });
   }
 
+  
   @Test
-  void testCleanStraightToTest() {
+  void testNestedJunit() {
+    withNewTestServer("java-tests", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
+
+      // run nested tests
+      List<String> nestedTestMainClasses = new LinkedList<>();
+      nestedTestMainClasses.add("com.example.project.NestedTests");
+      ScalaTestClassesItem nestedTestClassesItem =
+          new ScalaTestClassesItem(btId, nestedTestMainClasses);
+      List<ScalaTestClassesItem> nestedTestClasses = new LinkedList<>();
+      nestedTestClasses.add(nestedTestClassesItem);
+      ScalaTestParams nestedScalaTestParams = new ScalaTestParams();
+      nestedScalaTestParams.setTestClasses(nestedTestClasses);
+      TestParams nestedTestParams = new TestParams(btIds);
+      nestedTestParams.setOriginId("originId");
+      nestedTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
+      nestedTestParams.setData(nestedScalaTestParams);
+      TestResult nestedTestResult =
+          gradleBuildServer.buildTargetTest(nestedTestParams).join();
+      assertEquals(StatusCode.OK, nestedTestResult.getStatusCode());
+      assertEquals("originId", nestedTestResult.getOriginId());
+      client.waitOnStartReports(9);
+      client.waitOnFinishReports(10);
+      client.waitOnCompileTasks(2);
+      client.waitOnCompileReports(2);
+      client.waitOnLogMessages(0);
+      client.waitOnTestStarts(7);
+      client.waitOnTestFinishes(7);
+      client.waitOnTestReports(1);
+      for (CompileReport message : client.compileReports) {
+        assertTrue(message.getNoOp());
+      }
+      for (TaskFinishParams message : client.finishReports) {
+        assertEquals(StatusCode.OK, message.getStatus());
+      }
+      TestReport nestedTestsReport = client.testReports.get(0);
+      assertEquals(3, nestedTestsReport.getPassed());
+      assertEquals(0, nestedTestsReport.getCancelled());
+      assertEquals(0, nestedTestsReport.getFailed());
+      assertEquals(0, nestedTestsReport.getIgnored());
+      assertEquals(0, nestedTestsReport.getSkipped());
+
+      assertNotNull(client.getTestStart(
+          "com.example.project.NestedTests",
+          "com.example.project.NestedTests",
+          null,
+          List.of("NestedTests")));
+      assertNotNull(client.getTestStart(
+          "com.example.project.NestedTests$NestedClassB",
+          "com.example.project.NestedTests$NestedClassB",
+          null,
+          List.of("NestedClassB", "NestedTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.NestedTests$NestedClassB",
+          "test()",
+          List.of("Test test()(com.example.project.NestedTests$NestedClassB)",
+            "NestedClassB",
+            "NestedTests")));
+      assertNotNull(client.getTestStart(
+          "com.example.project.NestedTests$NestedClassB$ADeeperClass",
+          "com.example.project.NestedTests$NestedClassB$ADeeperClass",
+          null,
+          List.of("ADeeperClass",
+            "NestedClassB",
+            "NestedTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.NestedTests$NestedClassB$ADeeperClass",
+          "test()",
+           List.of("Test test()(com.example.project.NestedTests$NestedClassB$ADeeperClass)",
+             "ADeeperClass",
+             "NestedClassB",
+             "NestedTests")));
+      assertNotNull(client.getTestStart(
+          "com.example.project.NestedTests$NestedClassA",
+          "com.example.project.NestedTests$NestedClassA",
+          null,
+          List.of("NestedClassA",
+            "NestedTests")));
+      assertNotNull(client.getTestStart(null,
+          "com.example.project.NestedTests$NestedClassA",
+          "test()",
+          List.of("Test test()(com.example.project.NestedTests$NestedClassA)",
+            "NestedClassA",
+            "NestedTests")));
+
+      
+      assertNotNull(client.getTestFinish(
+          "com.example.project.NestedTests",
+          "com.example.project.NestedTests",
+          null,
+          List.of("NestedTests")));
+      assertNotNull(client.getTestFinish(
+          "com.example.project.NestedTests$NestedClassB",
+          "com.example.project.NestedTests$NestedClassB",
+          null,
+          List.of("NestedClassB", "NestedTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.NestedTests$NestedClassB",
+          "test()",
+          List.of("Test test()(com.example.project.NestedTests$NestedClassB)",
+            "NestedClassB",
+            "NestedTests")));
+      assertNotNull(client.getTestFinish(
+          "com.example.project.NestedTests$NestedClassB$ADeeperClass",
+          "com.example.project.NestedTests$NestedClassB$ADeeperClass",
+          null,
+          List.of("ADeeperClass",
+            "NestedClassB",
+            "NestedTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.NestedTests$NestedClassB$ADeeperClass",
+          "test()",
+            List.of("Test test()(com.example.project.NestedTests$NestedClassB$ADeeperClass)",
+              "ADeeperClass",
+              "NestedClassB",
+              "NestedTests")));
+      assertNotNull(client.getTestFinish(
+          "com.example.project.NestedTests$NestedClassA",
+          "com.example.project.NestedTests$NestedClassA",
+          null,
+          List.of("NestedClassA",
+            "NestedTests")));
+      assertNotNull(client.getTestFinish(null,
+          "com.example.project.NestedTests$NestedClassA",
+          "test()",
+          List.of("Test test()(com.example.project.NestedTests$NestedClassA)",
+            "NestedClassA",
+            "NestedTests")));
+      client.clearMessages();
+    });
+  }
+
+  @Test
+  void testCleanStraightToJunit() {
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
       // get targets
       WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
@@ -904,7 +1161,7 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
-  void testFailingServer() {
+  void testFailingCompilation() {
     withNewTestServer("fail-compilation", (gradleBuildServer, client) -> {
       // get targets
       WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
@@ -965,7 +1222,7 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
-  void testTestNg() {
+  void testPassingTestNg() {
     withNewTestServer("testng", (gradleBuildServer, client) -> {
       // get targets
       WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
@@ -985,8 +1242,9 @@ class BuildTargetServerIntegrationTest {
       gradleBuildServer.buildTargetCompile(compileParams).join();
       client.clearMessages();
 
-      // run passing tests
       BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "testng [test]");
+
+      // run passing tests
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.PassingTests");
       ScalaTestClassesItem passingTestClassesItem =
@@ -1070,6 +1328,31 @@ class BuildTargetServerIntegrationTest {
             List.of("Test method isParameterized[2](2)(com.example.project.PassingTests)",
             "Test class com.example.project.PassingTests")));
       client.clearMessages();
+    });
+  }
+
+  @Test
+  void testFailingTestNg() {
+    withNewTestServer("testng", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+      client.clearMessages();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "testng [test]");
 
       // run failing tests
       List<String> failingMainClasses = new LinkedList<>();
@@ -1125,6 +1408,31 @@ class BuildTargetServerIntegrationTest {
           .contains("at com.example.project.FailingTests.failingTest(FailingTests.java:13)"));
 
       client.clearMessages();
+    });
+  }
+
+  @Test
+  void testStackTraceTestNg() {
+    withNewTestServer("testng", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+      client.clearMessages();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "testng [test]");
 
       // run stacktrace test
       List<String> stacktraceMainClasses = new LinkedList<>();
@@ -1191,6 +1499,31 @@ class BuildTargetServerIntegrationTest {
           "Test class com.example.project.ExceptionInBefore")));
 
       client.clearMessages();
+    });
+  }
+
+  @Test
+  void testSingleMethodTestNg() {
+    withNewTestServer("testng", (gradleBuildServer, client) -> {
+      // get targets
+      WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
+          .join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      // clean targets
+      CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
+      gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
+      client.clearMessages();
+
+      // compile targets
+      CompileParams compileParams = new CompileParams(btIds);
+      compileParams.setOriginId("originId");
+      gradleBuildServer.buildTargetCompile(compileParams).join();
+      client.clearMessages();
+
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "testng [test]");
 
       // run single method tests
       List<BuildTargetIdentifier> singleBt = new ArrayList<>();
