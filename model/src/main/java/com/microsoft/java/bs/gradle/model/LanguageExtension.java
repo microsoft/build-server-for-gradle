@@ -3,6 +3,8 @@
 
 package com.microsoft.java.bs.gradle.model;
 
+import org.gradle.internal.impldep.javax.annotation.Nullable;
+
 import java.io.Serializable;
 
 /**
@@ -10,10 +12,16 @@ import java.io.Serializable;
  */
 public interface LanguageExtension extends Serializable {
 
-  /**
-   * clones a language extension.
-   * needed for conversion across classloaders.
-   * must return Object.
-   */
-  Object convert(ClassLoader classLoader);
+  @Nullable
+  boolean isJavaExtension();
+
+  @Nullable
+  boolean isScalaExtension();
+
+  @Nullable
+  JavaExtension getAsJavaExtension();
+
+  @Nullable
+  ScalaExtension getAsScalaExtension();
+
 }

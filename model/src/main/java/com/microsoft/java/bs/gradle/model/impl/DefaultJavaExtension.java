@@ -4,9 +4,9 @@
 package com.microsoft.java.bs.gradle.model.impl;
 
 import com.microsoft.java.bs.gradle.model.JavaExtension;
+import com.microsoft.java.bs.gradle.model.ScalaExtension;
 
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Objects;
 
@@ -25,29 +25,6 @@ public class DefaultJavaExtension implements JavaExtension {
   private String targetCompatibility;
 
   private List<String> compilerArgs;
-
-  @Override
-  public Object convert(ClassLoader classLoader) {
-    try {
-      Class<?> destinationClass = classLoader.loadClass(getClass().getName());
-      Object result = destinationClass.getConstructor().newInstance();
-      destinationClass.getDeclaredMethod("setJavaHome", File.class)
-          .invoke(result, getJavaHome());
-      destinationClass.getDeclaredMethod("setJavaVersion", String.class)
-          .invoke(result, getJavaVersion());
-      destinationClass.getDeclaredMethod("setSourceCompatibility", String.class)
-          .invoke(result, getSourceCompatibility());
-      destinationClass.getDeclaredMethod("setTargetCompatibility", String.class)
-          .invoke(result, getTargetCompatibility());
-      destinationClass.getDeclaredMethod("setCompilerArgs", List.class)
-          .invoke(result, getCompilerArgs());
-      return result;
-    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
-              | NoSuchMethodException | ClassNotFoundException | InstantiationException
-              | SecurityException e) {
-      throw new IllegalStateException("Error converting " + getClass().getName(), e);
-    }
-  }
 
   @Override
   public File getJavaHome() {
@@ -118,5 +95,25 @@ public class DefaultJavaExtension implements JavaExtension {
         && Objects.equals(sourceCompatibility, other.sourceCompatibility)
         && Objects.equals(targetCompatibility, other.targetCompatibility)
         && Objects.equals(compilerArgs, other.compilerArgs);
+  }
+
+  @Override
+  public boolean isJavaExtension() {
+    return true;
+  }
+
+  @Override
+  public boolean isScalaExtension() {
+    return false;
+  }
+
+  @Override
+  public JavaExtension getAsJavaExtension() {
+    return this;
+  }
+
+  @Override
+  public ScalaExtension getAsScalaExtension() {
+    return null;
   }
 }

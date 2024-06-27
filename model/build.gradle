@@ -1,3 +1,7 @@
 java {
   sourceCompatibility = JavaVersion.VERSION_1_8
 }
+
+dependencies {
+  implementation 'org.gradle:gradle-tooling-api:8.7'
+}

@@ -25,6 +25,15 @@ public class DefaultJavaLanguage implements SupportedLanguage<JavaExtension> {
 
   @Override
   public JavaExtension getExtension(Map<String, LanguageExtension> extensions) {
-    return (JavaExtension) extensions.get(getBspName());
+    LanguageExtension extension = extensions.get(getBspName());
+    if (extension == null) {
+      return null;
+    }
+    if (extension.isJavaExtension()) {
+      return extension.getAsJavaExtension();
+    }
+    throw new IllegalArgumentException(
+        "LanguageExtension: " + extension + " is not a JavaExtension."
+    );
   }
 }
