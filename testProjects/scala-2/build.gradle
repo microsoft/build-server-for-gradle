@@ -1,3 +1,5 @@
+import org.gradle.util.GradleVersion
+
 plugins {
 	id 'scala'
 	id 'java-gradle-plugin'
@@ -8,9 +10,20 @@ repositories {
 }
 
 dependencies {
-	implementation('org.scala-lang:scala-library:2.13.12')
+	// Gradle switched from `compile` to `implementation`
+	if (GradleVersion.current().compareTo(GradleVersion.version("3.4")) >= 0)
+		implementation('org.scala-lang:scala-library:2.13.12')
+	else
+		compile('org.scala-lang:scala-library:2.13.12')
 }
 
 tasks.withType(ScalaCompile) {
-	scalaCompileOptions.additionalParameters = ["-deprecation"]
+	scalaCompileOptions.deprecation = true
+	scalaCompileOptions.unchecked = true
+	scalaCompileOptions.debugLevel = "notailcalls"
+	scalaCompileOptions.optimize = true
+	scalaCompileOptions.encoding = "utf8"
+	scalaCompileOptions.loggingLevel = "verbose"
+	scalaCompileOptions.loggingPhases = ["erasure", "lambdalift"]
+	scalaCompileOptions.additionalParameters = ["-foo"]
 }

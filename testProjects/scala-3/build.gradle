@@ -12,6 +12,13 @@ dependencies {
 }
 
 tasks.withType(ScalaCompile) {
-	scalaCompileOptions.additionalParameters = ["-deprecation"]
+	scalaCompileOptions.deprecation = true
+	scalaCompileOptions.unchecked = true
+	scalaCompileOptions.debugLevel = "notailcalls"
+	scalaCompileOptions.optimize = true
+	scalaCompileOptions.encoding = "utf8"
+	scalaCompileOptions.loggingLevel = "verbose"
+	scalaCompileOptions.loggingPhases = ["erasure", "lambdalift"]
+	scalaCompileOptions.additionalParameters = ["-foo"]
 }
 

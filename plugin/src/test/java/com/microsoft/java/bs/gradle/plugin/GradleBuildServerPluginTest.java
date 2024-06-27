@@ -7,11 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
@@ -19,10 +23,10 @@ import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
+import org.gradle.util.GradleVersion;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledOnJre;
-import org.junit.jupiter.api.condition.JRE;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -41,28 +45,142 @@ class GradleBuildServerPluginTest {
     ).normalize();
   }
 
-  @Test
-  void testModelBuilder() throws IOException {
-    File projectDir = projectPath.resolve("junit5-jupiter-starter-gradle").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
+  private GradleSourceSets getGradleSourceSets(ProjectConnection connect) throws IOException {
+    ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+    File initScript = PluginHelper.getInitScript();
+    modelBuilder
+        .addArguments("--init-script", initScript.getAbsolutePath())
+        .addArguments("-Dorg.gradle.daemon.idletimeout=10")
+        .addArguments("-Dorg.gradle.vfs.watch=false")
+        .addArguments("-Dorg.gradle.logging.level=quiet")
+        .addJvmArguments("-Dbsp.gradle.supportedLanguages="
+            + String.join(",", SupportedLanguages.allBspNames));
+    return new DefaultGradleSourceSets(modelBuilder.get());
+  }
+
+  private interface ConnectionConsumer {
+    void accept(ProjectConnection connection) throws IOException;
+  }
+  
+  private void withConnection(File projectDir, GradleVersion gradleVersion,
+      ConnectionConsumer consumer) throws IOException {
+    GradleConnector connector = GradleConnector.newConnector()
+        .forProjectDirectory(projectDir)
+        .useGradleVersion(gradleVersion.getVersion());
     try (ProjectConnection connect = connector.connect()) {
+      consumer.accept(connect);
+    } finally {
+      connector.disconnect();
+    }
+  }
+
+  private void withSourceSets(String projectName, GradleVersion gradleVersion,
+      Consumer<GradleSourceSets> consumer) throws IOException {
+    File projectDir = projectPath.resolve(projectName).toFile();
+    withConnection(projectDir, gradleVersion, connect -> {
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
-      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        assertNotNull(gradleSourceSet.getGradleVersion());
-        assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
-        assertEquals(":", gradleSourceSet.getProjectPath());
+        assertEquals(gradleVersion.getVersion(), gradleSourceSet.getGradleVersion());
+        assertEquals(projectName, gradleSourceSet.getProjectName());
         assertEquals(projectDir, gradleSourceSet.getProjectDir());
         assertEquals(projectDir, gradleSourceSet.getRootDir());
+      }
+      consumer.accept(gradleSourceSets);
+    });
+  }
+
+  private static int getJavaVersion() {
+    String version = System.getProperty("java.version");
+    if (version.startsWith("1.")) {
+      version = version.substring(2, 3);
+    } else {
+      int dot = version.indexOf(".");
+      if (dot != -1) {
+        version = version.substring(0, dot);
+      }
+    }
+    return Integer.parseInt(version);
+  }
+
+  private static class GradleJreVersion {
+    final String gradleVersion;
+    final int jreVersion;
+
+    GradleJreVersion(String gradleVersion, int jreVersion) {
+      this.gradleVersion = gradleVersion;
+      this.jreVersion = jreVersion;
+    }
+
+    GradleVersion getGradleVersion() {
+      return GradleVersion.version(gradleVersion);
+    }
+  }
+  
+  /**
+   * create a list of gradle versions that work with the runtime JRE.
+   */
+  static Stream<GradleVersion> versionProvider() {
+    int javaVersion = getJavaVersion();
+    // change the last version in the below list to point to the highest Gradle version supported
+    // if the Gradle API changes then keep that version forever and add a comment as to why
+    return Stream.of(
+      // earliest supported version
+      new GradleJreVersion("2.12", 8),
+      // java source/target options specified in 2.14
+      // tooling api jar name changed from gradle-tooling-api to gradle-api in 3.0
+      new GradleJreVersion("3.0", 8),
+      // artifacts view added in 3.3
+      // RuntimeClasspathConfigurationName added to sourceset in 3.4
+      // Test#getTestClassesDir -> Test#getTestClassesDirs in 4.0
+      // sourceSet#getJava#getOutputDir added in 4.0
+      new GradleJreVersion("4.2.1", 8),
+      // CompileOptions#getAnnotationProcessorGeneratedSourcesDirectory added in 4.3
+      new GradleJreVersion("4.3.1", 9),
+      // SourceSetContainer added to project#getExtensions in 5.0
+      new GradleJreVersion("5.0", 11),
+      // AbstractArchiveTask#getArchiveFile -> AbstractArchiveTask#getArchiveFile in 5.1
+      // annotation processor dirs auto created in 5.2
+      new GradleJreVersion("5.2", 11),
+      // sourceSet#getJava#getOutputDir -> sourceSet#getJava#getClassesDirectory in 6.1
+      new GradleJreVersion("6.1", 13),
+      // DefaultCopySpec#getChildren changed from Iterable to Collection in 6.2
+      new GradleJreVersion("6.2", 13),
+      // CompileOptions#getGeneratedSourceOutputDirectory added in 6.3
+      new GradleJreVersion("6.3", 14),
+      // CompileOptions#getRelease added in 6.6
+      new GradleJreVersion("6.6", 13),
+      // ScalaSourceDirectorySet added to project#getExtensions in 7.1
+      new GradleJreVersion("7.1", 16),
+      // Scala 3 support added in 7.3
+      new GradleJreVersion("7.3", 17),
+      // FoojayToolchainsPlugin requires >= 7.6
+      new GradleJreVersion("7.6.1", 19),
+      // JDK source/target options changed from 1.9 -> 9 in 8.0
+      new GradleJreVersion("8.0", 19),
+      // highest supported version
+      new GradleJreVersion("8.8", 22)
+    ).filter(version -> version.jreVersion >= javaVersion)
+     .map(GradleJreVersion::getGradleVersion);
+  }
+
+  @ParameterizedTest(name = "testModelBuilder {0}")
+  @MethodSource("versionProvider")
+  void testModelBuilder(GradleVersion gradleVersion) throws IOException {
+    withSourceSets("junit5-jupiter-starter-gradle", gradleVersion, gradleSourceSets -> {
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        assertEquals(":", gradleSourceSet.getProjectPath());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
             || gradleSourceSet.getSourceSetName().equals("test"));
         assertTrue(gradleSourceSet.getClassesTaskName().equals(":classes")
             || gradleSourceSet.getClassesTaskName().equals(":testClasses"));
         assertFalse(gradleSourceSet.getCompileClasspath().isEmpty());
-        assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
-        assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
-        assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
+        assertEquals(1, gradleSourceSet.getSourceDirs().size());
+        // annotation processor dirs weren't auto created before 5.2
+        if (gradleVersion.compareTo(GradleVersion.version("5.2")) >= 0) {
+          assertEquals(1, gradleSourceSet.getGeneratedSourceDirs().size());
+        }
+        assertEquals(1, gradleSourceSet.getResourceDirs().size());
         assertNotNull(gradleSourceSet.getSourceOutputDir());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
 
@@ -71,9 +189,16 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
             dependency -> dependency.getModule().equals("a.jar")
         ));
-        assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
-            dependency -> dependency.getModule().contains("gradle-api")
-        ));
+
+        if (gradleVersion.compareTo(GradleVersion.version("3.0")) >= 0) {
+          assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
+              dependency -> dependency.getModule().contains("gradle-api")
+          ));
+        } else {
+          assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
+              dependency -> dependency.getModule().contains("gradle-tooling-api")
+          ));
+        }
 
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
@@ -83,60 +208,42 @@ class GradleBuildServerPluginTest {
         assertNotNull(javaExtension.getTargetCompatibility());
         assertNotNull(javaExtension.getCompilerArgs());
       }
-    }
+    });
   }
 
-  @Test
-  @EnabledOnJre({JRE.JAVA_8})
-  void testGetSourceContainerFromOldGradle() throws IOException {
-    File projectDir = projectPath.resolve("non-java").toFile();
-    GradleConnector connector = GradleConnector.newConnector()
-        .forProjectDirectory(projectDir)
-        .useGradleVersion("4.8");
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+  @ParameterizedTest(name = "testGetSourceContainerFromOldGradle {0}")
+  @MethodSource("versionProvider")
+  void testGetSourceContainerFromOldGradle(GradleVersion gradleVersion) throws IOException {
+    withSourceSets("non-java", gradleVersion, gradleSourceSets -> {
       assertEquals(0, gradleSourceSets.getGradleSourceSets().size());
-    }
+    });
   }
 
-  @Test
-  @EnabledOnJre({JRE.JAVA_8})
-  void testGetOutputLocationFromOldGradle() throws IOException {
-    File projectDir = projectPath.resolve("legacy-gradle").toFile();
-    GradleConnector connector = GradleConnector.newConnector()
-        .forProjectDirectory(projectDir)
-        .useGradleVersion("5.6.4");
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+  @ParameterizedTest(name = "testGetOutputLocationFromOldGradle {0}")
+  @MethodSource("versionProvider")
+  void testGetOutputLocationFromOldGradle(GradleVersion gradleVersion) throws IOException {
+    withSourceSets("legacy-gradle", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
-    }
+    });
   }
 
-  @Test
-  @EnabledOnJre({JRE.JAVA_8})
-  void testGetAnnotationProcessorGeneratedLocation() throws IOException {
+  @ParameterizedTest(name = "testGetAnnotationProcessorGeneratedLocation {0}")
+  @MethodSource("versionProvider")
+  void testGetAnnotationProcessorGeneratedLocation(GradleVersion gradleVersion) throws IOException {
     // this test case is to ensure that the plugin won't throw no such method error
     // for JavaCompile.getAnnotationProcessorGeneratedSourcesDirectory()
-    File projectDir = projectPath.resolve("legacy-gradle").toFile();
-    GradleConnector connector = GradleConnector.newConnector()
-        .forProjectDirectory(projectDir)
-        .useGradleVersion("4.2.1");
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+    withSourceSets("legacy-gradle", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
-    }
+    });
   }
 
-  @Test
-  void testSourceInference() throws IOException {
+  @ParameterizedTest(name = "testSourceInference {0}")
+  @MethodSource("versionProvider")
+  void testSourceInference(GradleVersion gradleVersion) throws IOException {
     File projectDir = projectPath.resolve("infer-source-roots").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-
-    try (ProjectConnection connect = connector.connect()) {
+    withConnection(projectDir, gradleVersion, connect -> {
       connect.newBuild().forTasks("clean", "compileJava").run();
       GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
-
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       int generatedSourceDirCount = 0;
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
@@ -146,17 +253,27 @@ class GradleBuildServerPluginTest {
                 .endsWith("build/generated/sources")
         ));
       }
-      assertEquals(4, generatedSourceDirCount);
-    }
+      
+      // annotation processor dirs weren't auto created before 5.2
+      if (gradleVersion.compareTo(GradleVersion.version("5.2")) >= 0) {
+        assertEquals(4, generatedSourceDirCount);
+      } else {
+        assertEquals(2, generatedSourceDirCount);
+      }
+    });
   }
-  
-  @Test
-  void testJavaCompilerArgs1() throws IOException {
-    File projectDir = projectPath.resolve("java-compilerargs-1").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+
+  @ParameterizedTest(name = "testJavaCompilerArgs1 {0}")
+  @MethodSource("versionProvider")
+  void testJavaCompilerArgs1(GradleVersion gradleVersion) throws IOException {
+    // Gradle uses 1.9 in earlier versions to indicate JDK 9
+    final String targetVersion;
+    if (gradleVersion.compareTo(GradleVersion.version("8.0")) >= 0) {
+      targetVersion = "9";
+    } else {
+      targetVersion = "1.9";
+    }
+    withSourceSets("java-compilerargs-1", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
@@ -165,24 +282,27 @@ class GradleBuildServerPluginTest {
         assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
         assertFalse(args.contains("|--release|"), () -> "Available args: " + args);
-        assertTrue(args.contains("|-source|1.8"), () -> "Available args: " + args);
-        assertTrue(args.contains("|-target|9"), () -> "Available args: " + args);
+        if (gradleVersion.compareTo(GradleVersion.version("3.0")) >= 0) {
+          assertTrue(args.contains("|-source|1.8"), () -> "Available args: " + args);
+        }
+        assertTrue(args.contains("|-target|" + targetVersion), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("1.8", javaExtension.getSourceCompatibility(),
-            () -> "Available args: " + args);
-        assertEquals("9", javaExtension.getTargetCompatibility(),
+        if (gradleVersion.compareTo(GradleVersion.version("3.0")) >= 0) {
+          assertEquals("1.8", javaExtension.getSourceCompatibility(),
+              () -> "Available args: " + args);
+        }
+        assertEquals(targetVersion, javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
-    }
+    });
   }
-  
-  @Test
-  void testJavaCompilerArgs2() throws IOException {
-    File projectDir = projectPath.resolve("java-compilerargs-2").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+
+  @ParameterizedTest(name = "testJavaCompilerArgs2 {0}")
+  @MethodSource("versionProvider")
+  void testJavaCompilerArgs2(GradleVersion gradleVersion) throws IOException {
+    // JavaCompile#options#release was added in Gradle 6.6
+    assumeTrue(gradleVersion.compareTo(GradleVersion.version("6.6")) >= 0);
+    withSourceSets("java-compilerargs-2", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
@@ -199,16 +319,13 @@ class GradleBuildServerPluginTest {
         assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
-    }
+    });
   }
-  
-  @Test
-  void testJavaCompilerArgs3() throws IOException {
-    File projectDir = projectPath.resolve("java-compilerargs-3").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+
+  @ParameterizedTest(name = "testJavaCompilerArgs3 {0}")
+  @MethodSource("versionProvider")
+  void testJavaCompilerArgs3(GradleVersion gradleVersion) throws IOException {
+    withSourceSets("java-compilerargs-3", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
@@ -225,16 +342,13 @@ class GradleBuildServerPluginTest {
         assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
-    }
+    });
   }
-  
-  @Test
-  void testJavaCompilerArgs4() throws IOException {
-    File projectDir = projectPath.resolve("java-compilerargs-4").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+
+  @ParameterizedTest(name = "testJavaCompilerArgs4 {0}")
+  @MethodSource("versionProvider")
+  void testJavaCompilerArgs4(GradleVersion gradleVersion) throws IOException {
+    withSourceSets("java-compilerargs-4", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
@@ -251,16 +365,13 @@ class GradleBuildServerPluginTest {
         assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
-    }
+    });
   }
-  
-  @Test
-  void testJavaCompilerArgs5() throws IOException {
-    File projectDir = projectPath.resolve("java-compilerargs-5").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+
+  @ParameterizedTest(name = "testJavaCompilerArgs5 {0}")
+  @MethodSource("versionProvider")
+  void testJavaCompilerArgs5(GradleVersion gradleVersion) throws IOException {
+    withSourceSets("java-compilerargs-5", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
@@ -277,16 +388,15 @@ class GradleBuildServerPluginTest {
         assertEquals("9", javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
-    }
+    });
   }
-  
-  @Test
-  void testJavaCompilerArgs6() throws IOException {
-    File projectDir = projectPath.resolve("java-compilerargs-6").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+
+  @ParameterizedTest(name = "testJavaCompilerArgs6 {0}")
+  @MethodSource("versionProvider")
+  void testJavaCompilerArgs6(GradleVersion gradleVersion) throws IOException {
+    // Gradle doesn't set source/target unless specified until version 2.14
+    assumeTrue(gradleVersion.compareTo(GradleVersion.version("2.14")) >= 0);
+    withSourceSets("java-compilerargs-6", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
@@ -302,16 +412,15 @@ class GradleBuildServerPluginTest {
         assertFalse(javaExtension.getTargetCompatibility().isEmpty(),
             () -> "Available args: " + args);
       }
-    }
+    });
   }
 
-  @Test
-  void testJavaCompilerArgsToolchain() throws IOException {
-    File projectDir = projectPath.resolve("java-compilerargs-toolchain").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+  @ParameterizedTest(name = "testJavaCompilerArgsToolchain {0}")
+  @MethodSource("versionProvider")
+  void testJavaCompilerArgsToolchain(GradleVersion gradleVersion) throws IOException {
+    // FoojayToolchainsPlugin needs Gradle version 7.6 or higher
+    assumeTrue(gradleVersion.compareTo(GradleVersion.version("7.6")) >= 0);
+    withSourceSets("java-compilerargs-toolchain", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
@@ -327,39 +436,28 @@ class GradleBuildServerPluginTest {
         assertFalse(javaExtension.getTargetCompatibility().isEmpty(),
             () -> "Available args: " + args);
       }
-    }
+    });
   }
 
-  private GradleSourceSets getGradleSourceSets(ProjectConnection connect) throws IOException {
-    ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
-    File initScript = PluginHelper.getInitScript();
-    modelBuilder.addArguments("--init-script", initScript.getAbsolutePath());
-    modelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages="
-            + String.join(",", SupportedLanguages.allBspNames));
-    return new DefaultGradleSourceSets(modelBuilder.get());
-  }
-
-  @Test
-  void testScala2ModelBuilder() throws IOException {
-    File projectDir = projectPath.resolve("scala-2").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+  @ParameterizedTest(name = "testScala2ModelBuilder {0}")
+  @MethodSource("versionProvider")
+  void testScala2ModelBuilder(GradleVersion gradleVersion) throws IOException {
+    withSourceSets("scala-2", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         assertEquals("scala-2", gradleSourceSet.getProjectName());
         assertEquals(":", gradleSourceSet.getProjectPath());
-        assertEquals(projectDir, gradleSourceSet.getProjectDir());
-        assertEquals(projectDir, gradleSourceSet.getRootDir());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
                 || gradleSourceSet.getSourceSetName().equals("test"));
         assertTrue(gradleSourceSet.getClassesTaskName().equals(":classes")
                 || gradleSourceSet.getClassesTaskName().equals(":testClasses"));
         assertFalse(gradleSourceSet.getCompileClasspath().isEmpty());
-        assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
-        assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
-        assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
+        assertEquals(2, gradleSourceSet.getSourceDirs().size());
+        // annotation processor dirs weren't auto created before 5.2
+        if (gradleVersion.compareTo(GradleVersion.version("5.2")) >= 0) {
+          assertEquals(1, gradleSourceSet.getGeneratedSourceDirs().size());
+        }
+        assertEquals(1, gradleSourceSet.getResourceDirs().size());
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
         assertNotNull(gradleSourceSet.getSourceOutputDir());
@@ -373,11 +471,27 @@ class GradleBuildServerPluginTest {
         assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
                 dependency -> dependency.getModule().equals("scala-library")
         ));
+        assertTrue(gradleSourceSet.getModuleDependencies().stream().anyMatch(
+            dependency -> dependency.getArtifacts().stream()
+              .anyMatch(artifact -> artifact.getUri().toString()
+                .contains("scala-library-2.13.12.jar"))
+        ));
         ScalaExtension scalaExtension = SupportedLanguages.SCALA.getExtension(gradleSourceSet);
         assertNotNull(scalaExtension);
         assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
         assertEquals("2.13.12", scalaExtension.getScalaVersion());
         assertEquals("2.13", scalaExtension.getScalaBinaryVersion());
+        List<String> args = scalaExtension.getScalaCompilerArgs();
+        assertTrue(args.contains("-deprecation"), () -> "Available args: " + args);
+        assertTrue(args.contains("-unchecked"), () -> "Available args: " + args);
+        assertTrue(args.contains("-g:notailcalls"), () -> "Available args: " + args);
+        assertTrue(args.contains("-optimise"), () -> "Available args: " + args);
+        assertTrue(args.contains("-encoding"), () -> "Available args: " + args);
+        assertTrue(args.contains("utf8"), () -> "Available args: " + args);
+        assertTrue(args.contains("-verbose"), () -> "Available args: " + args);
+        assertTrue(args.contains("-Ylog:erasure"), () -> "Available args: " + args);
+        assertTrue(args.contains("-Ylog:lambdalift"), () -> "Available args: " + args);
+        assertTrue(args.contains("-foo"), () -> "Available args: " + args);
 
         assertTrue(gradleSourceSet.getCompileClasspath().stream().anyMatch(
                 file -> file.getName().equals("scala-library-2.13.12.jar")));
@@ -388,30 +502,30 @@ class GradleBuildServerPluginTest {
         assertTrue(scalaExtension.getScalaCompilerArgs().stream()
                 .anyMatch(arg -> arg.equals("-deprecation")));
       }
-    }
+    });
   }
 
-  @Test
-  void testScala3ModelBuilder() throws IOException {
-    File projectDir = projectPath.resolve("scala-3").toFile();
-    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDir);
-    connector.useBuildDistribution();
-    try (ProjectConnection connect = connector.connect()) {
-      GradleSourceSets gradleSourceSets = getGradleSourceSets(connect);
+  @ParameterizedTest(name = "testScala3ModelBuilder {0}")
+  @MethodSource("versionProvider")
+  void testScala3ModelBuilder(GradleVersion gradleVersion) throws IOException {
+    // Scala 3 was added in Gradle 7.3
+    assumeTrue(gradleVersion.compareTo(GradleVersion.version("7.3")) >= 0);
+    withSourceSets("scala-3", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         assertEquals("scala-3", gradleSourceSet.getProjectName());
         assertEquals(":", gradleSourceSet.getProjectPath());
-        assertEquals(projectDir, gradleSourceSet.getProjectDir());
-        assertEquals(projectDir, gradleSourceSet.getRootDir());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
                 || gradleSourceSet.getSourceSetName().equals("test"));
         assertTrue(gradleSourceSet.getClassesTaskName().equals(":classes")
                 || gradleSourceSet.getClassesTaskName().equals(":testClasses"));
         assertFalse(gradleSourceSet.getCompileClasspath().isEmpty());
-        assertTrue(gradleSourceSet.getSourceDirs().size() > 0);
-        assertTrue(gradleSourceSet.getGeneratedSourceDirs().size() > 0);
-        assertTrue(gradleSourceSet.getResourceDirs().size() > 0);
+        assertEquals(2, gradleSourceSet.getSourceDirs().size());
+        // annotation processor dirs weren't auto created before 5.2
+        if (gradleVersion.compareTo(GradleVersion.version("5.2")) >= 0) {
+          assertEquals(1, gradleSourceSet.getGeneratedSourceDirs().size());
+        }
+        assertEquals(1, gradleSourceSet.getResourceDirs().size());
         assertNotNull(gradleSourceSet.getSourceOutputDir());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
@@ -430,6 +544,17 @@ class GradleBuildServerPluginTest {
         assertEquals("org.scala-lang", scalaExtension.getScalaOrganization());
         assertEquals("3.3.1", scalaExtension.getScalaVersion());
         assertEquals("3.3", scalaExtension.getScalaBinaryVersion());
+        List<String> args = scalaExtension.getScalaCompilerArgs();
+        assertTrue(args.contains("-deprecation"), () -> "Available args: " + args);
+        assertTrue(args.contains("-unchecked"), () -> "Available args: " + args);
+        assertTrue(args.contains("-g:notailcalls"), () -> "Available args: " + args);
+        assertTrue(args.contains("-optimise"), () -> "Available args: " + args);
+        assertTrue(args.contains("-encoding"), () -> "Available args: " + args);
+        assertTrue(args.contains("utf8"), () -> "Available args: " + args);
+        assertTrue(args.contains("-verbose"), () -> "Available args: " + args);
+        assertTrue(args.contains("-Ylog:erasure"), () -> "Available args: " + args);
+        assertTrue(args.contains("-Ylog:lambdalift"), () -> "Available args: " + args);
+        assertTrue(args.contains("-foo"), () -> "Available args: " + args);
 
         assertTrue(gradleSourceSet.getCompileClasspath().stream().anyMatch(
                 file -> file.getName().equals("scala3-library_3-3.3.1.jar")));
@@ -440,6 +565,6 @@ class GradleBuildServerPluginTest {
         assertTrue(scalaExtension.getScalaCompilerArgs().stream()
                 .anyMatch(arg -> arg.equals("-deprecation")));
       }
-    }
+    });
   }
 }

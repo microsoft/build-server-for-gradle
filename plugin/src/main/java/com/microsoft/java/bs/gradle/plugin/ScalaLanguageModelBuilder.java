@@ -4,26 +4,28 @@
 package com.microsoft.java.bs.gradle.plugin;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguage;
 import com.microsoft.java.bs.gradle.model.impl.DefaultScalaExtension;
 import org.gradle.api.Project;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
-import org.gradle.api.internal.tasks.scala.MinimalScalaCompileOptions;
-import org.gradle.api.internal.tasks.scala.ScalaCompileSpec;
-import org.gradle.api.internal.tasks.scala.ZincScalaCompilerArgumentsGenerator;
 import org.gradle.api.tasks.ScalaSourceDirectorySet;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.scala.ScalaCompile;
+import org.gradle.api.tasks.scala.ScalaCompileOptions;
+import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
@@ -44,9 +46,20 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
 
   @Override
   public Collection<File> getSourceFoldersFor(Project project, SourceSet sourceSet) {
-    SourceDirectorySet sourceDirectorySet = sourceSet.getExtensions()
-        .findByType(ScalaSourceDirectorySet.class);
-    return sourceDirectorySet == null ? Collections.emptySet() : sourceDirectorySet.getSrcDirs();
+    if (GradleVersion.current().compareTo(GradleVersion.version("7.1")) >= 0) {
+      SourceDirectorySet sourceDirectorySet = sourceSet.getExtensions()
+              .findByType(ScalaSourceDirectorySet.class);
+      return sourceDirectorySet == null ? Collections.emptySet() : sourceDirectorySet.getSrcDirs();
+    } else {
+      // there is no way pre-Gradle 7.1 to get the scala source dirs separately from other
+      // languages.  Luckily source dirs from all languages are jumbled together in BSP,
+      // so we can just reply with all.
+      // resource dirs must be removed.
+      Set<File> allSource = sourceSet.getAllSource().getSrcDirs();
+      Set<File> allResource = sourceSet.getResources().getSrcDirs();
+      return allSource.stream().filter(dir -> !allResource.contains(dir))
+        .collect(Collectors.toSet());
+    }
   }
 
   @Override
@@ -109,164 +122,60 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
     return version.substring(0, idx2);
   }
 
-  private List<String> getScalaCompilerArgs(ScalaCompile scalaCompile) {
-    ScalaCompileSpecContainer specContainer = new ScalaCompileSpecContainer(scalaCompile);
-    ZincScalaCompilerArgumentsGenerator argGenerator = new ZincScalaCompilerArgumentsGenerator();
-    return argGenerator.generate(specContainer);
-  }
-
   private List<File> getScalaJars(ScalaCompile scalaCompile) {
     return new LinkedList<>(scalaCompile.getScalaClasspath().getFiles());
   }
 
-  // a minimal implementation of ScalaCompileSpec so ZincScalaCompilerArgumentsGenerator can
-  // be used to generate the Scala compile options instead of duplicating it.
-  private static class ScalaCompileSpecContainer implements ScalaCompileSpec {
+  private List<String> getScalaCompilerArgs(ScalaCompile scalaCompile) {
+    // Gradle changes internal implementation for options handling after 7.0 so manually setup
+    ScalaCompileOptions options = scalaCompile.getScalaCompileOptions();
+    List<String> args = new LinkedList<>();
+    if (options.isDeprecation()) {
+      args.add("-deprecation");
+    }
+    if (options.isUnchecked()) {
+      args.add("-unchecked");
+    }
+    if (options.getDebugLevel() != null && !options.getDebugLevel().isEmpty()) {
+      args.add("-g:" + options.getDebugLevel());
+    }
+    if (options.isOptimize()) {
+      args.add("-optimise");
+    }
+    if (options.getEncoding() != null && !options.getEncoding().isEmpty()) {
+      args.add("-encoding");
+      args.add(options.getEncoding());
+    }
+    if (options.getLoggingLevel() != null) {
+      if ("verbose".equalsIgnoreCase(options.getLoggingLevel())) {
+        args.add("-verbose");
 
-    private final ScalaCompile scalaCompile;
-
-    ScalaCompileSpecContainer(ScalaCompile scalaCompile) {
-      this.scalaCompile = scalaCompile;
+      } else if ("debug".equalsIgnoreCase(options.getLoggingLevel())) {
+        args.add("-Ydebug");
+      }
+    }
+    if (options.getLoggingPhases() != null && !options.getLoggingPhases().isEmpty()) {
+      for (String phase : options.getLoggingPhases()) {
+        args.add("-Ylog:" + phase);
+      }
+    }
+    if (options.getAdditionalParameters() != null) {
+      args.addAll(options.getAdditionalParameters());
     }
 
-    @Override
-    public List<File> getCompileClasspath() {
-      throw new UnsupportedOperationException("Unimplemented method 'getCompileClasspath'");
+    // scalaCompilerPlugins was added in Gradle 6.4
+    try {
+      Method getScalaCompilerPlugins = ScalaCompile.class
+          .getDeclaredMethod("getScalaCompilerPlugins");
+      FileCollection fileCollection = (FileCollection) getScalaCompilerPlugins.invoke(scalaCompile);
+      for (File file : fileCollection) {
+        args.add("-Xplugin:" + file.getPath());
+      }
+    } catch (NoSuchMethodException | InvocationTargetException
+        | IllegalArgumentException | IllegalAccessException e) {
+      // do nothing
     }
 
-    @Override
-    public File getDestinationDir() {
-      throw new UnsupportedOperationException("Unimplemented method 'getDestinationDir'");
-    }
-
-    @Override
-    public Integer getRelease() {
-      throw new UnsupportedOperationException("Unimplemented method 'getRelease'");
-    }
-
-    @Override
-    public String getSourceCompatibility() {
-      throw new UnsupportedOperationException("Unimplemented method 'getSourceCompatibility'");
-    }
-
-    @Override
-    public Iterable<File> getSourceFiles() {
-      throw new UnsupportedOperationException("Unimplemented method 'getSourceFiles'");
-    }
-
-    @Override
-    public List<File> getSourceRoots() {
-      throw new UnsupportedOperationException("Unimplemented method 'getSourceRoots'");
-    }
-
-    @Override
-    public String getTargetCompatibility() {
-      throw new UnsupportedOperationException("Unimplemented method 'getTargetCompatibility'");
-    }
-
-    @Override
-    public File getTempDir() {
-      throw new UnsupportedOperationException("Unimplemented method 'getTempDir'");
-    }
-
-    @Override
-    public File getWorkingDir() {
-      throw new UnsupportedOperationException("Unimplemented method 'getWorkingDir'");
-    }
-
-    @Override
-    public void setCompileClasspath(List<File> classpath) {
-      throw new UnsupportedOperationException("Unimplemented method 'setCompileClasspath'");
-    }
-
-    @Override
-    public void setDestinationDir(File destinationDir) {
-      throw new UnsupportedOperationException("Unimplemented method 'setDestinationDir'");
-    }
-
-    @Override
-    public void setRelease(Integer arg0) {
-      throw new UnsupportedOperationException("Unimplemented method 'setRelease'");
-    }
-
-    @Override
-    public void setSourceCompatibility(String arg0) {
-      throw new UnsupportedOperationException("Unimplemented method 'setSourceCompatibility'");
-    }
-
-    @Override
-    public void setSourceFiles(Iterable<File> sourceFiles) {
-      throw new UnsupportedOperationException("Unimplemented method 'setSourceFiles'");
-    }
-
-    @Override
-    public void setSourcesRoots(List<File> sourcesRoots) {
-      throw new UnsupportedOperationException("Unimplemented method 'setSourcesRoots'");
-    }
-
-    @Override
-    public void setTargetCompatibility(String arg0) {
-      throw new UnsupportedOperationException("Unimplemented method 'setTargetCompatibility'");
-    }
-
-    @Override
-    public void setTempDir(File tempDir) {
-      throw new UnsupportedOperationException("Unimplemented method 'setTempDir'");
-    }
-
-    @Override
-    public void setWorkingDir(File workingDir) {
-      throw new UnsupportedOperationException("Unimplemented method 'setWorkingDir'");
-    }
-
-    @Override
-    public File getAnalysisFile() {
-      throw new UnsupportedOperationException("Unimplemented method 'getAnalysisFile'");
-    }
-
-    @Override
-    public Map<File, File> getAnalysisMap() {
-      throw new UnsupportedOperationException("Unimplemented method 'getAnalysisMap'");
-    }
-
-    @Override
-    public long getBuildStartTimestamp() {
-      throw new UnsupportedOperationException("Unimplemented method 'getBuildStartTimestamp'");
-    }
-
-    @Override
-    public File getClassfileBackupDir() {
-      throw new UnsupportedOperationException("Unimplemented method 'getClassfileBackupDir'");
-    }
-
-    @Override
-    public MinimalScalaCompileOptions getScalaCompileOptions() {
-      return new MinimalScalaCompileOptions(scalaCompile.getScalaCompileOptions());
-    }
-
-    @Override
-    public Iterable<File> getScalaCompilerPlugins() {
-      return scalaCompile.getScalaCompilerPlugins();
-    }
-
-    @Override
-    public void setAnalysisFile(File analysisFile) {
-      throw new UnsupportedOperationException("Unimplemented method 'setAnalysisFile'");
-    }
-
-    @Override
-    public void setAnalysisMap(Map<File, File> analysisMap) {
-      throw new UnsupportedOperationException("Unimplemented method 'setAnalysisMap'");
-    }
-
-    @Override
-    public void setClassfileBackupDir(File classfileBackupDir) {
-      throw new UnsupportedOperationException("Unimplemented method 'setClassfileBackupDir'");
-    }
-
-    @Override
-    public void setScalaCompilerPlugins(Iterable<File> plugins) {
-      throw new UnsupportedOperationException("Unimplemented method 'setScalaCompilerPlugins'");
-    }
+    return args;
   }
 }
