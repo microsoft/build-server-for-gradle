@@ -19,6 +19,7 @@ import org.gradle.tooling.events.OperationDescriptor;
 import org.gradle.tooling.events.OperationResult;
 import org.gradle.tooling.events.ProgressEvent;
 import org.gradle.tooling.events.StartEvent;
+import org.gradle.tooling.events.test.JvmTestKind;
 import org.gradle.tooling.events.test.JvmTestOperationDescriptor;
 import org.gradle.tooling.events.test.TestFailureResult;
 import org.gradle.tooling.events.test.TestSkippedResult;
@@ -84,7 +85,7 @@ public class TestReportReporter extends ProgressReporter {
     TestName testName = null;
     while (i >= 0) {
       JvmTestOperationDescriptor desc = fullStack.get(i);
-      TestName currentTestName = new TestName(desc.getDisplayName(), desc.getSuiteName(),
+      TestName currentTestName = new TestName(desc.getTestDisplayName(), desc.getSuiteName(),
           desc.getClassName(), desc.getMethodName());
       currentTestName.setParent(testName);
       testName = currentTestName;
@@ -126,16 +127,16 @@ public class TestReportReporter extends ProgressReporter {
                   .map(TestFailure::getStacktrace)
                   .findFirst()
                   .orElse(null);
-              if (descriptor.getMethodName() != null) {
+              if (descriptor.getJvmTestKind() == JvmTestKind.ATOMIC) {
                 failureCount += 1;
               }
             } else if (result instanceof TestSkippedResult) {
               testStatus = TestStatus.SKIPPED;
-              if (descriptor.getMethodName() != null) {
+              if (descriptor.getJvmTestKind() == JvmTestKind.ATOMIC) {
                 skippedCount += 1;
               }
             } else if (result instanceof TestSuccessResult) {
-              if (descriptor.getMethodName() != null) {
+              if (descriptor.getJvmTestKind() == JvmTestKind.ATOMIC) {
                 successCount += 1;
               }
             }

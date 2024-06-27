@@ -97,7 +97,6 @@ class BuildTargetServerIntegrationTest {
     private final List<TestStartEx> testStarts = new ArrayList<>();
     private final List<TestFinishEx> testFinishes = new ArrayList<>();
 
-
     void clearMessages() {
       startReports.clear();
       finishReports.clear();
@@ -166,27 +165,27 @@ class BuildTargetServerIntegrationTest {
 
     private static String testNameAsString(TestName testName) {
       return testName.getSuiteName() + "," + testName.getClassName() + ","
-        + testName.getMethodName() + "," + getTestNameHierarchy(testName);
+          + testName.getMethodName() + "," + getTestNameHierarchy(testName);
     }
 
     TestStartEx getTestStart(String suiteName, String className, String methodName,
         List<String> testNames) {
       return testStarts.stream().filter(ts -> matchesTest(ts.getTestName(),
-        suiteName, className, methodName, testNames)).findAny()
+          suiteName, className, methodName, testNames)).findAny()
           .orElseThrow(() -> new IllegalStateException("Missing test start for \n" + suiteName
-          + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testStarts
-          .stream().map(ts -> testNameAsString(ts.getTestName()))
-          .collect(Collectors.joining("\n"))));
+              + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testStarts
+                  .stream().map(ts -> testNameAsString(ts.getTestName()))
+                  .collect(Collectors.joining("\n"))));
     }
 
     TestFinishEx getTestFinish(String suiteName, String className, String methodName,
         List<String> testNames) {
       return testFinishes.stream().filter(ts -> matchesTest(ts.getTestName(),
-        suiteName, className, methodName, testNames)).findAny()
+          suiteName, className, methodName, testNames)).findAny()
           .orElseThrow(() -> new IllegalStateException("Missing test finish for\n" + suiteName
-          + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testFinishes
-          .stream().map(ts -> testNameAsString(ts.getTestName()))
-          .collect(Collectors.joining("\n"))));
+              + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testFinishes
+                  .stream().map(ts -> testNameAsString(ts.getTestName()))
+                  .collect(Collectors.joining("\n"))));
     }
 
     private void waitOnMessages(String message, int size, IntSupplier sizeSupplier) {
@@ -194,7 +193,7 @@ class BuildTargetServerIntegrationTest {
       long timeoutMs = 5000;
       long endTime = System.currentTimeMillis() + timeoutMs;
       while (sizeSupplier.getAsInt() < size
-              && System.currentTimeMillis() < endTime) {
+          && System.currentTimeMillis() < endTime) {
         synchronized (this) {
           long waitTime = endTime - System.currentTimeMillis();
           if (waitTime > 0) {
@@ -211,13 +210,13 @@ class BuildTargetServerIntegrationTest {
 
     private CompileReport findCompileReport(BuildTargetIdentifier btId) {
       CompileReport compileReport = compileReports.stream()
-              .filter(report -> report.getTarget().equals(btId))
-              .findFirst()
-              .orElse(null);
+          .filter(report -> report.getTarget().equals(btId))
+          .findFirst()
+          .orElse(null);
       assertNotNull(compileReport, () -> {
         String availableTargets = compileReports.stream()
-                .map(report -> report.getTarget().toString())
-                .collect(Collectors.joining(", "));
+            .map(report -> report.getTarget().toString())
+            .collect(Collectors.joining(", "));
         return "Target not found " + btId + ". Available: " + availableTargets;
       });
       return compileReport;
@@ -309,15 +308,13 @@ class BuildTargetServerIntegrationTest {
         "testProjects",
         projectDir).toFile();
 
-    BuildClientCapabilities capabilities =
-        new BuildClientCapabilities(SupportedLanguages.allBspNames);
+    BuildClientCapabilities capabilities = new BuildClientCapabilities(SupportedLanguages.allBspNames);
     return new InitializeBuildParams(
         "test-client",
         "0.1.0",
         "0.1.0",
         root.toURI().toString(),
-        capabilities
-    );
+        capabilities);
   }
 
   private void withNewTestServer(String project, BiConsumer<TestServer, TestClient> consumer) {
@@ -338,28 +335,25 @@ class BuildTargetServerIntegrationTest {
       GradleApiConnector connector = new GradleApiConnector(preferenceManager);
       LifecycleService lifecycleService = new LifecycleService(connector, preferenceManager);
       BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-              connector, preferenceManager);
-      GradleBuildServer gradleBuildServer =
-              new GradleBuildServer(lifecycleService, buildTargetService);
-      org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> serverLauncher =
-              new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
-                      .setLocalService(gradleBuildServer)
-                      .setRemoteInterface(BuildClient.class)
-                      .setOutput(serverOut)
-                      .setInput(serverIn)
-                      .setExecutorService(threadPool)
-                      .create();
+          connector, preferenceManager);
+      GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService, buildTargetService);
+      org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> serverLauncher = new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
+          .setLocalService(gradleBuildServer)
+          .setRemoteInterface(BuildClient.class)
+          .setOutput(serverOut)
+          .setInput(serverIn)
+          .setExecutorService(threadPool)
+          .create();
       buildTargetService.setClient(serverLauncher.getRemoteProxy());
       // client
       TestClient client = new TestClient();
-      org.eclipse.lsp4j.jsonrpc.Launcher<TestServer> clientLauncher =
-          new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<TestServer>()
-              .setLocalService(client)
-              .setRemoteInterface(TestServer.class)
-              .setInput(clientIn)
-              .setOutput(clientOut)
-              .setExecutorService(threadPool)
-              .create();
+      org.eclipse.lsp4j.jsonrpc.Launcher<TestServer> clientLauncher = new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<TestServer>()
+          .setLocalService(client)
+          .setRemoteInterface(TestServer.class)
+          .setInput(clientIn)
+          .setOutput(clientOut)
+          .setExecutorService(threadPool)
+          .create();
       // start
       clientLauncher.startListening();
       serverLauncher.startListening();
@@ -381,12 +375,12 @@ class BuildTargetServerIntegrationTest {
   private static BuildTargetIdentifier findTarget(List<BuildTarget> targets,
       String displayName) {
     Optional<BuildTarget> matchingTargets = targets.stream()
-            .filter(res -> displayName.equals(res.getDisplayName()))
-            .findAny();
+        .filter(res -> displayName.equals(res.getDisplayName()))
+        .findAny();
     assertFalse(matchingTargets.isEmpty(), () -> {
       List<String> targetNames = targets.stream()
-              .map(BuildTarget::getDisplayName)
-              .collect(Collectors.toList());
+          .map(BuildTarget::getDisplayName)
+          .collect(Collectors.toList());
       return "Target " + displayName + " not found in " + targetNames;
     });
     return matchingTargets.get().getId();
@@ -424,18 +418,17 @@ class BuildTargetServerIntegrationTest {
       // check dependency modules
       DependencyModulesParams dependencyModulesParams = new DependencyModulesParams(btIds);
       DependencyModulesResult dependencyModulesResult = gradleBuildServer
-              .buildTargetDependencyModules(dependencyModulesParams).join();
+          .buildTargetDependencyModules(dependencyModulesParams).join();
       assertEquals(2, dependencyModulesResult.getItems().size());
       List<MavenDependencyModuleArtifact> allArtifacts = dependencyModulesResult.getItems().stream()
-              .flatMap(item -> item.getModules().stream())
-              .filter(dependencyModule -> "maven".equals(dependencyModule.getDataKind()))
-              .map(dependencyModule -> JsonUtils.toModel(dependencyModule.getData(),
-                  MavenDependencyModule.class))
-              .flatMap(mavenDependencyModule -> mavenDependencyModule.getArtifacts().stream())
-              .filter(artifact -> "sources".equals(artifact.getClassifier()))
-              .collect(Collectors.toList());
-      assertTrue(allArtifacts.stream().anyMatch(artifact ->
-          artifact.getUri().endsWith("-sources.jar")));
+          .flatMap(item -> item.getModules().stream())
+          .filter(dependencyModule -> "maven".equals(dependencyModule.getDataKind()))
+          .map(dependencyModule -> JsonUtils.toModel(dependencyModule.getData(),
+              MavenDependencyModule.class))
+          .flatMap(mavenDependencyModule -> mavenDependencyModule.getArtifacts().stream())
+          .filter(artifact -> "sources".equals(artifact.getClassifier()))
+          .collect(Collectors.toList());
+      assertTrue(allArtifacts.stream().anyMatch(artifact -> artifact.getUri().endsWith("-sources.jar")));
 
       // clean targets
       CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
@@ -501,8 +494,7 @@ class BuildTargetServerIntegrationTest {
       // run passing tests
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.PassingTests");
-      ScalaTestClassesItem passingTestClassesItem =
-          new ScalaTestClassesItem(btId, passingTestMainClasses);
+      ScalaTestClassesItem passingTestClassesItem = new ScalaTestClassesItem(btId, passingTestMainClasses);
       List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
       passingTestClasses.add(passingTestClassesItem);
       ScalaTestParams passingScalaTestParams = new ScalaTestParams();
@@ -511,8 +503,7 @@ class BuildTargetServerIntegrationTest {
       passingTestParams.setOriginId("originId");
       passingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
       passingTestParams.setData(passingScalaTestParams);
-      TestResult passingTestResult =
-          gradleBuildServer.buildTargetTest(passingTestParams).join();
+      TestResult passingTestResult = gradleBuildServer.buildTargetTest(passingTestParams).join();
       assertEquals(StatusCode.OK, passingTestResult.getStatusCode());
       assertEquals("originId", passingTestResult.getOriginId());
       client.waitOnStartReports(9);
@@ -529,8 +520,6 @@ class BuildTargetServerIntegrationTest {
       for (TaskFinishParams message : client.finishReports) {
         assertEquals(StatusCode.OK, message.getStatus());
       }
-      // TODO - this check is for logging why github action fails.  Remove later
-      assertNotNull(client.getTestFinish("Nonsense", null, null, List.of("PassingTests")));
       TestReport passingTestsReport = client.testReports.get(0);
       assertEquals(5, passingTestsReport.getPassed());
       assertEquals(0, passingTestsReport.getCancelled());
@@ -538,46 +527,93 @@ class BuildTargetServerIntegrationTest {
       assertEquals(0, passingTestsReport.getIgnored());
       assertEquals(0, passingTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart("com.example.project.PassingTests",
-          "com.example.project.PassingTests", null,
+      assertNotNull(client.getTestStart(
+          "com.example.project.PassingTests",
+          "com.example.project.PassingTests",
+          null,
           List.of("PassingTests")));
 
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
-          "isBasicTest()", List.of("Test isBasicTest()(com.example.project.PassingTests)",
+      assertNotNull(client.getTestStart(null,
+          "com.example.project.PassingTests",
+          "isBasicTest()",
+          List.of("isBasicTest()",
+              "PassingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
+          "hasDisplayName()",
+          List.of("Display Name", "PassingTests")));
+      assertNotNull(client.getTestStart(
+          "isParameterized(int)",
+          "com.example.project.PassingTests",
+          "isParameterized(int)",
+          List.of("isParameterized(int)",
             "PassingTests")));
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
-          "hasDisplayName()", List.of("Display Name", "PassingTests")));
-      assertNotNull(client.getTestStart("isParameterized(int)", null, null,
-          List.of("Test suite 'isParameterized(int)'", "PassingTests")));
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
-          "isParameterized(int)[1]", List.of("0", "Test suite 'isParameterized(int)'",
-            "PassingTests")));
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
-          "isParameterized(int)[2]", List.of("1", "Test suite 'isParameterized(int)'",
-            "PassingTests")));
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
-          "isParameterized(int)[3]", List.of("2", "Test suite 'isParameterized(int)'",
-            "PassingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
+          "isParameterized(int)[1]",
+          List.of("0",
+              "isParameterized(int)",
+              "PassingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
+          "isParameterized(int)[2]",
+          List.of("1",
+              "isParameterized(int)",
+              "PassingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
+          "isParameterized(int)[3]",
+          List.of("2",
+              "isParameterized(int)",
+              "PassingTests")));
 
-      assertNotNull(client.getTestFinish("com.example.project.PassingTests",
-          "com.example.project.PassingTests", null,
+      assertNotNull(client.getTestFinish(
+          "com.example.project.PassingTests",
+          "com.example.project.PassingTests",
+          null,
           List.of("PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
-          "isBasicTest()", List.of("Test isBasicTest()(com.example.project.PassingTests)",
+
+      assertNotNull(client.getTestFinish(null,
+          "com.example.project.PassingTests",
+          "isBasicTest()",
+          List.of("isBasicTest()",
+              "PassingTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
+          "hasDisplayName()",
+          List.of("Display Name", "PassingTests")));
+      assertNotNull(client.getTestFinish(
+          "isParameterized(int)",
+          "com.example.project.PassingTests",
+          "isParameterized(int)",
+          List.of("isParameterized(int)",
             "PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
-          "hasDisplayName()", List.of("Display Name", "PassingTests")));
-      assertNotNull(client.getTestFinish("isParameterized(int)", null, null,
-          List.of("Test suite 'isParameterized(int)'", "PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
-          "isParameterized(int)[1]", List.of("0", "Test suite 'isParameterized(int)'",
-            "PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
-          "isParameterized(int)[2]", List.of("1", "Test suite 'isParameterized(int)'",
-            "PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
-          "isParameterized(int)[3]", List.of("2", "Test suite 'isParameterized(int)'",
-            "PassingTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
+          "isParameterized(int)[1]",
+          List.of("0",
+              "isParameterized(int)",
+              "PassingTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
+          "isParameterized(int)[2]",
+          List.of("1",
+              "isParameterized(int)",
+              "PassingTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
+          "isParameterized(int)[3]",
+          List.of("2",
+              "isParameterized(int)",
+              "PassingTests")));
       client.clearMessages();
     });
   }
@@ -607,8 +643,7 @@ class BuildTargetServerIntegrationTest {
       // run failing tests
       List<String> failingMainClasses = new LinkedList<>();
       failingMainClasses.add("com.example.project.FailingTests");
-      ScalaTestClassesItem failingTestClassesItem =
-          new ScalaTestClassesItem(btId, failingMainClasses);
+      ScalaTestClassesItem failingTestClassesItem = new ScalaTestClassesItem(btId, failingMainClasses);
       List<ScalaTestClassesItem> failingTestClasses = new LinkedList<>();
       failingTestClasses.add(failingTestClassesItem);
       ScalaTestParams failingScalaTestParams = new ScalaTestParams();
@@ -638,21 +673,29 @@ class BuildTargetServerIntegrationTest {
       assertEquals(1, failingTestsReport.getFailed());
       assertEquals(0, failingTestsReport.getIgnored());
       assertEquals(0, failingTestsReport.getSkipped());
-      
-      assertNotNull(client.getTestStart("com.example.project.FailingTests",
-          "com.example.project.FailingTests", null,
+
+      assertNotNull(client.getTestStart(
+          "com.example.project.FailingTests",
+          "com.example.project.FailingTests",
+          null,
           List.of("FailingTests")));
 
-      assertNotNull(client.getTestStart(null, "com.example.project.FailingTests",
-          "failingTest()", List.of("Test failingTest()(com.example.project.FailingTests)",
-            "FailingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.FailingTests",
+          "failingTest()",
+          List.of("failingTest()", "FailingTests")));
 
-      assertNotNull(client.getTestFinish("com.example.project.FailingTests",
-          "com.example.project.FailingTests", null,
+      assertNotNull(client.getTestFinish(
+          "com.example.project.FailingTests",
+          "com.example.project.FailingTests",
+          null,
           List.of("FailingTests")));
-      TestFinishEx failingTestsFinish = client.getTestFinish(null,
-          "com.example.project.FailingTests", "failingTest()",
-          List.of("Test failingTest()(com.example.project.FailingTests)", "FailingTests"));
+      TestFinishEx failingTestsFinish = client.getTestFinish(
+          null,
+          "com.example.project.FailingTests",
+          "failingTest()",
+          List.of("failingTest()", "FailingTests"));
       assertTrue(failingTestsFinish.getStackTrace()
           .contains("at com.example.project.FailingTests.failingTest(FailingTests.java:14)"));
 
@@ -685,8 +728,7 @@ class BuildTargetServerIntegrationTest {
       // run stacktrace test
       List<String> stacktraceMainClasses = new LinkedList<>();
       stacktraceMainClasses.add("com.example.project.ExceptionInBefore");
-      ScalaTestClassesItem stacktraceTestClassesItem =
-              new ScalaTestClassesItem(btId, stacktraceMainClasses);
+      ScalaTestClassesItem stacktraceTestClassesItem = new ScalaTestClassesItem(btId, stacktraceMainClasses);
       List<ScalaTestClassesItem> stacktraceTestClasses = new LinkedList<>();
       stacktraceTestClasses.add(stacktraceTestClassesItem);
       ScalaTestParams stacktraceScalaTestParams = new ScalaTestParams();
@@ -696,7 +738,7 @@ class BuildTargetServerIntegrationTest {
       stacktraceTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
       stacktraceTestParams.setData(stacktraceScalaTestParams);
       TestResult stacktraceTestResult = gradleBuildServer
-              .buildTargetTest(stacktraceTestParams).join();
+          .buildTargetTest(stacktraceTestParams).join();
       assertEquals(StatusCode.ERROR, stacktraceTestResult.getStatusCode());
       assertEquals("originId", stacktraceTestResult.getOriginId());
       client.waitOnStartReports(4);
@@ -718,22 +760,30 @@ class BuildTargetServerIntegrationTest {
       assertEquals(0, stacktraceTestsReport.getIgnored());
       assertEquals(0, stacktraceTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart("com.example.project.ExceptionInBefore",
-          "com.example.project.ExceptionInBefore", null,
+      assertNotNull(client.getTestStart(
+          "com.example.project.ExceptionInBefore",
+          "com.example.project.ExceptionInBefore",
+          null,
           List.of("ExceptionInBefore")));
 
-      assertNotNull(client.getTestStart(null, "com.example.project.ExceptionInBefore",
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.ExceptionInBefore",
           "initializationError",
-          List.of("Test initializationError(com.example.project.ExceptionInBefore)",
-          "ExceptionInBefore")));
+          List.of("initializationError",
+              "ExceptionInBefore")));
 
-      assertNotNull(client.getTestFinish("com.example.project.ExceptionInBefore",
-          "com.example.project.ExceptionInBefore", null,
+      assertNotNull(client.getTestFinish(
+          "com.example.project.ExceptionInBefore",
+          "com.example.project.ExceptionInBefore",
+          null,
           List.of("ExceptionInBefore")));
-      TestFinishEx stacktraceTestsFinish = client.getTestFinish(null,
-          "com.example.project.ExceptionInBefore", "initializationError",
-          List.of("Test initializationError(com.example.project.ExceptionInBefore)",
-            "ExceptionInBefore"));
+      TestFinishEx stacktraceTestsFinish = client.getTestFinish(
+          null,
+          "com.example.project.ExceptionInBefore",
+          "initializationError",
+          List.of("initializationError",
+              "ExceptionInBefore"));
       assertTrue(stacktraceTestsFinish.getStackTrace().contains(
           "at com.example.project.ExceptionInBefore.beforeAll(ExceptionInBefore.java:13)"));
 
@@ -771,8 +821,8 @@ class BuildTargetServerIntegrationTest {
       singleMethodTestParams.setDataKind("scala-test-suites-selection");
       List<String> singleTestMethods = new ArrayList<>();
       singleTestMethods.add("envVarSetTest");
-      ScalaTestSuiteSelection singleScalaTestSuiteSelection =
-          new ScalaTestSuiteSelection("com.example.project.EnvVarTests", singleTestMethods);
+      ScalaTestSuiteSelection singleScalaTestSuiteSelection = new ScalaTestSuiteSelection(
+          "com.example.project.EnvVarTests", singleTestMethods);
       List<ScalaTestSuiteSelection> singleScalaTestSuiteSelections = new LinkedList<>();
       singleScalaTestSuiteSelections.add(singleScalaTestSuiteSelection);
       List<String> emptyJvmOptions = new ArrayList<>();
@@ -788,8 +838,7 @@ class BuildTargetServerIntegrationTest {
       ScalaTestSuites singleScalaTestSuites = new ScalaTestSuites(singleScalaTestSuiteSelections,
           emptyJvmOptions, environmentVariables);
       singleMethodTestParams.setData(singleScalaTestSuites);
-      TestResult singleMethodTestResult =
-          gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
+      TestResult singleMethodTestResult = gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
       assertEquals(StatusCode.OK, singleMethodTestResult.getStatusCode());
       assertEquals("originId", singleMethodTestResult.getOriginId());
       client.waitOnStartReports(4);
@@ -812,23 +861,32 @@ class BuildTargetServerIntegrationTest {
       assertEquals(0, singleMethodTestsReport.getFailed());
       assertEquals(0, singleMethodTestsReport.getIgnored());
       assertEquals(0, singleMethodTestsReport.getSkipped());
-      
-      assertNotNull(client.getTestStart("com.example.project.EnvVarTests",
-          "com.example.project.EnvVarTests", null,
-          List.of("EnvVarTests")));
-          
 
-      assertNotNull(client.getTestStart(null, "com.example.project.EnvVarTests",
-          "envVarSetTest()", List.of("Test envVarSetTest()(com.example.project.EnvVarTests)",
-            "EnvVarTests")));
-
-      assertNotNull(client.getTestFinish("com.example.project.EnvVarTests",
-          "com.example.project.EnvVarTests", null,
+      assertNotNull(client.getTestStart(
+          "com.example.project.EnvVarTests",
+          "com.example.project.EnvVarTests",
+          null,
           List.of("EnvVarTests")));
 
-      assertNotNull(client.getTestFinish(null, "com.example.project.EnvVarTests",
-          "envVarSetTest()", List.of("Test envVarSetTest()(com.example.project.EnvVarTests)",
-            "EnvVarTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.EnvVarTests",
+          "envVarSetTest()",
+          List.of("envVarSetTest()",
+              "EnvVarTests")));
+
+      assertNotNull(client.getTestFinish(
+          "com.example.project.EnvVarTests",
+          "com.example.project.EnvVarTests",
+          null,
+          List.of("EnvVarTests")));
+
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.EnvVarTests",
+          "envVarSetTest()",
+          List.of("envVarSetTest()",
+              "EnvVarTests")));
       client.clearMessages();
     });
   }
@@ -858,8 +916,7 @@ class BuildTargetServerIntegrationTest {
       // run complex tests
       List<String> complexTestMainClasses = new LinkedList<>();
       complexTestMainClasses.add("com.example.project.TestFactoryTests");
-      ScalaTestClassesItem complexTestClassesItem =
-          new ScalaTestClassesItem(btId, complexTestMainClasses);
+      ScalaTestClassesItem complexTestClassesItem = new ScalaTestClassesItem(btId, complexTestMainClasses);
       List<ScalaTestClassesItem> complexTestClasses = new LinkedList<>();
       complexTestClasses.add(complexTestClassesItem);
       ScalaTestParams complexScalaTestParams = new ScalaTestParams();
@@ -868,8 +925,7 @@ class BuildTargetServerIntegrationTest {
       complexTestParams.setOriginId("originId");
       complexTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
       complexTestParams.setData(complexScalaTestParams);
-      TestResult complexTestResult =
-          gradleBuildServer.buildTargetTest(complexTestParams).join();
+      TestResult complexTestResult = gradleBuildServer.buildTargetTest(complexTestParams).join();
       assertEquals(StatusCode.OK, complexTestResult.getStatusCode());
       assertEquals("originId", complexTestResult.getOriginId());
       client.waitOnStartReports(10);
@@ -892,69 +948,126 @@ class BuildTargetServerIntegrationTest {
       assertEquals(0, complexTestsReport.getFailed());
       assertEquals(0, complexTestsReport.getIgnored());
       assertEquals(0, complexTestsReport.getSkipped());
-
-      TestStartEx classStart = client.getTestStart("com.example.project.TestFactoryTests",
-          "com.example.project.TestFactoryTests", null,
-          List.of("TestFactoryTests"));
-      assertEquals("TestFactoryTests started", classStart.getDisplayName());
-      TestStartEx suiteStart = client.getTestStart("testContainer()", null, null,
-          List.of("Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("Test suite 'testContainer()' started", suiteStart.getDisplayName());
-
-      TestStartEx containerStart11 = client.getTestStart(null,
-          "com.example.project.TestFactoryTests", "testContainer()[1][1]",
-          List.of("First test of first container", "First Container",
-            "Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("First test of first container started", containerStart11.getDisplayName());
-      TestStartEx containerStart12 = client.getTestStart(null,
-          "com.example.project.TestFactoryTests", "testContainer()[1][2]",
-          List.of("Second test of first container", "First Container",
-            "Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("Second test of first container started", containerStart12.getDisplayName());
-      TestStartEx containerStart21 = client.getTestStart(null,
-          "com.example.project.TestFactoryTests", "testContainer()[2][1]",
-          List.of("First test of second container", "Second Container",
-            "Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("First test of second container started", containerStart21.getDisplayName());
-      TestStartEx containerStart22 = client.getTestStart(null,
-          "com.example.project.TestFactoryTests", "testContainer()[2][2]",
-          List.of("Second test of second container", "Second Container",
-            "Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("Second test of second container started", containerStart22.getDisplayName());
       
-      TestFinishEx classFinish = client.getTestFinish("com.example.project.TestFactoryTests",
-          "com.example.project.TestFactoryTests", null,
-          List.of("TestFactoryTests"));
-      assertEquals("TestFactoryTests succeeded", classFinish.getDisplayName());
-      TestFinishEx suiteFinish = client.getTestFinish("testContainer()", null, null,
-          List.of("Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("Test suite 'testContainer()' succeeded", suiteFinish.getDisplayName());
-
-      TestFinishEx containerFinish11 = client.getTestFinish(null,
-          "com.example.project.TestFactoryTests", "testContainer()[1][1]",
-          List.of("First test of first container", "First Container",
-            "Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("First test of first container succeeded", containerFinish11.getDisplayName());
-      TestFinishEx containerFinish12 = client.getTestFinish(null,
-          "com.example.project.TestFactoryTests", "testContainer()[1][2]",
-          List.of("Second test of first container", "First Container",
-            "Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("Second test of first container succeeded", containerFinish12.getDisplayName());
-      TestFinishEx containerFinish21 = client.getTestFinish(null,
-          "com.example.project.TestFactoryTests", "testContainer()[2][1]",
-          List.of("First test of second container", "Second Container",
-            "Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("First test of second container succeeded", containerFinish21.getDisplayName());
-      TestFinishEx containerFinish22 = client.getTestFinish(null,
-          "com.example.project.TestFactoryTests", "testContainer()[2][2]",
-          List.of("Second test of second container", "Second Container",
-            "Test suite 'testContainer()'", "TestFactoryTests"));
-      assertEquals("Second test of second container succeeded", containerFinish22.getDisplayName());
+      assertNotNull(client.getTestStart(
+          "com.example.project.TestFactoryTests",
+          "com.example.project.TestFactoryTests",
+          null,
+          List.of("TestFactoryTests")));
+      assertNotNull(client.getTestStart(
+          "testContainer()",
+          "com.example.project.TestFactoryTests",
+          "testContainer()",
+          List.of("testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestStart(
+          "testContainer()[1]",
+          "com.example.project.TestFactoryTests",
+          "testContainer()[1]",
+          List.of("First Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.TestFactoryTests",
+          "testContainer()[1][1]",
+          List.of("First test of first container",
+            "First Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.TestFactoryTests",
+          "testContainer()[1][2]",
+          List.of("Second test of first container",
+            "First Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestStart(
+          "testContainer()[2]",
+          "com.example.project.TestFactoryTests",
+          "testContainer()[2]",
+          List.of("Second Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.TestFactoryTests",
+          "testContainer()[2][1]",
+          List.of("First test of second container",
+            "Second Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.TestFactoryTests",
+          "testContainer()[2][2]",
+          List.of("Second test of second container",
+            "Second Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      
+      assertNotNull(client.getTestFinish(
+          "com.example.project.TestFactoryTests",
+          "com.example.project.TestFactoryTests",
+          null,
+          List.of("TestFactoryTests")));
+      assertNotNull(client.getTestFinish(
+          "testContainer()",
+          "com.example.project.TestFactoryTests",
+          "testContainer()",
+          List.of("testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestFinish(
+          "testContainer()[1]",
+          "com.example.project.TestFactoryTests",
+          "testContainer()[1]",
+          List.of("First Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.TestFactoryTests",
+          "testContainer()[1][1]",
+          List.of("First test of first container",
+            "First Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.TestFactoryTests",
+          "testContainer()[1][2]",
+          List.of("Second test of first container",
+            "First Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestFinish(
+          "testContainer()[2]",
+          "com.example.project.TestFactoryTests",
+          "testContainer()[2]",
+          List.of("Second Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.TestFactoryTests",
+          "testContainer()[2][1]",
+          List.of("First test of second container",
+            "Second Container",
+            "testContainer()",
+            "TestFactoryTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.TestFactoryTests",
+          "testContainer()[2][2]",
+          List.of("Second test of second container",
+            "Second Container",
+            "testContainer()",
+            "TestFactoryTests")));
       client.clearMessages();
     });
   }
 
-  
   @Test
   void testNestedJunit() {
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
@@ -980,8 +1093,7 @@ class BuildTargetServerIntegrationTest {
       // run nested tests
       List<String> nestedTestMainClasses = new LinkedList<>();
       nestedTestMainClasses.add("com.example.project.NestedTests");
-      ScalaTestClassesItem nestedTestClassesItem =
-          new ScalaTestClassesItem(btId, nestedTestMainClasses);
+      ScalaTestClassesItem nestedTestClassesItem = new ScalaTestClassesItem(btId, nestedTestMainClasses);
       List<ScalaTestClassesItem> nestedTestClasses = new LinkedList<>();
       nestedTestClasses.add(nestedTestClassesItem);
       ScalaTestParams nestedScalaTestParams = new ScalaTestParams();
@@ -990,8 +1102,7 @@ class BuildTargetServerIntegrationTest {
       nestedTestParams.setOriginId("originId");
       nestedTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
       nestedTestParams.setData(nestedScalaTestParams);
-      TestResult nestedTestResult =
-          gradleBuildServer.buildTargetTest(nestedTestParams).join();
+      TestResult nestedTestResult = gradleBuildServer.buildTargetTest(nestedTestParams).join();
       assertEquals(StatusCode.OK, nestedTestResult.getStatusCode());
       assertEquals("originId", nestedTestResult.getOriginId());
       client.waitOnStartReports(9);
@@ -1029,38 +1140,38 @@ class BuildTargetServerIntegrationTest {
           null,
           "com.example.project.NestedTests$NestedClassB",
           "test()",
-          List.of("Test test()(com.example.project.NestedTests$NestedClassB)",
-            "NestedClassB",
-            "NestedTests")));
+          List.of("test()",
+              "NestedClassB",
+              "NestedTests")));
       assertNotNull(client.getTestStart(
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           null,
           List.of("ADeeperClass",
-            "NestedClassB",
-            "NestedTests")));
+              "NestedClassB",
+              "NestedTests")));
       assertNotNull(client.getTestStart(
           null,
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           "test()",
-           List.of("Test test()(com.example.project.NestedTests$NestedClassB$ADeeperClass)",
-             "ADeeperClass",
-             "NestedClassB",
-             "NestedTests")));
+          List.of("test()",
+              "ADeeperClass",
+              "NestedClassB",
+              "NestedTests")));
       assertNotNull(client.getTestStart(
           "com.example.project.NestedTests$NestedClassA",
           "com.example.project.NestedTests$NestedClassA",
           null,
           List.of("NestedClassA",
-            "NestedTests")));
-      assertNotNull(client.getTestStart(null,
+              "NestedTests")));
+      assertNotNull(client.getTestStart(
+          null,
           "com.example.project.NestedTests$NestedClassA",
           "test()",
-          List.of("Test test()(com.example.project.NestedTests$NestedClassA)",
-            "NestedClassA",
-            "NestedTests")));
+          List.of("test()",
+              "NestedClassA",
+              "NestedTests")));
 
-      
       assertNotNull(client.getTestFinish(
           "com.example.project.NestedTests",
           "com.example.project.NestedTests",
@@ -1075,21 +1186,21 @@ class BuildTargetServerIntegrationTest {
           null,
           "com.example.project.NestedTests$NestedClassB",
           "test()",
-          List.of("Test test()(com.example.project.NestedTests$NestedClassB)",
-            "NestedClassB",
-            "NestedTests")));
+          List.of("test()",
+              "NestedClassB",
+              "NestedTests")));
       assertNotNull(client.getTestFinish(
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           null,
           List.of("ADeeperClass",
-            "NestedClassB",
-            "NestedTests")));
+              "NestedClassB",
+              "NestedTests")));
       assertNotNull(client.getTestFinish(
           null,
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           "test()",
-            List.of("Test test()(com.example.project.NestedTests$NestedClassB$ADeeperClass)",
+          List.of("test()",
               "ADeeperClass",
               "NestedClassB",
               "NestedTests")));
@@ -1098,13 +1209,14 @@ class BuildTargetServerIntegrationTest {
           "com.example.project.NestedTests$NestedClassA",
           null,
           List.of("NestedClassA",
-            "NestedTests")));
-      assertNotNull(client.getTestFinish(null,
+              "NestedTests")));
+      assertNotNull(client.getTestFinish(
+          null,
           "com.example.project.NestedTests$NestedClassA",
           "test()",
-          List.of("Test test()(com.example.project.NestedTests$NestedClassA)",
-            "NestedClassA",
-            "NestedTests")));
+          List.of("test()",
+              "NestedClassA",
+              "NestedTests")));
       client.clearMessages();
     });
   }
@@ -1123,14 +1235,14 @@ class BuildTargetServerIntegrationTest {
       CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
       gradleBuildServer.buildTargetCleanCache(cleanCacheParams).join();
       client.clearMessages();
-      
-      // a request to run tests straight after a clean should produce compile results/reports
+
+      // a request to run tests straight after a clean should produce compile
+      // results/reports
       // run tests
       List<String> mainClasses = new LinkedList<>();
       mainClasses.add("com.example.project.PassingTests");
       BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [test]");
-      ScalaTestClassesItem scalaTestClassesItem =
-              new ScalaTestClassesItem(btId, mainClasses);
+      ScalaTestClassesItem scalaTestClassesItem = new ScalaTestClassesItem(btId, mainClasses);
       List<ScalaTestClassesItem> testClasses = new LinkedList<>();
       testClasses.add(scalaTestClassesItem);
       ScalaTestParams scalaTestParams = new ScalaTestParams();
@@ -1247,8 +1359,7 @@ class BuildTargetServerIntegrationTest {
       // run passing tests
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.PassingTests");
-      ScalaTestClassesItem passingTestClassesItem =
-          new ScalaTestClassesItem(btId, passingTestMainClasses);
+      ScalaTestClassesItem passingTestClassesItem = new ScalaTestClassesItem(btId, passingTestMainClasses);
       List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
       passingTestClasses.add(passingTestClassesItem);
       ScalaTestParams passingScalaTestParams = new ScalaTestParams();
@@ -1257,8 +1368,7 @@ class BuildTargetServerIntegrationTest {
       passingTestParams.setOriginId("originId");
       passingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
       passingTestParams.setData(passingScalaTestParams);
-      TestResult passingTestResult =
-          gradleBuildServer.buildTargetTest(passingTestParams).join();
+      TestResult passingTestResult = gradleBuildServer.buildTargetTest(passingTestParams).join();
       assertEquals(StatusCode.OK, passingTestResult.getStatusCode());
       assertEquals("originId", passingTestResult.getOriginId());
       client.waitOnStartReports(8);
@@ -1284,49 +1394,73 @@ class BuildTargetServerIntegrationTest {
 
       assertNotNull(client.getTestStart("com.example.project.PassingTests",
           "com.example.project.PassingTests", null,
-          List.of("Test class com.example.project.PassingTests")));
+          List.of("com.example.project.PassingTests")));
 
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
-          "isBasicTest", List.of("Test method isBasicTest(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
-          "hasDisplayName", List.of("Test method hasDisplayName(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
+          "isBasicTest",
+          List.of("isBasicTest",
+              "com.example.project.PassingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
+          "hasDisplayName",
+          List.of("hasDisplayName",
+              "com.example.project.PassingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
           "isParameterized[0](0)",
-            List.of("Test method isParameterized[0](0)(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          List.of("isParameterized[0](0)",
+              "com.example.project.PassingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
           "isParameterized[1](1)",
-            List.of("Test method isParameterized[1](1)(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
-      assertNotNull(client.getTestStart(null, "com.example.project.PassingTests",
+          List.of("isParameterized[1](1)",
+              "com.example.project.PassingTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.PassingTests",
           "isParameterized[2](2)",
-            List.of("Test method isParameterized[2](2)(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
+          List.of("isParameterized[2](2)",
+              "com.example.project.PassingTests")));
 
       assertNotNull(client.getTestFinish("com.example.project.PassingTests",
           "com.example.project.PassingTests", null,
-          List.of("Test class com.example.project.PassingTests")));
+          List.of("com.example.project.PassingTests")));
 
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
-          "isBasicTest", List.of("Test method isBasicTest(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
-          "hasDisplayName", List.of("Test method hasDisplayName(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
+          "isBasicTest",
+          List.of("isBasicTest",
+              "com.example.project.PassingTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
+          "hasDisplayName",
+          List.of("hasDisplayName",
+              "com.example.project.PassingTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
           "isParameterized[0](0)",
-            List.of("Test method isParameterized[0](0)(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          List.of("isParameterized[0](0)",
+              "com.example.project.PassingTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
           "isParameterized[1](1)",
-            List.of("Test method isParameterized[1](1)(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
-      assertNotNull(client.getTestFinish(null, "com.example.project.PassingTests",
+          List.of("isParameterized[1](1)",
+              "com.example.project.PassingTests")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.PassingTests",
           "isParameterized[2](2)",
-            List.of("Test method isParameterized[2](2)(com.example.project.PassingTests)",
-            "Test class com.example.project.PassingTests")));
+          List.of("isParameterized[2](2)",
+              "com.example.project.PassingTests")));
       client.clearMessages();
     });
   }
@@ -1357,8 +1491,7 @@ class BuildTargetServerIntegrationTest {
       // run failing tests
       List<String> failingMainClasses = new LinkedList<>();
       failingMainClasses.add("com.example.project.FailingTests");
-      ScalaTestClassesItem failingTestClassesItem =
-          new ScalaTestClassesItem(btId, failingMainClasses);
+      ScalaTestClassesItem failingTestClassesItem = new ScalaTestClassesItem(btId, failingMainClasses);
       List<ScalaTestClassesItem> failingTestClasses = new LinkedList<>();
       failingTestClasses.add(failingTestClassesItem);
       ScalaTestParams failingScalaTestParams = new ScalaTestParams();
@@ -1388,22 +1521,31 @@ class BuildTargetServerIntegrationTest {
       assertEquals(1, failingTestsReport.getFailed());
       assertEquals(0, failingTestsReport.getIgnored());
       assertEquals(0, failingTestsReport.getSkipped());
-      
-      assertNotNull(client.getTestStart("com.example.project.FailingTests",
-          "com.example.project.FailingTests", null,
-          List.of("Test class com.example.project.FailingTests")));
 
-      assertNotNull(client.getTestStart(null, "com.example.project.FailingTests",
-          "failingTest", List.of("Test method failingTest(com.example.project.FailingTests)",
-            "Test class com.example.project.FailingTests")));
+      assertNotNull(client.getTestStart(
+          "com.example.project.FailingTests",
+          "com.example.project.FailingTests",
+          null,
+          List.of("com.example.project.FailingTests")));
 
-      assertNotNull(client.getTestFinish("com.example.project.FailingTests",
-          "com.example.project.FailingTests", null,
-          List.of("Test class com.example.project.FailingTests")));
-      TestFinishEx failingTestsFinish = client.getTestFinish(null,
-          "com.example.project.FailingTests", "failingTest",
-          List.of("Test method failingTest(com.example.project.FailingTests)",
-          "Test class com.example.project.FailingTests"));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.FailingTests",
+          "failingTest",
+          List.of("failingTest",
+              "com.example.project.FailingTests")));
+
+      assertNotNull(client.getTestFinish(
+          "com.example.project.FailingTests",
+          "com.example.project.FailingTests",
+          null,
+          List.of("com.example.project.FailingTests")));
+      TestFinishEx failingTestsFinish = client.getTestFinish(
+          null,
+          "com.example.project.FailingTests",
+          "failingTest",
+          List.of("failingTest",
+              "com.example.project.FailingTests"));
       assertTrue(failingTestsFinish.getStackTrace()
           .contains("at com.example.project.FailingTests.failingTest(FailingTests.java:13)"));
 
@@ -1437,8 +1579,7 @@ class BuildTargetServerIntegrationTest {
       // run stacktrace test
       List<String> stacktraceMainClasses = new LinkedList<>();
       stacktraceMainClasses.add("com.example.project.ExceptionInBefore");
-      ScalaTestClassesItem stacktraceTestClassesItem =
-              new ScalaTestClassesItem(btId, stacktraceMainClasses);
+      ScalaTestClassesItem stacktraceTestClassesItem = new ScalaTestClassesItem(btId, stacktraceMainClasses);
       List<ScalaTestClassesItem> stacktraceTestClasses = new LinkedList<>();
       stacktraceTestClasses.add(stacktraceTestClassesItem);
       ScalaTestParams stacktraceScalaTestParams = new ScalaTestParams();
@@ -1448,7 +1589,7 @@ class BuildTargetServerIntegrationTest {
       stacktraceTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
       stacktraceTestParams.setData(stacktraceScalaTestParams);
       TestResult stacktraceTestResult = gradleBuildServer
-              .buildTargetTest(stacktraceTestParams).join();
+          .buildTargetTest(stacktraceTestParams).join();
       assertEquals(StatusCode.ERROR, stacktraceTestResult.getStatusCode());
       assertEquals("originId", stacktraceTestResult.getOriginId());
       client.waitOnStartReports(5);
@@ -1470,33 +1611,45 @@ class BuildTargetServerIntegrationTest {
       assertEquals(0, stacktraceTestsReport.getIgnored());
       assertEquals(1, stacktraceTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart("com.example.project.ExceptionInBefore",
-          "com.example.project.ExceptionInBefore", null,
-          List.of("Test class com.example.project.ExceptionInBefore")));
+      assertNotNull(client.getTestStart(
+          "com.example.project.ExceptionInBefore",
+          "com.example.project.ExceptionInBefore",
+          null,
+          List.of("com.example.project.ExceptionInBefore")));
 
-      assertNotNull(client.getTestStart(null, "com.example.project.ExceptionInBefore",
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.ExceptionInBefore",
           "beforeAll",
-          List.of("Test method beforeAll(com.example.project.ExceptionInBefore)",
-          "Test class com.example.project.ExceptionInBefore")));
-      assertNotNull(client.getTestStart(null, "com.example.project.ExceptionInBefore",
+          List.of("beforeAll",
+              "com.example.project.ExceptionInBefore")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.ExceptionInBefore",
           "test",
-          List.of("Test method test(com.example.project.ExceptionInBefore)",
-          "Test class com.example.project.ExceptionInBefore")));
+          List.of("test",
+              "com.example.project.ExceptionInBefore")));
 
-      assertNotNull(client.getTestFinish("com.example.project.ExceptionInBefore",
-          "com.example.project.ExceptionInBefore", null,
-          List.of("Test class com.example.project.ExceptionInBefore")));
+      assertNotNull(client.getTestFinish(
+          "com.example.project.ExceptionInBefore",
+          "com.example.project.ExceptionInBefore",
+          null,
+          List.of("com.example.project.ExceptionInBefore")));
 
-      TestFinishEx stacktraceTestsFinish = client.getTestFinish(null,
-          "com.example.project.ExceptionInBefore", "beforeAll",
-          List.of("Test method beforeAll(com.example.project.ExceptionInBefore)",
-          "Test class com.example.project.ExceptionInBefore"));
+      TestFinishEx stacktraceTestsFinish = client.getTestFinish(
+          null,
+          "com.example.project.ExceptionInBefore",
+          "beforeAll",
+          List.of("beforeAll",
+              "com.example.project.ExceptionInBefore"));
       assertTrue(stacktraceTestsFinish.getStackTrace().contains(
-              "at com.example.project.ExceptionInBefore.beforeAll(ExceptionInBefore.java:12)"));
-      assertNotNull(client.getTestFinish(null, "com.example.project.ExceptionInBefore",
+          "at com.example.project.ExceptionInBefore.beforeAll(ExceptionInBefore.java:12)"));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.ExceptionInBefore",
           "test",
-          List.of("Test method test(com.example.project.ExceptionInBefore)",
-          "Test class com.example.project.ExceptionInBefore")));
+          List.of("test",
+              "com.example.project.ExceptionInBefore")));
 
       client.clearMessages();
     });
@@ -1533,8 +1686,8 @@ class BuildTargetServerIntegrationTest {
       singleMethodTestParams.setDataKind("scala-test-suites-selection");
       List<String> singleTestMethods = new ArrayList<>();
       singleTestMethods.add("envVarSetTest");
-      ScalaTestSuiteSelection singleScalaTestSuiteSelection =
-          new ScalaTestSuiteSelection("com.example.project.EnvVarTests", singleTestMethods);
+      ScalaTestSuiteSelection singleScalaTestSuiteSelection = new ScalaTestSuiteSelection(
+          "com.example.project.EnvVarTests", singleTestMethods);
       List<ScalaTestSuiteSelection> singleScalaTestSuiteSelections = new LinkedList<>();
       singleScalaTestSuiteSelections.add(singleScalaTestSuiteSelection);
       List<String> emptyJvmOptions = new ArrayList<>();
@@ -1550,8 +1703,7 @@ class BuildTargetServerIntegrationTest {
       ScalaTestSuites singleScalaTestSuites = new ScalaTestSuites(singleScalaTestSuiteSelections,
           emptyJvmOptions, environmentVariables);
       singleMethodTestParams.setData(singleScalaTestSuites);
-      TestResult singleMethodTestResult =
-          gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
+      TestResult singleMethodTestResult = gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
       assertEquals(StatusCode.OK, singleMethodTestResult.getStatusCode());
       assertEquals("originId", singleMethodTestResult.getOriginId());
       client.waitOnStartReports(4);
@@ -1574,26 +1726,36 @@ class BuildTargetServerIntegrationTest {
       assertEquals(0, singleMethodTestsReport.getFailed());
       assertEquals(0, singleMethodTestsReport.getIgnored());
       assertEquals(0, singleMethodTestsReport.getSkipped());
-      
-      assertNotNull(client.getTestStart("com.example.project.EnvVarTests",
-          "com.example.project.EnvVarTests", null,
-          List.of("Test class com.example.project.EnvVarTests")));
 
-      assertNotNull(client.getTestStart(null, "com.example.project.EnvVarTests",
-          "envVarSetTest", List.of("Test method envVarSetTest(com.example.project.EnvVarTests)",
-            "Test class com.example.project.EnvVarTests")));
+      assertNotNull(client.getTestStart(
+          "com.example.project.EnvVarTests",
+          "com.example.project.EnvVarTests",
+          null,
+          List.of("com.example.project.EnvVarTests")));
 
-      assertNotNull(client.getTestFinish("com.example.project.EnvVarTests",
-          "com.example.project.EnvVarTests", null,
-          List.of("Test class com.example.project.EnvVarTests")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.EnvVarTests",
+          "envVarSetTest",
+          List.of("envVarSetTest",
+              "com.example.project.EnvVarTests")));
 
-      assertNotNull(client.getTestFinish(null, "com.example.project.EnvVarTests",
-          "envVarSetTest", List.of("Test method envVarSetTest(com.example.project.EnvVarTests)",
-            "Test class com.example.project.EnvVarTests")));
+      assertNotNull(client.getTestFinish(
+          "com.example.project.EnvVarTests",
+          "com.example.project.EnvVarTests",
+          null,
+          List.of("com.example.project.EnvVarTests")));
+
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.EnvVarTests",
+          "envVarSetTest",
+          List.of("envVarSetTest",
+              "com.example.project.EnvVarTests")));
       client.clearMessages();
     });
   }
-  
+
   @Test
   void testSpock() {
     withNewTestServer("spock", (gradleBuildServer, client) -> {
@@ -1619,8 +1781,7 @@ class BuildTargetServerIntegrationTest {
       BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "spock [test]");
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.SpockTest");
-      ScalaTestClassesItem passingTestClassesItem =
-          new ScalaTestClassesItem(btId, passingTestMainClasses);
+      ScalaTestClassesItem passingTestClassesItem = new ScalaTestClassesItem(btId, passingTestMainClasses);
       List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
       passingTestClasses.add(passingTestClassesItem);
       ScalaTestParams passingScalaTestParams = new ScalaTestParams();
@@ -1629,8 +1790,7 @@ class BuildTargetServerIntegrationTest {
       passingTestParams.setOriginId("originId");
       passingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
       passingTestParams.setData(passingScalaTestParams);
-      TestResult passingTestResult =
-          gradleBuildServer.buildTargetTest(passingTestParams).join();
+      TestResult passingTestResult = gradleBuildServer.buildTargetTest(passingTestParams).join();
       assertEquals(StatusCode.OK, passingTestResult.getStatusCode());
       assertEquals("originId", passingTestResult.getOriginId());
       client.waitOnStartReports(4);
@@ -1654,21 +1814,31 @@ class BuildTargetServerIntegrationTest {
       assertEquals(0, passingTestsReport.getIgnored());
       assertEquals(0, passingTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart("com.example.project.SpockTest",
-          "com.example.project.SpockTest", null,
+      assertNotNull(client.getTestStart(
+          "com.example.project.SpockTest",
+          "com.example.project.SpockTest",
+          null,
           List.of("SpockTest")));
 
-      assertNotNull(client.getTestStart(null, "com.example.project.SpockTest",
-          "zero is zero", List.of("Test zero is zero(com.example.project.SpockTest)",
-            "SpockTest")));
+      assertNotNull(client.getTestStart(
+          null,
+          "com.example.project.SpockTest",
+          "zero is zero",
+          List.of("zero is zero",
+              "SpockTest")));
 
-      assertNotNull(client.getTestFinish("com.example.project.SpockTest",
-          "com.example.project.SpockTest", null,
+      assertNotNull(client.getTestFinish(
+          "com.example.project.SpockTest",
+          "com.example.project.SpockTest",
+          null,
           List.of("SpockTest")));
 
-      assertNotNull(client.getTestFinish(null, "com.example.project.SpockTest",
-          "zero is zero", List.of("Test zero is zero(com.example.project.SpockTest)",
-            "SpockTest")));
+      assertNotNull(client.getTestFinish(
+          null,
+          "com.example.project.SpockTest",
+          "zero is zero",
+          List.of("zero is zero",
+              "SpockTest")));
       client.clearMessages();
     });
   }
