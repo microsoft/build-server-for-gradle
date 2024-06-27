@@ -3,21 +3,18 @@
 
 package com.microsoft.java.bs.gradle.model.impl;
 
+import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import com.microsoft.java.bs.gradle.model.GradleIncludedBuild;
-import com.microsoft.java.bs.gradle.model.GradleSourceSet;
-import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 /**
  * Default implementation of {@link GradleSourceSets}.
  */
 public class DefaultGradleSourceSets implements GradleSourceSets {
   private static final long serialVersionUID = 1L;
-
-  private List<GradleIncludedBuild> gradleIncludedBuilds;
 
   private List<GradleSourceSet> gradleSourceSets;
 
@@ -30,7 +27,8 @@ public class DefaultGradleSourceSets implements GradleSourceSets {
    */
   public DefaultGradleSourceSets(GradleSourceSets sourceSets) {
     this(sourceSets.getGradleSourceSets().stream()
-        .map(DefaultGradleSourceSet::new).collect(Collectors.toList()));
+        .map(DefaultGradleSourceSet::new)
+        .collect(Collectors.toList()));
   }
 
   @Override
@@ -44,7 +42,7 @@ public class DefaultGradleSourceSets implements GradleSourceSets {
 
   @Override
   public int hashCode() {
-    return Objects.hash(gradleIncludedBuilds, gradleSourceSets);
+    return Objects.hash(gradleSourceSets);
   }
 
   @Override
@@ -59,7 +57,6 @@ public class DefaultGradleSourceSets implements GradleSourceSets {
       return false;
     }
     DefaultGradleSourceSets other = (DefaultGradleSourceSets) obj;
-    return Objects.equals(gradleIncludedBuilds, other.gradleIncludedBuilds)
-        && Objects.equals(gradleSourceSets, other.gradleSourceSets);
+    return Objects.equals(gradleSourceSets, other.gradleSourceSets);
   }
 }

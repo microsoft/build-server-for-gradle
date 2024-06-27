@@ -15,6 +15,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.microsoft.java.bs.core.internal.gradle.actions.GetSourceSetsAction;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import org.gradle.tooling.BuildActionExecuter;
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
@@ -32,7 +33,6 @@ import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TestReportReporter;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
-import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;

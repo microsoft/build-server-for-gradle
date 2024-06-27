@@ -159,12 +159,14 @@ class GradleApiConnectorTest {
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
     assertEquals(6, gradleSourceSets.getGradleSourceSets().size());
-    findSourceSet(gradleSourceSets, "app [main]");
     findSourceSet(gradleSourceSets, "app [test]");
-    findSourceSet(gradleSourceSets, "string-utils [main]");
     findSourceSet(gradleSourceSets, "string-utils [test]");
     findSourceSet(gradleSourceSets, "number-utils [test]");
-    findSourceSet(gradleSourceSets, "number-utils [test]");
+    GradleSourceSet mainApp = findSourceSet(gradleSourceSets, "app [main]");
+    GradleSourceSet mainStringUtils = findSourceSet(gradleSourceSets, "string-utils [main]");
+    GradleSourceSet mainNumberUtils = findSourceSet(gradleSourceSets, "number-utils [main]");
+    assertHasBuildTargetDependency(mainApp, mainStringUtils);
+    assertHasBuildTargetDependency(mainApp, mainNumberUtils);
   }
 
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,

@@ -1,19 +1,21 @@
 package com.microsoft.java.bs.core.internal.gradle.actions;
 
+import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleSourceSetsMetadata;
+import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import org.gradle.tooling.BuildAction;
 import org.gradle.tooling.BuildController;
 import org.gradle.tooling.model.gradle.GradleBuild;
 
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.stream.Collectors;
+import java.io.File;
+import java.util.*;
 
 /**
- * {@link BuildAction} that retrieves {@link GradleSourceSets} from a Gradle build,
+ * {@link BuildAction} that retrieves {@link DefaultGradleSourceSet} from a Gradle build,
  * handling both normal and composite builds.
  */
 public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
@@ -25,40 +27,66 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
    */
   @Override
   public GradleSourceSets execute(BuildController buildController) {
-    Map<String, List<GradleSourceSet>> sourceSets = new HashMap<>();
+    List<String> traversedProjects = new ArrayList<>();
+    Map<GradleSourceSet, List<File>> sourceSetToClasspath = new HashMap<>();
+    Map<File, GradleSourceSet> outputsToSourceSet = new HashMap<>();
+
     GradleBuild buildModel = buildController.getBuildModel();
     String rootProjectName = buildModel.getRootProject().getName();
-    fetchModels(buildController, buildModel, sourceSets, rootProjectName);
-    return new DefaultGradleSourceSets(sourceSets.values().stream().flatMap(List::stream)
-        .collect(Collectors.toList()));
+    fetchModels(buildController, buildModel, traversedProjects, sourceSetToClasspath, outputsToSourceSet, rootProjectName);
+
+    // Add dependencies
+    List<GradleSourceSet> sourceSets = new ArrayList<>();
+    for (Map.Entry<GradleSourceSet, List<File>> entry : sourceSetToClasspath.entrySet()) {
+
+      Set<BuildTargetDependency> dependencies = new HashSet<>();
+      for (File file : entry.getValue()) {
+        GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
+        if (otherSourceSet != null) {
+          dependencies.add(new DefaultBuildTargetDependency(otherSourceSet));
+        }
+      }
+
+      DefaultGradleSourceSet sourceSet = new DefaultGradleSourceSet(entry.getKey());
+      sourceSet.setBuildTargetDependencies(dependencies);
+      sourceSets.add(sourceSet);
+
+    }
+
+    return new DefaultGradleSourceSets(sourceSets);
   }
 
   /**
-   * Fetches source sets from the provided Gradle build model and stores them in a map categorized by project name.
+   * Fetches source sets from the provided Gradle build model and
+   * stores them in a map categorized by project name.
    *
-   * @param buildController The Gradle build controller used to interact with the build.
-   * @param build The Gradle build model representing the current build.
-   * @param sourceSets A map to store the retrieved source sets categorized by project name.
-   * @param buildName The name of the root project in the build.
+   * @param buildController      The Gradle build controller used to interact with the build.
+   * @param build                The Gradle build model representing the current build.
+   * @param sourceSetToClasspath A map to store the retrieved source sets categorized
+   *                             by project name.
+   * @param buildName            The name of the root project in the build.
    */
   private void fetchModels(
       BuildController buildController,
       GradleBuild build,
-      Map<String, List<GradleSourceSet>> sourceSets,
+      List<String> traversedProjects,
+      Map<GradleSourceSet, List<File>> sourceSetToClasspath,
+      Map<File, GradleSourceSet> outputsToSourceSet,
       String buildName
   ) {
-    if (sourceSets.containsKey(buildName)) {
+    if (traversedProjects.contains(buildName)) {
       return;
     }
-    sourceSets.put(
-        buildName,
-        buildController
-            .findModel(build.getRootProject(), GradleSourceSets.class)
-            .getGradleSourceSets()
-    );
+    GradleSourceSetsMetadata sourceSets = buildController
+        .findModel(build.getRootProject(), GradleSourceSetsMetadata.class);
+
+    traversedProjects.add(buildName);
+    sourceSetToClasspath.putAll(sourceSets.getGradleSourceSets());
+    outputsToSourceSet.putAll(sourceSets.getOutputsToSourceSet());
+
     for (GradleBuild includedBuild : build.getIncludedBuilds()) {
       String includedBuildName = includedBuild.getRootProject().getName();
-      fetchModels(buildController, includedBuild, sourceSets, includedBuildName);
+      fetchModels(buildController, includedBuild, traversedProjects, sourceSetToClasspath, outputsToSourceSet, includedBuildName);
     }
   }
 
