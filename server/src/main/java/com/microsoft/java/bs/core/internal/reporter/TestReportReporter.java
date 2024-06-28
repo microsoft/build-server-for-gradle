@@ -85,7 +85,13 @@ public class TestReportReporter extends ProgressReporter {
     TestName testName = null;
     while (i >= 0) {
       JvmTestOperationDescriptor desc = fullStack.get(i);
-      TestName currentTestName = new TestName(desc.getTestDisplayName(), desc.getSuiteName(),
+      String displayName;
+      try {
+        displayName = desc.getTestDisplayName();
+      } catch (NoSuchMethodError e) {
+        displayName = desc.getDisplayName();
+      }
+      TestName currentTestName = new TestName(displayName, desc.getSuiteName(),
           desc.getClassName(), desc.getMethodName());
       currentTestName.setParent(testName);
       testName = currentTestName;
