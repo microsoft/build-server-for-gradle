@@ -75,6 +75,7 @@ import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
+import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
@@ -793,6 +794,14 @@ class BuildTargetServerIntegrationTest {
 
   @Test
   void testSingleMethodJunit() {
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    System.out.println(connector.getGradleVersion(Paths.get(
+      System.getProperty("user.dir"),
+      "..",
+      "testProjects",
+      "java-tests").toFile().toURI()));
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
       // get targets
       WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
