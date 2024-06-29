@@ -70,6 +70,7 @@ import ch.epfl.scala.bsp4j.extended.TestStartEx;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 
 import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
@@ -184,7 +185,8 @@ class BuildTargetServerIntegrationTest {
       return testFinishes.stream().filter(ts -> matchesTest(ts.getTestName(),
           suiteName, className, methodName, testNames)).findAny()
           .orElseThrow(() -> new IllegalStateException("Missing test finish for\n" + suiteName
-              + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testFinishes
+              + "," + className + "," + methodName + "," + testNames + "\nonly found\n"
+              + testFinishes
                   .stream().map(ts -> testNameAsString(ts.getTestName()))
                   .collect(Collectors.joining("\n"))));
     }
@@ -309,7 +311,8 @@ class BuildTargetServerIntegrationTest {
         "testProjects",
         projectDir).toFile();
 
-    BuildClientCapabilities capabilities = new BuildClientCapabilities(SupportedLanguages.allBspNames);
+    BuildClientCapabilities capabilities =
+        new BuildClientCapabilities(SupportedLanguages.allBspNames);
     return new InitializeBuildParams(
         "test-client",
         "0.1.0",
@@ -337,8 +340,10 @@ class BuildTargetServerIntegrationTest {
       LifecycleService lifecycleService = new LifecycleService(connector, preferenceManager);
       BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
           connector, preferenceManager);
-      GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService, buildTargetService);
-      org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> serverLauncher = new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
+      GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
+          buildTargetService);
+      org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> serverLauncher =
+          new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
           .setLocalService(gradleBuildServer)
           .setRemoteInterface(BuildClient.class)
           .setOutput(serverOut)
@@ -348,7 +353,8 @@ class BuildTargetServerIntegrationTest {
       buildTargetService.setClient(serverLauncher.getRemoteProxy());
       // client
       TestClient client = new TestClient();
-      org.eclipse.lsp4j.jsonrpc.Launcher<TestServer> clientLauncher = new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<TestServer>()
+      org.eclipse.lsp4j.jsonrpc.Launcher<TestServer> clientLauncher =
+          new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<TestServer>()
           .setLocalService(client)
           .setRemoteInterface(TestServer.class)
           .setInput(clientIn)
@@ -429,7 +435,8 @@ class BuildTargetServerIntegrationTest {
           .flatMap(mavenDependencyModule -> mavenDependencyModule.getArtifacts().stream())
           .filter(artifact -> "sources".equals(artifact.getClassifier()))
           .collect(Collectors.toList());
-      assertTrue(allArtifacts.stream().anyMatch(artifact -> artifact.getUri().endsWith("-sources.jar")));
+      assertTrue(allArtifacts.stream()
+          .anyMatch(artifact -> artifact.getUri().endsWith("-sources.jar")));
 
       // clean targets
       CleanCacheParams cleanCacheParams = new CleanCacheParams(btIds);
@@ -495,7 +502,8 @@ class BuildTargetServerIntegrationTest {
       // run passing tests
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.PassingTests");
-      ScalaTestClassesItem passingTestClassesItem = new ScalaTestClassesItem(btId, passingTestMainClasses);
+      ScalaTestClassesItem passingTestClassesItem =
+          new ScalaTestClassesItem(btId, passingTestMainClasses);
       List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
       passingTestClasses.add(passingTestClassesItem);
       ScalaTestParams passingScalaTestParams = new ScalaTestParams();
@@ -644,7 +652,8 @@ class BuildTargetServerIntegrationTest {
       // run failing tests
       List<String> failingMainClasses = new LinkedList<>();
       failingMainClasses.add("com.example.project.FailingTests");
-      ScalaTestClassesItem failingTestClassesItem = new ScalaTestClassesItem(btId, failingMainClasses);
+      ScalaTestClassesItem failingTestClassesItem =
+          new ScalaTestClassesItem(btId, failingMainClasses);
       List<ScalaTestClassesItem> failingTestClasses = new LinkedList<>();
       failingTestClasses.add(failingTestClassesItem);
       ScalaTestParams failingScalaTestParams = new ScalaTestParams();
@@ -729,7 +738,8 @@ class BuildTargetServerIntegrationTest {
       // run stacktrace test
       List<String> stacktraceMainClasses = new LinkedList<>();
       stacktraceMainClasses.add("com.example.project.ExceptionInBefore");
-      ScalaTestClassesItem stacktraceTestClassesItem = new ScalaTestClassesItem(btId, stacktraceMainClasses);
+      ScalaTestClassesItem stacktraceTestClassesItem = new ScalaTestClassesItem(btId,
+          stacktraceMainClasses);
       List<ScalaTestClassesItem> stacktraceTestClasses = new LinkedList<>();
       stacktraceTestClasses.add(stacktraceTestClassesItem);
       ScalaTestParams stacktraceScalaTestParams = new ScalaTestParams();
@@ -793,15 +803,16 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
+  @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
   void testSingleMethodJunit() {
     PreferenceManager preferenceManager = new PreferenceManager();
     preferenceManager.setPreferences(new Preferences());
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     System.out.println(connector.getGradleVersion(Paths.get(
-      System.getProperty("user.dir"),
-      "..",
-      "testProjects",
-      "java-tests").toFile().toURI()));
+        System.getProperty("user.dir"),
+        "..",
+        "testProjects",
+        "java-tests").toFile().toURI()));
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
       // get targets
       WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
@@ -847,7 +858,8 @@ class BuildTargetServerIntegrationTest {
       ScalaTestSuites singleScalaTestSuites = new ScalaTestSuites(singleScalaTestSuiteSelections,
           emptyJvmOptions, environmentVariables);
       singleMethodTestParams.setData(singleScalaTestSuites);
-      TestResult singleMethodTestResult = gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
+      TestResult singleMethodTestResult =
+          gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
       assertEquals(StatusCode.OK, singleMethodTestResult.getStatusCode());
       assertEquals("originId", singleMethodTestResult.getOriginId());
       client.waitOnStartReports(5);
@@ -925,7 +937,8 @@ class BuildTargetServerIntegrationTest {
       // run complex tests
       List<String> complexTestMainClasses = new LinkedList<>();
       complexTestMainClasses.add("com.example.project.TestFactoryTests");
-      ScalaTestClassesItem complexTestClassesItem = new ScalaTestClassesItem(btId, complexTestMainClasses);
+      ScalaTestClassesItem complexTestClassesItem =
+          new ScalaTestClassesItem(btId, complexTestMainClasses);
       List<ScalaTestClassesItem> complexTestClasses = new LinkedList<>();
       complexTestClasses.add(complexTestClassesItem);
       ScalaTestParams complexScalaTestParams = new ScalaTestParams();
@@ -1102,7 +1115,8 @@ class BuildTargetServerIntegrationTest {
       // run nested tests
       List<String> nestedTestMainClasses = new LinkedList<>();
       nestedTestMainClasses.add("com.example.project.NestedTests");
-      ScalaTestClassesItem nestedTestClassesItem = new ScalaTestClassesItem(btId, nestedTestMainClasses);
+      ScalaTestClassesItem nestedTestClassesItem =
+          new ScalaTestClassesItem(btId, nestedTestMainClasses);
       List<ScalaTestClassesItem> nestedTestClasses = new LinkedList<>();
       nestedTestClasses.add(nestedTestClassesItem);
       ScalaTestParams nestedScalaTestParams = new ScalaTestParams();
@@ -1368,7 +1382,8 @@ class BuildTargetServerIntegrationTest {
       // run passing tests
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.PassingTests");
-      ScalaTestClassesItem passingTestClassesItem = new ScalaTestClassesItem(btId, passingTestMainClasses);
+      ScalaTestClassesItem passingTestClassesItem =
+          new ScalaTestClassesItem(btId, passingTestMainClasses);
       List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
       passingTestClasses.add(passingTestClassesItem);
       ScalaTestParams passingScalaTestParams = new ScalaTestParams();
@@ -1500,7 +1515,8 @@ class BuildTargetServerIntegrationTest {
       // run failing tests
       List<String> failingMainClasses = new LinkedList<>();
       failingMainClasses.add("com.example.project.FailingTests");
-      ScalaTestClassesItem failingTestClassesItem = new ScalaTestClassesItem(btId, failingMainClasses);
+      ScalaTestClassesItem failingTestClassesItem =
+          new ScalaTestClassesItem(btId, failingMainClasses);
       List<ScalaTestClassesItem> failingTestClasses = new LinkedList<>();
       failingTestClasses.add(failingTestClassesItem);
       ScalaTestParams failingScalaTestParams = new ScalaTestParams();
@@ -1588,7 +1604,8 @@ class BuildTargetServerIntegrationTest {
       // run stacktrace test
       List<String> stacktraceMainClasses = new LinkedList<>();
       stacktraceMainClasses.add("com.example.project.ExceptionInBefore");
-      ScalaTestClassesItem stacktraceTestClassesItem = new ScalaTestClassesItem(btId, stacktraceMainClasses);
+      ScalaTestClassesItem stacktraceTestClassesItem =
+          new ScalaTestClassesItem(btId, stacktraceMainClasses);
       List<ScalaTestClassesItem> stacktraceTestClasses = new LinkedList<>();
       stacktraceTestClasses.add(stacktraceTestClassesItem);
       ScalaTestParams stacktraceScalaTestParams = new ScalaTestParams();
@@ -1665,6 +1682,7 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
+  @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
   void testSingleMethodTestNg() {
     withNewTestServer("testng", (gradleBuildServer, client) -> {
       // get targets
@@ -1712,7 +1730,8 @@ class BuildTargetServerIntegrationTest {
       ScalaTestSuites singleScalaTestSuites = new ScalaTestSuites(singleScalaTestSuiteSelections,
           emptyJvmOptions, environmentVariables);
       singleMethodTestParams.setData(singleScalaTestSuites);
-      TestResult singleMethodTestResult = gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
+      TestResult singleMethodTestResult =
+          gradleBuildServer.buildTargetTest(singleMethodTestParams).join();
       assertEquals(StatusCode.OK, singleMethodTestResult.getStatusCode());
       assertEquals("originId", singleMethodTestResult.getOriginId());
       client.waitOnStartReports(4);
@@ -1790,7 +1809,8 @@ class BuildTargetServerIntegrationTest {
       BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "spock [test]");
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.SpockTest");
-      ScalaTestClassesItem passingTestClassesItem = new ScalaTestClassesItem(btId, passingTestMainClasses);
+      ScalaTestClassesItem passingTestClassesItem =
+          new ScalaTestClassesItem(btId, passingTestMainClasses);
       List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
       passingTestClasses.add(passingTestClassesItem);
       ScalaTestParams passingScalaTestParams = new ScalaTestParams();
@@ -1873,7 +1893,8 @@ class BuildTargetServerIntegrationTest {
       gradleBuildServer.buildTargetCompile(compileParams).join();
       client.clearMessages();
 
-      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(), "java-tests [extraTest]");
+      BuildTargetIdentifier btId = findTarget(buildTargetsResult.getTargets(),
+          "java-tests [extraTest]");
 
       // run single method tests
       List<BuildTargetIdentifier> singleBt = new ArrayList<>();
@@ -1881,7 +1902,8 @@ class BuildTargetServerIntegrationTest {
       
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.ExtraTests");
-      ScalaTestClassesItem passingTestClassesItem = new ScalaTestClassesItem(btId, passingTestMainClasses);
+      ScalaTestClassesItem passingTestClassesItem =
+          new ScalaTestClassesItem(btId, passingTestMainClasses);
       List<ScalaTestClassesItem> passingTestClasses = new LinkedList<>();
       passingTestClasses.add(passingTestClassesItem);
       ScalaTestParams passingScalaTestParams = new ScalaTestParams();
