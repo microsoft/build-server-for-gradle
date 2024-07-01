@@ -805,14 +805,6 @@ class BuildTargetServerIntegrationTest {
   @Test
   @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
   void testSingleMethodJunit() {
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
-    System.out.println(connector.getGradleVersion(Paths.get(
-        System.getProperty("user.dir"),
-        "..",
-        "testProjects",
-        "java-tests").toFile().toURI()));
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
       // get targets
       WorkspaceBuildTargetsResult buildTargetsResult = gradleBuildServer.workspaceBuildTargets()
