@@ -803,7 +803,6 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
-  @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
   void testSingleMethodJunit() {
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
       // get targets
@@ -1674,7 +1673,6 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
-  @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
   void testSingleMethodTestNg() {
     withNewTestServer("testng", (gradleBuildServer, client) -> {
       // get targets
