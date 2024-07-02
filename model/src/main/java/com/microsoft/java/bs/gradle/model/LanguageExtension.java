@@ -3,25 +3,52 @@
 
 package com.microsoft.java.bs.gradle.model;
 
-import org.gradle.internal.impldep.javax.annotation.Nullable;
-
 import java.io.Serializable;
 
 /**
- * parent interface for language extensions.
+ * Interface representing a language extension.
+ *
+ * @see JavaExtension
+ * @see ScalaExtension
  */
 public interface LanguageExtension extends Serializable {
 
-  @Nullable
+  /**
+   * Checks if the implementing class is a {@link JavaExtension}.
+   *
+   * @return true if the extension is for Java, false otherwise.
+   */
   boolean isJavaExtension();
 
-  @Nullable
+  /**
+   * Checks if the implementing class is a {@link ScalaExtension}.
+   *
+   * @return true if the extension is for Scala, false otherwise.
+   */
   boolean isScalaExtension();
 
-  @Nullable
+  /**
+   * Attempts to cast the current object to a {@link JavaExtension} instance.
+   * <p>
+   * This method should ideally be used only when the implementing class
+   * is known to be a {@link JavaExtension}.
+   * </p>
+   *
+   * @return the current object cast to a {@link JavaExtension} instance,
+   *        or null if the cast fails.
+   */
   JavaExtension getAsJavaExtension();
 
-  @Nullable
+  /**
+   * Attempts to cast the current object to a {@link ScalaExtension} instance.
+   * <p>
+   * This method should ideally be used only when the implementing class
+   * is known to be a {@link ScalaExtension}.
+   * </p>
+   *
+   * @return the current object cast to a {@link ScalaExtension} instance,
+   *        or null if the cast fails.
+   */
   ScalaExtension getAsScalaExtension();
 
 }
