@@ -19,17 +19,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
- * A factory for creating the streams for supported transmission methods.
- *
- * @author Gorkem Ercan
- *
+ * A named pipe stream implementation.
  */
 
-public class ServerNamedPipeStream {
+public class NamedPipeStream {
   private String pipeName;
   private StreamProvider provider;
 
-  public ServerNamedPipeStream(String pipeName) {
+  public NamedPipeStream(String pipeName) {
     this.pipeName = pipeName;
   }
 
@@ -46,7 +43,7 @@ public class ServerNamedPipeStream {
 
     private InputStream input;
     private OutputStream output;
-    private String pipeName = ServerNamedPipeStream.this.pipeName;
+    private String pipeName = NamedPipeStream.this.pipeName;
 
     public PipeStreamProvider() {
       initializeNamedPipe();

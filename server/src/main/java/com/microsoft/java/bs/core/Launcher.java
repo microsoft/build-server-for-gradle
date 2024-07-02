@@ -18,7 +18,7 @@ import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.server.GradleBuildServer;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
-import com.microsoft.java.bs.core.internal.utils.ServerNamedPipeStream;
+import com.microsoft.java.bs.core.internal.utils.NamedPipeStream;
 import ch.epfl.scala.bsp4j.BuildClient;
 
 /**
@@ -40,9 +40,16 @@ public class Launcher {
   public static void main(String[] args) {
     checkRequiredProperties();
 
+    String pipePath = null;
+    for (String arg : args) {
+      if (arg.startsWith("--pipe=")) {
+        pipePath = arg.substring("--pipe=".length());
+        break;
+      }
+    }
     org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher;
-    if (args.length > 0 && args[0] != null && !args[0].isEmpty()) {
-      launcher = createLauncherUsingPipe(args[0]);
+    if (pipePath != null && !pipePath.isEmpty()) {
+      launcher = createLauncherUsingPipe(pipePath);
     } else {
       launcher = createLauncherUsingStdIo();
     }
@@ -53,7 +60,7 @@ public class Launcher {
 
   private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> 
       createLauncherUsingPipe(String pipePath) {
-    ServerNamedPipeStream pipeStream = new ServerNamedPipeStream(pipePath);
+    NamedPipeStream pipeStream = new NamedPipeStream(pipePath);
     try {
       return createLauncher(pipeStream.getOutputStream(), pipeStream.getInputStream());
     } catch (IOException e) {
@@ -66,8 +73,7 @@ public class Launcher {
   }
 
   private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> 
-      createLauncher(OutputStream outputStream,
-      InputStream inputStream) {
+      createLauncher(OutputStream outputStream, InputStream inputStream) {
     BuildTargetManager buildTargetManager = new BuildTargetManager();
     PreferenceManager preferenceManager = new PreferenceManager();
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
