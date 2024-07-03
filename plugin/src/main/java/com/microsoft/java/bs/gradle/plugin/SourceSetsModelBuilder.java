@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.file.CopySpec;
@@ -105,7 +106,12 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         exclusionFromDependencies.addAll(generatedSrcDirs);
 
         // classpath
-        List<File> compileClasspath = new LinkedList<>(sourceSet.getCompileClasspath().getFiles());
+        List<File> compileClasspath = new LinkedList<>();
+        try {
+          compileClasspath.addAll(sourceSet.getCompileClasspath().getFiles());
+        } catch (GradleException e) {
+          // ignore
+        }
         gradleSourceSet.setCompileClasspath(compileClasspath);
 
         // source output dir
