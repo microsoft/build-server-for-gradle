@@ -197,7 +197,14 @@ public class GradleApiConnector {
             launcher.withArguments(args);
             launcher.setJvmArguments(jvmOptions);
             // env vars requires Gradle >= 3.5
-            launcher.setEnvironmentVariables(envVars);
+            if (envVars != null) {
+              // Running Gradle tests on Windows seems to require the `SystemRoot` env var
+              // Otherwise Windows complains "Unrecognized Windows Sockets error: 10106"
+              // Assumption is that current env vars plus specified env vars are all wanted.
+              Map<String, String> allEnvVars = new HashMap<>(System.getenv());
+              allEnvVars.putAll(envVars);
+              launcher.setEnvironmentVariables(allEnvVars);
+            }
             launcher.run();
           } catch (IOException e) {
             // caused by close the output stream, just simply log the error.

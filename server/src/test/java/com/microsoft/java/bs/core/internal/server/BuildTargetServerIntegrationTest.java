@@ -803,7 +803,6 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
-  @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
   void testSingleMethodJunit() {
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
       // get targets
@@ -840,13 +839,6 @@ class BuildTargetServerIntegrationTest {
       List<String> emptyJvmOptions = new ArrayList<>();
       List<String> environmentVariables = new ArrayList<>();
       environmentVariables.add("EnvVar=Test");
-      // Running Gradle tests on Windows seems to require the SystemRoot env var
-      // Otherwise Windows complains "Unrecognized Windows Sockets error: 10106"
-      String systemRoot = System.getenv("SystemRoot");
-      if (systemRoot != null) {
-        environmentVariables.add("SystemRoot=" + systemRoot);
-      }
-      // or whatever is relevant to that operating system
       ScalaTestSuites singleScalaTestSuites = new ScalaTestSuites(singleScalaTestSuiteSelections,
           emptyJvmOptions, environmentVariables);
       singleMethodTestParams.setData(singleScalaTestSuites);
@@ -1674,7 +1666,6 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
-  @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
   void testSingleMethodTestNg() {
     withNewTestServer("testng", (gradleBuildServer, client) -> {
       // get targets
@@ -1712,13 +1703,6 @@ class BuildTargetServerIntegrationTest {
       List<String> emptyJvmOptions = new ArrayList<>();
       List<String> environmentVariables = new ArrayList<>();
       environmentVariables.add("EnvVar=Test");
-      // Running Gradle tests on Windows seems to require the SystemRoot env var
-      // Otherwise Windows complains "Unrecognized Windows Sockets error: 10106"
-      String systemRoot = System.getenv("SystemRoot");
-      if (systemRoot != null) {
-        environmentVariables.add("SystemRoot=" + systemRoot);
-      }
-      // or whatever is relevant to that operating system
       ScalaTestSuites singleScalaTestSuites = new ScalaTestSuites(singleScalaTestSuiteSelections,
           emptyJvmOptions, environmentVariables);
       singleMethodTestParams.setData(singleScalaTestSuites);
