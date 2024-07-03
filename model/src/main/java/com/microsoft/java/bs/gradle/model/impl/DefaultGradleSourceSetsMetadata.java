@@ -24,13 +24,6 @@ public class DefaultGradleSourceSetsMetadata implements GradleSourceSetsMetadata
     this.outputsToSourceSet = outputsToSourceSet;
   }
 
-  // TODO: Copy constructor
-
-  public DefaultGradleSourceSetsMetadata(GradleSourceSetsMetadata gradleSourceSetsMetadata) {
-    this(gradleSourceSetsMetadata.getGradleSourceSets(),
-        gradleSourceSetsMetadata.getOutputsToSourceSet());
-  }
-
   @Override
   public Map<GradleSourceSet, List<File>> getGradleSourceSets() {
     return gradleSourceSets;

@@ -12,7 +12,11 @@ import org.gradle.tooling.BuildController;
 import org.gradle.tooling.model.gradle.GradleBuild;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 /**
  * {@link BuildAction} that retrieves {@link DefaultGradleSourceSet} from a Gradle build,
@@ -27,19 +31,24 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
    */
   @Override
   public GradleSourceSets execute(BuildController buildController) {
-    List<String> traversedProjects = new ArrayList<>();
-    Map<GradleSourceSet, List<File>> sourceSetToClasspath = new HashMap<>();
-    Map<File, GradleSourceSet> outputsToSourceSet = new HashMap<>();
+    var traversedProjects = new ArrayList<String>();
+    var sourceSetToClasspath = new HashMap<GradleSourceSet, List<File>>();
+    var outputsToSourceSet = new HashMap<File, GradleSourceSet>();
 
     GradleBuild buildModel = buildController.getBuildModel();
     String rootProjectName = buildModel.getRootProject().getName();
-    fetchModels(buildController, buildModel, traversedProjects, sourceSetToClasspath, outputsToSourceSet, rootProjectName);
+    fetchModels(buildController,
+        buildModel,
+        traversedProjects,
+        sourceSetToClasspath,
+        outputsToSourceSet,
+        rootProjectName);
 
     // Add dependencies
-    List<GradleSourceSet> sourceSets = new ArrayList<>();
-    for (Map.Entry<GradleSourceSet, List<File>> entry : sourceSetToClasspath.entrySet()) {
+    var sourceSets = new ArrayList<GradleSourceSet>();
+    for (var entry : sourceSetToClasspath.entrySet()) {
 
-      Set<BuildTargetDependency> dependencies = new HashSet<>();
+      var dependencies = new HashSet<BuildTargetDependency>();
       for (File file : entry.getValue()) {
         GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
         if (otherSourceSet != null) {
@@ -86,7 +95,12 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
 
     for (GradleBuild includedBuild : build.getIncludedBuilds()) {
       String includedBuildName = includedBuild.getRootProject().getName();
-      fetchModels(buildController, includedBuild, traversedProjects, sourceSetToClasspath, outputsToSourceSet, includedBuildName);
+      fetchModels(buildController,
+          includedBuild,
+          traversedProjects,
+          sourceSetToClasspath,
+          outputsToSourceSet,
+          includedBuildName);
     }
   }
 
