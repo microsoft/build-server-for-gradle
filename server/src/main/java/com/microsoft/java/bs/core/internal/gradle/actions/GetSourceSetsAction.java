@@ -71,8 +71,11 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
    *
    * @param buildController      The Gradle build controller used to interact with the build.
    * @param build                The Gradle build model representing the current build.
-   * @param sourceSetToClasspath A map to store the retrieved source sets categorized
-   *                             by project name.
+   * @param traversedProjects    A list of traversed project names to avoid cyclic dependencies.
+   * @param sourceSetToClasspath A map that associates GradleSourceSet objects with their
+   *                             corresponding classpath files.
+   * @param outputsToSourceSet   A map that associates output files with the GradleSourceSet
+   *                             they belong to.
    * @param buildName            The name of the root project in the build.
    */
   private void fetchModels(
