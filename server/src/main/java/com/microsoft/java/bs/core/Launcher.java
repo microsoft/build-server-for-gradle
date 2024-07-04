@@ -56,7 +56,7 @@ public class Launcher {
     launcher.startListening();
   }
 
-  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> 
+  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient>
       createLauncherUsingPipe(String pipePath) {
     NamedPipeStream pipeStream = new NamedPipeStream(pipePath);
     try {
@@ -70,7 +70,7 @@ public class Launcher {
     return createLauncher(System.out, System.in);
   }
 
-  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> 
+  private static org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient>
       createLauncher(OutputStream outputStream, InputStream inputStream) {
     BuildTargetManager buildTargetManager = new BuildTargetManager();
     PreferenceManager preferenceManager = new PreferenceManager();
@@ -80,7 +80,7 @@ public class Launcher {
         connector, preferenceManager);
     GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
         buildTargetService);
-    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher = new 
+    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher = new
         org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
         .setOutput(outputStream)
         .setInput(inputStream)
@@ -88,7 +88,9 @@ public class Launcher {
         .setRemoteInterface(BuildClient.class)
         .setExecutorService(Executors.newCachedThreadPool())
         .create();
-    buildTargetService.setClient(launcher.getRemoteProxy());
+    BuildClient client = launcher.getRemoteProxy();
+    lifecycleService.setClient(client);
+    buildTargetService.setClient(client);
     return launcher;
   }
 

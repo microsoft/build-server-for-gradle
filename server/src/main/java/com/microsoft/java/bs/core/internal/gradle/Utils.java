@@ -147,7 +147,8 @@ public class Utils {
 
   /**
    * Get the highest compatible Java version for the current Gradle version, according
-   * to https://docs.gradle.org/current/userguide/compatibility.html
+   * to <a href="https://docs.gradle.org/current/userguide/compatibility.html">
+   * compatibility matrix</a>
    *
    * <p>If none of the compatible Java versions is found, an empty string will be returned.
    */
@@ -186,6 +187,13 @@ public class Utils {
     }
 
     return "";
+  }
+
+  /**
+   * Get the least compatible Java version for the current Gradle version.
+   */
+  public static String getLeastCompatibleJavaVersion() {
+    return "1.8";
   }
 
   public static File getInitScriptFile() {

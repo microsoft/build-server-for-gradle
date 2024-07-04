@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 
+import com.microsoft.java.bs.core.internal.reporter.ClientNotifier;
 import org.apache.commons.lang3.StringUtils;
 
 import com.microsoft.java.bs.core.Constants;
@@ -26,10 +27,12 @@ import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
+import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildServerCapabilities;
 import ch.epfl.scala.bsp4j.CompileProvider;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.InitializeBuildResult;
+import ch.epfl.scala.bsp4j.MessageType;
 
 /**
  * Lifecycle service.
@@ -41,6 +44,8 @@ public class LifecycleService {
   private GradleApiConnector connector;
 
   private PreferenceManager preferenceManager;
+
+  private BuildClient client;
 
   /**
    * Constructor for {@link LifecycleService}.
@@ -63,6 +68,10 @@ public class LifecycleService {
         Constants.BSP_VERSION,
         capabilities
     );
+  }
+
+  public void setClient(BuildClient client) {
+    this.client = client;
   }
 
   void initializePreferenceManager(InitializeBuildParams params) {
@@ -155,6 +164,13 @@ public class LifecycleService {
         File jdkInstallation = getJdkToLaunchDaemon(preferences.getJdks(), highestJavaVersion);
         if (jdkInstallation != null) {
           preferences.setGradleJavaHome(jdkInstallation.getAbsolutePath());
+        } else {
+          new ClientNotifier(client).sendNotification(
+              MessageType.ERROR,
+              "Failed to find a JDK compatible with current gradle version "
+                  + "(" + gradleVersion + "). Compatible JDK versions include ("
+                  + Utils.getLeastCompatibleJavaVersion() + " - " + highestJavaVersion + ")"
+          );
         }
       }
     }

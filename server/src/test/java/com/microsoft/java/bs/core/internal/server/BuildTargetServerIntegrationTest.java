@@ -15,6 +15,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -67,6 +68,7 @@ import ch.epfl.scala.bsp4j.extended.TestFinishEx;
 import ch.epfl.scala.bsp4j.extended.TestName;
 import ch.epfl.scala.bsp4j.extended.TestStartEx;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -93,6 +95,7 @@ class BuildTargetServerIntegrationTest {
     private final List<CompileReport> compileReports = new ArrayList<>();
     private final List<CompileTask> compileTasks = new ArrayList<>();
     private final List<LogMessageParams> logMessages = new ArrayList<>();
+    private final List<ShowMessageParams> showMessages = new ArrayList<>();
     private final List<TestReport> testReports = new ArrayList<>();
     private final List<TestStartEx> testStarts = new ArrayList<>();
     private final List<TestFinishEx> testFinishes = new ArrayList<>();
@@ -103,6 +106,7 @@ class BuildTargetServerIntegrationTest {
       compileReports.clear();
       compileTasks.clear();
       logMessages.clear();
+      showMessages.clear();
       testReports.clear();
       testStarts.clear();
       testFinishes.clear();
@@ -126,6 +130,10 @@ class BuildTargetServerIntegrationTest {
 
     void waitOnLogMessages(int size) {
       waitOnMessages("Log Messages", size, logMessages::size);
+    }
+
+    void waitOnShowMessages(int size) {
+      waitOnMessages("Show Messages", size, showMessages::size);
     }
 
     void waitOnTestReports(int size) {
@@ -225,7 +233,10 @@ class BuildTargetServerIntegrationTest {
 
     @Override
     public void onBuildShowMessage(ShowMessageParams params) {
-      // do nothing
+      showMessages.add(params);
+      synchronized (this) {
+        notify();
+      }
     }
 
     @Override
@@ -319,6 +330,81 @@ class BuildTargetServerIntegrationTest {
         capabilities);
   }
 
+  private static InitializeBuildParams getInitializedBuildParamsWithJdks(
+      String projectDir,
+      String jdkVersion
+  ) {
+    File root = Paths.get(
+        System.getProperty("user.dir"),
+        "..",
+        "testProjects",
+        projectDir).toFile();
+
+    BuildClientCapabilities capabilities =
+        new BuildClientCapabilities(SupportedLanguages.allBspNames);
+    InitializeBuildParams initParams = new InitializeBuildParams(
+        "test-client",
+        "0.1.0",
+        "0.1.0",
+        root.toURI().toString(),
+        capabilities
+    );
+
+    Preferences preferences = new Preferences();
+    var jdks = new HashMap<String, String>();
+    jdks.put(jdkVersion, "file:///tmp/nonexistent_file.txt");
+    preferences.setJdks(jdks);
+
+    initParams.setData(
+        preferences
+    );
+    return initParams;
+  }
+
+  private Pair<TestClient, TestServer> setupClientServer(
+      PipedInputStream clientIn,
+      PipedOutputStream clientOut,
+      PipedInputStream serverIn,
+      PipedOutputStream serverOut,
+      ExecutorService threadPool
+  ) {
+    // server
+    BuildTargetManager buildTargetManager = new BuildTargetManager();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    LifecycleService lifecycleService = new LifecycleService(connector, preferenceManager);
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        connector, preferenceManager);
+    GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
+        buildTargetService);
+    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> serverLauncher =
+        new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
+            .setLocalService(gradleBuildServer)
+            .setRemoteInterface(BuildClient.class)
+            .setOutput(serverOut)
+            .setInput(serverIn)
+            .setExecutorService(threadPool)
+            .create();
+    BuildClient serverBuildClient = serverLauncher.getRemoteProxy();
+    lifecycleService.setClient(serverBuildClient);
+    buildTargetService.setClient(serverBuildClient);
+    // client
+    TestClient client = new TestClient();
+    org.eclipse.lsp4j.jsonrpc.Launcher<TestServer> clientLauncher =
+        new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<TestServer>()
+            .setLocalService(client)
+            .setRemoteInterface(TestServer.class)
+            .setInput(clientIn)
+            .setOutput(clientOut)
+            .setExecutorService(threadPool)
+            .create();
+    // start
+    clientLauncher.startListening();
+    serverLauncher.startListening();
+    TestServer testServer = clientLauncher.getRemoteProxy();
+    return Pair.of(client, testServer);
+  }
+
   private void withNewTestServer(String project, BiConsumer<TestServer, TestClient> consumer) {
     ExecutorService threadPool = Executors.newCachedThreadPool();
     try (PipedInputStream clientIn = new PipedInputStream();
@@ -331,38 +417,9 @@ class BuildTargetServerIntegrationTest {
       } catch (IOException e) {
         throw new IllegalStateException("Cannot setup streams", e);
       }
-      // server
-      BuildTargetManager buildTargetManager = new BuildTargetManager();
-      PreferenceManager preferenceManager = new PreferenceManager();
-      GradleApiConnector connector = new GradleApiConnector(preferenceManager);
-      LifecycleService lifecycleService = new LifecycleService(connector, preferenceManager);
-      BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-          connector, preferenceManager);
-      GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
-          buildTargetService);
-      org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> serverLauncher =
-          new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
-          .setLocalService(gradleBuildServer)
-          .setRemoteInterface(BuildClient.class)
-          .setOutput(serverOut)
-          .setInput(serverIn)
-          .setExecutorService(threadPool)
-          .create();
-      buildTargetService.setClient(serverLauncher.getRemoteProxy());
-      // client
-      TestClient client = new TestClient();
-      org.eclipse.lsp4j.jsonrpc.Launcher<TestServer> clientLauncher =
-          new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<TestServer>()
-          .setLocalService(client)
-          .setRemoteInterface(TestServer.class)
-          .setInput(clientIn)
-          .setOutput(clientOut)
-          .setExecutorService(threadPool)
-          .create();
-      // start
-      clientLauncher.startListening();
-      serverLauncher.startListening();
-      TestServer testServer = clientLauncher.getRemoteProxy();
+      var pair = setupClientServer(clientIn, clientOut, serverIn, serverOut, threadPool);
+      TestClient client = pair.getLeft();
+      TestServer testServer = pair.getRight();
       try {
         InitializeBuildParams params = getInitializeBuildParams(project);
         testServer.buildInitialize(params).join();
@@ -473,6 +530,83 @@ class BuildTargetServerIntegrationTest {
       }
       client.clearMessages();
     });
+  }
+
+  @Test
+  void testIncompatibleUserJavaHomeProjectServer() {
+
+    ExecutorService threadPool = Executors.newCachedThreadPool();
+    try (PipedInputStream clientIn = new PipedInputStream();
+         PipedOutputStream clientOut = new PipedOutputStream();
+         PipedInputStream serverIn = new PipedInputStream();
+         PipedOutputStream serverOut = new PipedOutputStream()) {
+      try {
+        clientIn.connect(serverOut);
+        clientOut.connect(serverIn);
+      } catch (IOException e) {
+        throw new IllegalStateException("Cannot setup streams", e);
+      }
+      var pair = setupClientServer(clientIn, clientOut, serverIn, serverOut, threadPool);
+      TestClient client = pair.getLeft();
+      TestServer testServer = pair.getRight();
+      try {
+
+        InitializeBuildParams initParams =
+            getInitializedBuildParamsWithJdks("Non-Existent Project 1", "23");
+
+        testServer.buildInitialize(initParams).join();
+        client.waitOnShowMessages(1);
+        ShowMessageParams param = client.showMessages.get(0);
+        assertEquals(MessageType.ERROR, param.getType());
+        testServer.onBuildInitialized();
+        client.clearMessages();
+
+      } finally {
+        testServer.buildShutdown().join();
+        threadPool.shutdown();
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException("Error closing streams", e);
+    }
+
+  }
+
+  @Test
+  void testCompatibleUserJavaHomeProjectServer() {
+
+    ExecutorService threadPool = Executors.newCachedThreadPool();
+    try (PipedInputStream clientIn = new PipedInputStream();
+         PipedOutputStream clientOut = new PipedOutputStream();
+         PipedInputStream serverIn = new PipedInputStream();
+         PipedOutputStream serverOut = new PipedOutputStream()) {
+      try {
+        clientIn.connect(serverOut);
+        clientOut.connect(serverIn);
+      } catch (IOException e) {
+        throw new IllegalStateException("Cannot setup streams", e);
+      }
+      var pair = setupClientServer(clientIn, clientOut, serverIn, serverOut, threadPool);
+      TestClient client = pair.getLeft();
+      TestServer testServer = pair.getRight();
+      try {
+
+        InitializeBuildParams initParams =
+            getInitializedBuildParamsWithJdks("Non-Existent Project 2", "1.8");
+
+        testServer.buildInitialize(initParams).join();
+        client.waitOnShowMessages(0);
+        assertEquals(0, client.showMessages.size());
+        testServer.onBuildInitialized();
+        client.clearMessages();
+
+      } finally {
+        testServer.buildShutdown().join();
+        threadPool.shutdown();
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException("Error closing streams", e);
+    }
+
   }
 
   @Test
