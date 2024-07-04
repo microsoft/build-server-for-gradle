@@ -31,7 +31,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
    */
   @Override
   public GradleSourceSets execute(BuildController buildController) {
-    var traversedProjects = new ArrayList<String>();
+    var traversedProjects = new HashSet<String>();
     var sourceSetToClasspath = new HashMap<GradleSourceSet, List<File>>();
     var outputsToSourceSet = new HashMap<File, GradleSourceSet>();
 
@@ -51,7 +51,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
       var dependencies = new HashSet<BuildTargetDependency>();
       for (File file : entry.getValue()) {
         GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
-        if (otherSourceSet != null) {
+        if (otherSourceSet != null && entry.getKey() != otherSourceSet) {
           dependencies.add(new DefaultBuildTargetDependency(otherSourceSet));
         }
       }
@@ -71,7 +71,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
    *
    * @param buildController      The Gradle build controller used to interact with the build.
    * @param build                The Gradle build model representing the current build.
-   * @param traversedProjects    A list of traversed project names to avoid cyclic dependencies.
+   * @param traversedProjects    A set of traversed project names to avoid cyclic dependencies.
    * @param sourceSetToClasspath A map that associates GradleSourceSet objects with their
    *                             corresponding classpath files.
    * @param outputsToSourceSet   A map that associates output files with the GradleSourceSet
@@ -81,7 +81,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
   private void fetchModels(
       BuildController buildController,
       GradleBuild build,
-      List<String> traversedProjects,
+      HashSet<String> traversedProjects,
       Map<GradleSourceSet, List<File>> sourceSetToClasspath,
       Map<File, GradleSourceSet> outputsToSourceSet,
       String buildName
