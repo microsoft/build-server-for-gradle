@@ -45,10 +45,6 @@ public class NamedPipeStream {
     private OutputStream output;
     private String pipeName = NamedPipeStream.this.pipeName;
 
-    public PipeStreamProvider() {
-      initializeNamedPipe();
-    }
-
     @Override
     public InputStream getInputStream() throws IOException {
       return input;
@@ -199,8 +195,9 @@ public class NamedPipeStream {
   }
 
   private StreamProvider createProvider() {
-
-    return new PipeStreamProvider();
+    PipeStreamProvider pipeStreamProvider = new PipeStreamProvider();
+    pipeStreamProvider.initializeNamedPipe();
+    return pipeStreamProvider;
   }
 
   public InputStream getInputStream() throws IOException {
