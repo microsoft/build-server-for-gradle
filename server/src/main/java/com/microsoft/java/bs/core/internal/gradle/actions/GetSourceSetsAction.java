@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * {@link BuildAction} that retrieves {@link DefaultGradleSourceSet} from a Gradle build,
@@ -82,7 +83,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
   private void fetchModels(
       BuildController buildController,
       GradleBuild build,
-      HashSet<String> traversedProjects,
+      Set<String> traversedProjects,
       Map<GradleSourceSet, List<File>> sourceSetToClasspath,
       Map<File, GradleSourceSet> outputsToSourceSet,
       String buildName
