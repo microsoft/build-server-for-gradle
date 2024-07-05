@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * {@link BuildAction} that retrieves {@link DefaultGradleSourceSet} from a Gradle build,
@@ -51,7 +52,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
       var dependencies = new HashSet<BuildTargetDependency>();
       for (File file : entry.getValue()) {
         GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
-        if (otherSourceSet != null && entry.getKey() != otherSourceSet) {
+        if (otherSourceSet != null && !Objects.equals(entry.getKey(), otherSourceSet)) {
           dependencies.add(new DefaultBuildTargetDependency(otherSourceSet));
         }
       }
@@ -93,7 +94,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
         .findModel(build.getRootProject(), GradleSourceSetsMetadata.class);
 
     traversedProjects.add(buildName);
-    sourceSetToClasspath.putAll(sourceSets.getGradleSourceSets());
+    sourceSetToClasspath.putAll(sourceSets.getGradleSourceSetsToClasspath());
     outputsToSourceSet.putAll(sourceSets.getOutputsToSourceSet());
 
     for (GradleBuild includedBuild : build.getIncludedBuilds()) {

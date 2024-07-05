@@ -48,7 +48,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   @Override
   public Object buildAll(String modelName, Project rootProject) {
 
-    Map<GradleSourceSet, List<File>> gradleSourceSets = new HashMap<>();
+    Map<GradleSourceSet, List<File>> sourceSetsToClasspath = new HashMap<>();
     Map<File, GradleSourceSet> outputsToSourceSet = new HashMap<>();
 
     Set<Project> allProject = rootProject.getAllprojects();
@@ -112,7 +112,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         List<File> compileClasspath = new LinkedList<>(sourceSet.getCompileClasspath().getFiles());
         gradleSourceSet.setCompileClasspath(compileClasspath);
 
-        gradleSourceSets.put(gradleSourceSet, compileClasspath);
+        sourceSetsToClasspath.put(gradleSourceSet, compileClasspath);
 
         // source output dir
         File sourceOutputDir = getSourceOutputDir(sourceSet);
@@ -217,7 +217,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       gradleSourceSet.setExtensions(extensions);
     }
 
-    return new DefaultGradleSourceSetsMetadata(gradleSourceSets, outputsToSourceSet);
+    return new DefaultGradleSourceSetsMetadata(sourceSetsToClasspath, outputsToSourceSet);
   }
 
   private void setModuleDependencies(SourceSetCache cache, Set<File> exclusionFromDependencies) {

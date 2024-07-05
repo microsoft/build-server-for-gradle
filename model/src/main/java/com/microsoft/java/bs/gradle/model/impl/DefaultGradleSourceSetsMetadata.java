@@ -13,24 +13,24 @@ import java.util.Objects;
  */
 public class DefaultGradleSourceSetsMetadata implements GradleSourceSetsMetadata {
 
-  private Map<GradleSourceSet, List<File>> gradleSourceSets;
+  private Map<GradleSourceSet, List<File>> sourceSetsToClasspath;
   private Map<File, GradleSourceSet> outputsToSourceSet;
 
   public DefaultGradleSourceSetsMetadata(
-      Map<GradleSourceSet, List<File>> gradleSourceSets,
+      Map<GradleSourceSet, List<File>> sourceSetsToClasspath,
       Map<File, GradleSourceSet> outputsToSourceSet
   ) {
-    this.gradleSourceSets = gradleSourceSets;
+    this.sourceSetsToClasspath = sourceSetsToClasspath;
     this.outputsToSourceSet = outputsToSourceSet;
   }
 
   @Override
-  public Map<GradleSourceSet, List<File>> getGradleSourceSets() {
-    return gradleSourceSets;
+  public Map<GradleSourceSet, List<File>> getGradleSourceSetsToClasspath() {
+    return sourceSetsToClasspath;
   }
 
-  public void setGradleSourceSets(Map<GradleSourceSet, List<File>> gradleSourceSets) {
-    this.gradleSourceSets = gradleSourceSets;
+  public void setSourceSetsToClasspath(Map<GradleSourceSet, List<File>> sourceSetsToClasspath) {
+    this.sourceSetsToClasspath = sourceSetsToClasspath;
   }
 
   @Override
@@ -44,7 +44,7 @@ public class DefaultGradleSourceSetsMetadata implements GradleSourceSetsMetadata
 
   @Override
   public int hashCode() {
-    return Objects.hash(gradleSourceSets, outputsToSourceSet);
+    return Objects.hash(sourceSetsToClasspath, outputsToSourceSet);
   }
 
   @Override
@@ -56,7 +56,7 @@ public class DefaultGradleSourceSetsMetadata implements GradleSourceSetsMetadata
       return false;
     }
     DefaultGradleSourceSetsMetadata that = (DefaultGradleSourceSetsMetadata) obj;
-    return Objects.equals(gradleSourceSets, that.gradleSourceSets)
+    return Objects.equals(sourceSetsToClasspath, that.sourceSetsToClasspath)
         && Objects.equals(outputsToSourceSet, that.outputsToSourceSet);
   }
 }

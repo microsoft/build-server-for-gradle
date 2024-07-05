@@ -59,7 +59,7 @@ class GradleBuildServerPluginTest {
             + String.join(",", SupportedLanguages.allBspNames));
     GradleSourceSetsMetadata sourceSetsMetadata = modelBuilder.get();
     return new DefaultGradleSourceSets(
-        new ArrayList<>(sourceSetsMetadata.getGradleSourceSets().keySet()));
+        new ArrayList<>(sourceSetsMetadata.getGradleSourceSetsToClasspath().keySet()));
   }
 
   private interface ConnectionConsumer {
