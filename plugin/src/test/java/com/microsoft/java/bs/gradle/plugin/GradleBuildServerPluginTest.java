@@ -173,7 +173,7 @@ class GradleBuildServerPluginTest {
     withSourceSets("junit5-jupiter-starter-gradle", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        assertEquals(":", gradleSourceSet.getProjectPath());
+        assertEquals(":", gradleSourceSet.getBuildTreePath());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
             || gradleSourceSet.getSourceSetName().equals("test"));
         assertTrue(gradleSourceSet.getClassesTaskName().equals(":classes")
@@ -450,7 +450,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         assertEquals("scala-2", gradleSourceSet.getProjectName());
-        assertEquals(":", gradleSourceSet.getProjectPath());
+        assertEquals(":", gradleSourceSet.getBuildTreePath());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
                 || gradleSourceSet.getSourceSetName().equals("test"));
         assertTrue(gradleSourceSet.getClassesTaskName().equals(":classes")
@@ -518,7 +518,7 @@ class GradleBuildServerPluginTest {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
         assertEquals("scala-3", gradleSourceSet.getProjectName());
-        assertEquals(":", gradleSourceSet.getProjectPath());
+        assertEquals(":", gradleSourceSet.getBuildTreePath());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
                 || gradleSourceSet.getSourceSetName().equals("test"));
         assertTrue(gradleSourceSet.getClassesTaskName().equals(":classes")

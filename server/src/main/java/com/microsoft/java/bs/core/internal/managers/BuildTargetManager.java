@@ -82,10 +82,10 @@ public class BuildTargetManager {
         changedTargets.add(btId);
       }
       newCache.put(btId, buildTarget);
-      // Store the relationship between the project path and the build target id.
+      // Store the relationship between the build tree path and the build target id.
       // 'test' and other source sets are ignored.
       if ("main".equals(sourceSet.getSourceSetName())) {
-        projectPathToBuildTargetId.put(sourceSet.getProjectPath(), btId);
+        projectPathToBuildTargetId.put(sourceSet.getBuildTreePath(), btId);
       }
     }
     updateBuildTargetDependencies(newCache.values(), projectPathToBuildTargetId);
@@ -173,7 +173,7 @@ public class BuildTargetManager {
    */
   private void updateBuildTargetDependencies(
       Collection<GradleBuildTarget> gradleBuildTargets,
-      Map<String, BuildTargetIdentifier> projectPathToBuildTargetId
+      Map<String, BuildTargetIdentifier> buildTreePathToBuildTargetId
   ) {
     for (GradleBuildTarget gradleBuildTarget : gradleBuildTargets) {
       Set<BuildTargetDependency> buildTargetDependencies =
@@ -181,8 +181,8 @@ public class BuildTargetManager {
       if (buildTargetDependencies != null) {
         List<BuildTargetIdentifier> btDependencies = buildTargetDependencies.stream()
             .map(btDependency -> {
-              String path = btDependency.getProjectPath();
-              return projectPathToBuildTargetId.get(path);
+              String path = btDependency.getBuildTreePath();
+              return buildTreePathToBuildTargetId.get(path);
             })
             .filter(Objects::nonNull)
             .distinct()

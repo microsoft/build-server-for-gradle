@@ -26,6 +26,12 @@ import java.util.Set;
  */
 public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
 
+  private boolean accurateSourceSetDependencyResolution;
+
+  public GetSourceSetsAction(boolean accurateSourceSetDependencyResolution) {
+    this.accurateSourceSetDependencyResolution = accurateSourceSetDependencyResolution;
+  }
+
   /**
    * Executes the build action and retrieves source sets from the Gradle build.
    *
@@ -49,17 +55,17 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
     // Add dependencies
     var sourceSets = new ArrayList<GradleSourceSet>();
     for (var entry : sourceSetToClasspath.entrySet()) {
-
-      var dependencies = new HashSet<BuildTargetDependency>();
-      for (File file : entry.getValue()) {
-        GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
-        if (otherSourceSet != null && !Objects.equals(entry.getKey(), otherSourceSet)) {
-          dependencies.add(new DefaultBuildTargetDependency(otherSourceSet));
-        }
-      }
-
       DefaultGradleSourceSet sourceSet = new DefaultGradleSourceSet(entry.getKey());
-      sourceSet.setBuildTargetDependencies(dependencies);
+      if (accurateSourceSetDependencyResolution) {
+        var dependencies = new HashSet<BuildTargetDependency>();
+        for (File file : entry.getValue()) {
+          GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
+          if (otherSourceSet != null && !Objects.equals(entry.getKey(), otherSourceSet)) {
+            dependencies.add(new DefaultBuildTargetDependency(otherSourceSet));
+          }
+        }
+        sourceSet.setBuildTargetDependencies(dependencies);
+      }
       sourceSets.add(sourceSet);
 
     }

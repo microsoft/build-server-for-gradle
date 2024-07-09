@@ -81,7 +81,7 @@ class GradleApiConnectorTest {
       assertNotNull(SupportedLanguages.JAVA.getExtension(gradleSourceSet));
       assertNull(SupportedLanguages.SCALA.getExtension(gradleSourceSet));
       assertEquals("junit5-jupiter-starter-gradle", gradleSourceSet.getProjectName());
-      assertEquals(":", gradleSourceSet.getProjectPath());
+      assertEquals(":", gradleSourceSet.getBuildTreePath());
       assertEquals(projectDir, gradleSourceSet.getProjectDir());
       assertEquals(projectDir, gradleSourceSet.getRootDir());
     }
@@ -172,13 +172,13 @@ class GradleApiConnectorTest {
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,
       GradleSourceSet dependency) {
     boolean exists = sourceSet.getBuildTargetDependencies().stream()
-        .anyMatch(dep -> dep.getProjectPath().equals(dependency.getProjectPath())
+        .anyMatch(dep -> dep.getBuildTreePath().equals(dependency.getBuildTreePath())
                       && dep.getSourceSetName().equals(dependency.getSourceSetName()));
     assertTrue(exists, () -> {
       String availableDependencies = sourceSet.getBuildTargetDependencies().stream()
-          .map(ss -> ss.getProjectPath() + ' ' + ss.getSourceSetName())
+          .map(ss -> ss.getBuildTreePath() + ' ' + ss.getSourceSetName())
           .collect(Collectors.joining(", "));
-      return "Dependency not found " + dependency.getProjectPath() + ' '
+      return "Dependency not found " + dependency.getBuildTreePath() + ' '
         + dependency.getSourceSetName() + ". Available: " + availableDependencies;
     });
   }

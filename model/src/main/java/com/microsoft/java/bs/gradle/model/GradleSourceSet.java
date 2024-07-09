@@ -30,9 +30,9 @@ public interface GradleSourceSet extends Serializable {
   public String getProjectName();
 
   /**
-   * Equivalent to {@code org.gradle.api.Project.getPath()}.
+   * Equivalent to {@code org.gradle.api.Project.getBuildTreePath()}.
    */
-  public String getProjectPath();
+  public String getBuildTreePath();
 
   /**
    * Equivalent to {@code org.gradle.api.Project.getProjectDir()}.

@@ -14,19 +14,18 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 public class DefaultBuildTargetDependency implements BuildTargetDependency {
   private static final long serialVersionUID = 1L;
 
-  private String projectPath;
+  private String buildTreePath;
 
   private String sourceSetName;
 
-  public DefaultBuildTargetDependency(String projectPath, String sourceSetName) {
-    this.projectPath = projectPath;
+  public DefaultBuildTargetDependency(String buildTreePath, String sourceSetName) {
+    this.buildTreePath = buildTreePath;
     this.sourceSetName = sourceSetName;
   }
 
   public DefaultBuildTargetDependency(GradleSourceSet sourceSet) {
-    this(sourceSet.getProjectPath(), sourceSet.getSourceSetName());
+    this(sourceSet.getBuildTreePath(), sourceSet.getSourceSetName());
   }
-
 
   /**
    * Copy constructor.
@@ -34,16 +33,16 @@ public class DefaultBuildTargetDependency implements BuildTargetDependency {
    * @param buildTargetDependency the other instance to copy from.
    */
   public DefaultBuildTargetDependency(BuildTargetDependency buildTargetDependency) {
-    this.projectPath = buildTargetDependency.getProjectPath();
+    this.buildTreePath = buildTargetDependency.getBuildTreePath();
     this.sourceSetName = buildTargetDependency.getSourceSetName();
   }
 
-  public String getProjectPath() {
-    return projectPath;
+  public String getBuildTreePath() {
+    return buildTreePath;
   }
 
-  public void setProjectPath(String projectPath) {
-    this.projectPath = projectPath;
+  public void setBuildTreePath(String buildTreePath) {
+    this.buildTreePath = buildTreePath;
   }
 
   public String getSourceSetName() {
@@ -56,7 +55,7 @@ public class DefaultBuildTargetDependency implements BuildTargetDependency {
 
   @Override
   public int hashCode() {
-    return Objects.hash(projectPath, sourceSetName);
+    return Objects.hash(buildTreePath, sourceSetName);
   }
 
   @Override
@@ -71,7 +70,7 @@ public class DefaultBuildTargetDependency implements BuildTargetDependency {
       return false;
     }
     DefaultBuildTargetDependency other = (DefaultBuildTargetDependency) obj;
-    return Objects.equals(projectPath, other.projectPath)
+    return Objects.equals(buildTreePath, other.buildTreePath)
         && Objects.equals(sourceSetName, other.sourceSetName);
   }
 }

@@ -91,16 +91,16 @@ class BuildTargetManagerTest {
   @Test
   void testBuildTargetDependency() {
     GradleSourceSet gradleSourceSetFoo = getMockedTestGradleSourceSet();
-    when(gradleSourceSetFoo.getProjectPath()).thenReturn(":foo");
+    when(gradleSourceSetFoo.getBuildTreePath()).thenReturn(":foo");
     when(gradleSourceSetFoo.getProjectDir()).thenReturn(new File("foo"));
 
 
     BuildTargetDependency buildTargetDependency = mock(BuildTargetDependency.class);
-    when(buildTargetDependency.getProjectPath()).thenReturn(":foo");
+    when(buildTargetDependency.getBuildTreePath()).thenReturn(":foo");
     Set<BuildTargetDependency> dependencies = new HashSet<>();
     dependencies.add(buildTargetDependency);
     GradleSourceSet gradleSourceSetBar = getMockedTestGradleSourceSet();
-    when(gradleSourceSetBar.getProjectPath()).thenReturn(":bar");
+    when(gradleSourceSetBar.getBuildTreePath()).thenReturn(":bar");
     when(gradleSourceSetBar.getProjectDir()).thenReturn(new File("bar"));
     when(gradleSourceSetBar.getBuildTargetDependencies()).thenReturn(dependencies);
 

@@ -58,6 +58,11 @@ public class Preferences {
   private Map<String, String> jdks;
 
   /**
+   * The experimental features that are enabled.
+   */
+  private List<String> experimentalFeatures;
+
+  /**
    * Initialize the preferences.
    */
   public Preferences() {
@@ -65,6 +70,7 @@ public class Preferences {
     gradleArguments = Collections.emptyList();
     gradleJvmArguments = Collections.emptyList();
     jdks = Collections.emptyMap();
+    experimentalFeatures = Collections.emptyList();
   }
 
   public String getGradleJavaHome() {
@@ -129,5 +135,13 @@ public class Preferences {
 
   public void setJdks(Map<String, String> jdks) {
     this.jdks = jdks;
+  }
+
+  public List<String> getExperimentalFeatures() {
+    return experimentalFeatures;
+  }
+
+  public void setExperimentalFeatures(List<String> experimentalFeatures) {
+    this.experimentalFeatures = experimentalFeatures;
   }
 }

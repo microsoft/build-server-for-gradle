@@ -33,6 +33,7 @@ import com.microsoft.java.bs.core.internal.reporter.CompileProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TestReportReporter;
+import com.microsoft.java.bs.gradle.model.ExperimentalFeatures;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 import ch.epfl.scala.bsp4j.BuildClient;
@@ -87,8 +88,10 @@ public class GradleApiConnector {
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
          errorOut) {
+      boolean accurateResolution = preferenceManager.getPreferences().getExperimentalFeatures()
+          .contains(ExperimentalFeatures.ACCURATE_SOURCESET_DEPENDENCIES);
       BuildActionExecuter<GradleSourceSets> buildExecutor
-          = connection.action(new GetSourceSetsAction());
+          = connection.action(new GetSourceSetsAction(accurateResolution));
       buildExecutor.addProgressListener(reporter,
               OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
           .setStandardError(errorOut)
@@ -99,6 +102,8 @@ public class GradleApiConnector {
       }
       buildExecutor.addJvmArguments("-Dbsp.gradle.supportedLanguages="
           + String.join(",", preferenceManager.getClientSupportedLanguages()));
+      buildExecutor.addJvmArguments("-Dbsp.gradle.experimentalFeatures="
+          + String.join(",", preferenceManager.getPreferences().getExperimentalFeatures()));
       // since the model returned from Gradle TAPI is a wrapped object, here we re-construct it
       // via a copy constructor and return as a POJO.
       return new DefaultGradleSourceSets(buildExecutor.run());

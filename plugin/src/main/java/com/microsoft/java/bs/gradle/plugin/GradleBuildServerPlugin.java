@@ -3,8 +3,10 @@
 
 package com.microsoft.java.bs.gradle.plugin;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -20,6 +22,7 @@ import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 public class GradleBuildServerPlugin implements Plugin<Project> {
 
   public static final List<LanguageModelBuilder> SUPPORTED_LANGUAGE_BUILDERS = new LinkedList<>();
+  public static final Set<String> EXPERIMENTAL_FEATURES = new HashSet<>();
 
   private final ToolingModelBuilderRegistry registry;
 
@@ -29,6 +32,7 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
   @Inject
   public GradleBuildServerPlugin(ToolingModelBuilderRegistry registry) {
     registerSupportedLanguages();
+    registerExperimentalFeatures();
     this.registry = registry;
   }
 
@@ -47,6 +51,16 @@ public class GradleBuildServerPlugin implements Plugin<Project> {
         } else if (language.equalsIgnoreCase(SupportedLanguages.SCALA.getBspName())) {
           SUPPORTED_LANGUAGE_BUILDERS.add(new ScalaLanguageModelBuilder());
         }
+      }
+    }
+  }
+
+  private void registerExperimentalFeatures() {
+    String experimentalFeatures = System.getProperty("bsp.gradle.experimentalFeatures");
+    if (experimentalFeatures != null) {
+      String[] features = experimentalFeatures.split(",");
+      for (String feature : features) {
+        EXPERIMENTAL_FEATURES.add(feature);
       }
     }
   }

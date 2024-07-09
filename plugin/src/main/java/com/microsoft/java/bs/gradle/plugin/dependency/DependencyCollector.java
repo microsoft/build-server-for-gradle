@@ -7,6 +7,7 @@ import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -16,6 +17,7 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ArtifactResolutionResult;
 import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
@@ -30,8 +32,10 @@ import org.gradle.language.base.artifact.SourcesArtifact;
 import org.gradle.language.java.artifact.JavadocArtifact;
 
 import com.microsoft.java.bs.gradle.model.Artifact;
+import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultArtifact;
+import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleModuleDependency;
 import org.gradle.util.GradleVersion;
 
@@ -45,6 +49,7 @@ public class DependencyCollector {
   private final Project project;
   private final Set<File> exclusionFromDependencies;
   private final Set<GradleModuleDependency> moduleDependencies;
+  private Set<BuildTargetDependency> buildTargetDependencies;
 
   /**
    * Instantiates a new dependency collector.
@@ -53,10 +58,15 @@ public class DependencyCollector {
     this.project = project;
     this.exclusionFromDependencies = exclusionFromDependencies;
     this.moduleDependencies = new LinkedHashSet<>();
+    this.buildTargetDependencies = new LinkedHashSet<>();
   }
 
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
+  }
+
+  public Set<BuildTargetDependency> getProjectDependencies() {
+    return buildTargetDependencies;
   }
 
   /**
@@ -102,6 +112,8 @@ public class DependencyCollector {
       resolveFileArtifactDependency((OpaqueComponentArtifactIdentifier) id, artifactFile);
     } else if (id instanceof ComponentFileArtifactIdentifier) {
       resolveFileArtifactDependency((ComponentFileArtifactIdentifier) id, artifactFile);
+    } else if (id.getComponentIdentifier() instanceof ProjectComponentIdentifier) {
+      resolveProjectDependency((ProjectComponentIdentifier) id.getComponentIdentifier());
     }
   }
 
@@ -195,12 +207,23 @@ public class DependencyCollector {
     if (resolvedArtifactFile != null) {
       artifacts.add(new DefaultArtifact(resolvedArtifactFile.toURI(), null));
     }
-  
+
     return new DefaultGradleModuleDependency(
         UNKNOWN,
         displayName,
         UNKNOWN,
         artifacts
     );
+  }
+
+  private void resolveProjectDependency(ProjectComponentIdentifier id) {
+    String buildTreePath = id.getBuildTreePath();
+    if (Objects.equals(buildTreePath, project.getBuildTreePath())) {
+      return;
+    }
+
+    buildTargetDependencies.add(new DefaultBuildTargetDependency(
+        buildTreePath, "main"
+    ));
   }
 }

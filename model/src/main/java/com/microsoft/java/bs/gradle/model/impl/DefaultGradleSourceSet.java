@@ -27,7 +27,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private String projectName;
 
-  private String projectPath;
+  private String buildTreePath;
 
   private File projectDir;
 
@@ -72,7 +72,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.gradleVersion = gradleSourceSet.getGradleVersion();
     this.displayName = gradleSourceSet.getDisplayName();
     this.projectName = gradleSourceSet.getProjectName();
-    this.projectPath = gradleSourceSet.getProjectPath();
+    this.buildTreePath = gradleSourceSet.getBuildTreePath();
     this.projectDir = gradleSourceSet.getProjectDir();
     this.rootDir = gradleSourceSet.getRootDir();
     this.sourceSetName = gradleSourceSet.getSourceSetName();
@@ -135,12 +135,12 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   }
 
   @Override
-  public String getProjectPath() {
-    return projectPath;
+  public String getBuildTreePath() {
+    return buildTreePath;
   }
 
-  public void setProjectPath(String projectPath) {
-    this.projectPath = projectPath;
+  public void setBuildTreePath(String buildTreePath) {
+    this.buildTreePath = buildTreePath;
   }
 
   @Override
@@ -286,7 +286,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   @Override
   public int hashCode() {
-    return Objects.hash(gradleVersion, displayName, projectName, projectPath,
+    return Objects.hash(gradleVersion, displayName, projectName, buildTreePath,
         projectDir, rootDir, sourceSetName, classesTaskName, cleanTaskName, taskNames, sourceDirs,
         generatedSourceDirs, sourceOutputDir, resourceDirs, resourceOutputDir,
         compileClasspath, moduleDependencies, buildTargetDependencies,
@@ -308,7 +308,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     return Objects.equals(gradleVersion, other.gradleVersion)
         && Objects.equals(displayName, other.displayName)
         && Objects.equals(projectName, other.projectName)
-        && Objects.equals(projectPath, other.projectPath)
+        && Objects.equals(buildTreePath, other.buildTreePath)
         && Objects.equals(projectDir, other.projectDir)
         && Objects.equals(rootDir, other.rootDir)
         && Objects.equals(sourceSetName, other.sourceSetName)
