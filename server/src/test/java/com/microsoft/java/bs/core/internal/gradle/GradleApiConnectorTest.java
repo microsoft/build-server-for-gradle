@@ -172,11 +172,11 @@ class GradleApiConnectorTest {
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,
       GradleSourceSet dependency) {
     boolean exists = sourceSet.getBuildTargetDependencies().stream()
-        .anyMatch(dep -> dep.getProjectPath().equals(dependency.getProjectPath())
+        .anyMatch(dep -> dep.getProjectDir().equals(dependency.getProjectDir().getAbsolutePath())
                       && dep.getSourceSetName().equals(dependency.getSourceSetName()));
     assertTrue(exists, () -> {
       String availableDependencies = sourceSet.getBuildTargetDependencies().stream()
-          .map(ss -> ss.getProjectPath() + ' ' + ss.getSourceSetName())
+          .map(ss -> ss.getProjectDir() + ' ' + ss.getSourceSetName())
           .collect(Collectors.joining(", "));
       return "Dependency not found " + dependency.getProjectPath() + ' '
         + dependency.getSourceSetName() + ". Available: " + availableDependencies;

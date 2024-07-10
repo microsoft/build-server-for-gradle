@@ -80,7 +80,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         gradleSourceSet.setCleanTaskName(cleanTaskName);
         Set<String> taskNames = new HashSet<>();
         gradleSourceSet.setTaskNames(taskNames);
-        String projectName = stripPathPrefix(gradleSourceSet.getProjectPath());
+        String projectName = stripPathPrefix(projectPath);
         if (projectName == null || projectName.length() == 0) {
           projectName = gradleSourceSet.getProjectName();
         }

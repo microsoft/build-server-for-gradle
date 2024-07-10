@@ -96,7 +96,7 @@ class BuildTargetManagerTest {
 
 
     BuildTargetDependency buildTargetDependency = mock(BuildTargetDependency.class);
-    when(buildTargetDependency.getProjectPath()).thenReturn(":foo");
+    when(buildTargetDependency.getProjectDir()).thenReturn(new File("foo").getAbsolutePath());
     Set<BuildTargetDependency> dependencies = new HashSet<>();
     dependencies.add(buildTargetDependency);
     GradleSourceSet gradleSourceSetBar = getMockedTestGradleSourceSet();
