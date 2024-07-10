@@ -37,6 +37,34 @@ public class NamedPipeStream {
   }
 
   /**
+   * getSelectedStream.
+   */
+  public StreamProvider getSelectedStream() {
+    if (provider == null) {
+      provider = createProvider();
+    }
+    return provider;
+  }
+
+  private StreamProvider createProvider() {
+    PipeStreamProvider pipeStreamProvider = new PipeStreamProvider();
+    pipeStreamProvider.initializeNamedPipe();
+    return pipeStreamProvider;
+  }
+
+  public InputStream getInputStream() throws IOException {
+    return getSelectedStream().getInputStream();
+  }
+
+  public OutputStream getOutputStream() throws IOException {
+    return getSelectedStream().getOutputStream();
+  }
+
+  private static boolean isWindows() {
+    return System.getProperty("os.name").toLowerCase().contains("win");
+  }
+
+  /**
    * PipeStreamProvider.
    */
   protected final class PipeStreamProvider implements StreamProvider {
@@ -57,28 +85,25 @@ public class NamedPipeStream {
 
     private void initializeNamedPipe() {
       File pipeFile = new File(this.pipeName);
-      if (isWindows()) {
-        try {
-          AsynchronousFileChannel clientChannel = AsynchronousFileChannel.open(
-              pipeFile.toPath(),
-              StandardOpenOption.READ,
-              StandardOpenOption.WRITE);
-          input = new NamedPipeInputStream(clientChannel);
-          output = new NamedPipeOutputStream(clientChannel);
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-        return;
-      }
-
       try {
+        attemptConnection(pipeFile);
+      } catch (IOException e) {
+        throw new IllegalStateException("Error initializing the named pipe", e);
+      }
+    }
+
+    private void attemptConnection(File pipeFile) throws IOException {
+      if (isWindows()) {
+        AsynchronousFileChannel channel = AsynchronousFileChannel.open(pipeFile.toPath(),
+            StandardOpenOption.READ, StandardOpenOption.WRITE);
+        input = new NamedPipeInputStream(channel);
+        output = new NamedPipeOutputStream(channel);
+      } else {
         UnixDomainSocketAddress socketAddress = UnixDomainSocketAddress.of(pipeFile.toPath());
         SocketChannel channel = SocketChannel.open(StandardProtocolFamily.UNIX);
         channel.connect(socketAddress);
         input = new NamedPipeInputStream(channel);
         output = new NamedPipeOutputStream(channel);
-      } catch (IOException e) {
-        e.printStackTrace();
       }
     }
   }
@@ -182,33 +207,5 @@ public class NamedPipeStream {
         }
       }
     }
-  }
-
-  /**
-   * getSelectedStream.
-   */
-  public StreamProvider getSelectedStream() {
-    if (provider == null) {
-      provider = createProvider();
-    }
-    return provider;
-  }
-
-  private StreamProvider createProvider() {
-    PipeStreamProvider pipeStreamProvider = new PipeStreamProvider();
-    pipeStreamProvider.initializeNamedPipe();
-    return pipeStreamProvider;
-  }
-
-  public InputStream getInputStream() throws IOException {
-    return getSelectedStream().getInputStream();
-  }
-
-  public OutputStream getOutputStream() throws IOException {
-    return getSelectedStream().getOutputStream();
-  }
-
-  private static boolean isWindows() {
-    return System.getProperty("os.name").toLowerCase().contains("win");
   }
 }
