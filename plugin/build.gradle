@@ -20,6 +20,7 @@ java {
 }
 
 jar {
+  dependsOn ':model:jar'
   from {
     configurations.bundled.collect {
       it.isDirectory() ? it : zipTree(it)

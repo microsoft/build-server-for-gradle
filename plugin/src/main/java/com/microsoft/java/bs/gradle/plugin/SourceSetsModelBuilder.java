@@ -15,6 +15,8 @@ import java.util.Set;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSetsMetadata;
+
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.file.CopySpec;
@@ -109,9 +111,13 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         exclusionFromDependencies.addAll(generatedSrcDirs);
 
         // classpath
-        List<File> compileClasspath = new LinkedList<>(sourceSet.getCompileClasspath().getFiles());
+        List<File> compileClasspath = new LinkedList<>();
+        try {
+          compileClasspath.addAll(sourceSet.getCompileClasspath().getFiles());
+        } catch (GradleException e) {
+          // ignore
+        }
         gradleSourceSet.setCompileClasspath(compileClasspath);
-
         sourceSetsToClasspath.put(gradleSourceSet, compileClasspath);
 
         // source output dir
@@ -163,30 +169,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       });
 
       if (!sourceSets.isEmpty()) {
-        // get all archive tasks for this project and find the dirs that are included in the archive
-        TaskCollection<AbstractArchiveTask> archiveTasks =
-            project.getTasks().withType(AbstractArchiveTask.class);
-        for (AbstractArchiveTask archiveTask : archiveTasks) {
-          Set<Object> archiveSourcePaths = getArchiveSourcePaths(archiveTask.getRootSpec());
-          for (Object sourcePath : archiveSourcePaths) {
-            sourceSets.forEach(sourceSet -> {
-              DefaultGradleSourceSet gradleSourceSet = cache.getGradleSourceSet(sourceSet);
-              if (gradleSourceSet == null) {
-                return;
-              }
-
-              if (sourceSet.getOutput().equals(sourcePath)) {
-                File archiveFile;
-                if (GradleVersion.current().compareTo(GradleVersion.version("5.1")) >= 0) {
-                  archiveFile = archiveTask.getArchiveFile().get().getAsFile();
-                } else {
-                  archiveFile = archiveTask.getArchivePath();
-                }
-                outputsToSourceSet.put(archiveFile, gradleSourceSet);
-              }
-            });
-          }
-        }
+        gatherArchiveTasks(outputsToSourceSet, cache, project, sourceSets);
       }
     }
 
@@ -315,6 +298,37 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
 
     return null;
+  }
+
+  /**
+   * get all archive tasks for this project and maintain the archive file
+   * to source set mapping.
+   */
+  private void gatherArchiveTasks(Map<File, GradleSourceSet> outputsToSourceSet,
+      SourceSetCache cache, Project project, SourceSetContainer sourceSets) {
+    TaskCollection<AbstractArchiveTask> archiveTasks =
+        project.getTasks().withType(AbstractArchiveTask.class);
+    for (AbstractArchiveTask archiveTask : archiveTasks) {
+      Set<Object> archiveSourcePaths = getArchiveSourcePaths(archiveTask.getRootSpec());
+      for (Object sourcePath : archiveSourcePaths) {
+        sourceSets.forEach(sourceSet -> {
+          DefaultGradleSourceSet gradleSourceSet = cache.getGradleSourceSet(sourceSet);
+          if (gradleSourceSet == null) {
+            return;
+          }
+
+          if (sourceSet.getOutput().equals(sourcePath)) {
+            File archiveFile;
+            if (GradleVersion.current().compareTo(GradleVersion.version("5.1")) >= 0) {
+              archiveFile = archiveTask.getArchiveFile().get().getAsFile();
+            } else {
+              archiveFile = archiveTask.getArchivePath();
+            }
+            outputsToSourceSet.put(archiveFile, gradleSourceSet);
+          }
+        });
+      }
+    }
   }
 
   private Set<Object> getArchiveSourcePaths(CopySpec copySpec) {

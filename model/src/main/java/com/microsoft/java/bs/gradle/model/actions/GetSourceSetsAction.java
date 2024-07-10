@@ -1,4 +1,7 @@
-package com.microsoft.java.bs.core.internal.gradle.actions;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license.
+
+package com.microsoft.java.bs.gradle.model.actions;
 
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
@@ -19,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Map.Entry;
 
 /**
  * {@link BuildAction} that retrieves {@link DefaultGradleSourceSet} from a Gradle build,
@@ -33,9 +37,9 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
    */
   @Override
   public GradleSourceSets execute(BuildController buildController) {
-    var traversedProjects = new HashSet<String>();
-    var sourceSetToClasspath = new HashMap<GradleSourceSet, List<File>>();
-    var outputsToSourceSet = new HashMap<File, GradleSourceSet>();
+    Set<String> traversedProjects = new HashSet<>();
+    Map<GradleSourceSet, List<File>> sourceSetToClasspath = new HashMap<>();
+    Map<File, GradleSourceSet> outputsToSourceSet = new HashMap<>();
 
     GradleBuild buildModel = buildController.getBuildModel();
     String rootProjectName = buildModel.getRootProject().getName();
@@ -47,10 +51,9 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
         rootProjectName);
 
     // Add dependencies
-    var sourceSets = new ArrayList<GradleSourceSet>();
-    for (var entry : sourceSetToClasspath.entrySet()) {
-
-      var dependencies = new HashSet<BuildTargetDependency>();
+    List<GradleSourceSet> sourceSets = new ArrayList<>();
+    for (Entry<GradleSourceSet, List<File>> entry : sourceSetToClasspath.entrySet()) {
+      Set<BuildTargetDependency> dependencies = new HashSet<>();
       for (File file : entry.getValue()) {
         GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
         if (otherSourceSet != null && !Objects.equals(entry.getKey(), otherSourceSet)) {

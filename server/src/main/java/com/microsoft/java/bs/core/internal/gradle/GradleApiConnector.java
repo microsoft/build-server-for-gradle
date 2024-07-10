@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import com.microsoft.java.bs.core.internal.gradle.actions.GetSourceSetsAction;
+
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import org.gradle.tooling.BuildActionExecuter;
 import org.gradle.tooling.BuildException;
@@ -34,6 +34,7 @@ import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TestReportReporter;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.actions.GetSourceSetsAction;
 
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
@@ -87,8 +88,9 @@ public class GradleApiConnector {
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
          errorOut) {
-      BuildActionExecuter<GradleSourceSets> buildExecutor
-          = connection.action(new GetSourceSetsAction());
+      BuildActionExecuter<GradleSourceSets> buildExecutor =
+          Utils.getBuildActionExecuter(connection, preferenceManager.getPreferences(),
+            new GetSourceSetsAction());
       buildExecutor.addProgressListener(reporter,
               OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
           .setStandardError(errorOut)
