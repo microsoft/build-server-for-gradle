@@ -25,6 +25,7 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities;
@@ -50,7 +51,7 @@ public class BuildTargetManager {
    */
   public List<BuildTargetIdentifier> store(GradleSourceSets gradleSourceSets) {
     Map<BuildTargetIdentifier, GradleBuildTarget> newCache = new HashMap<>();
-    Map<String, BuildTargetIdentifier> projectPathToBuildTargetId = new HashMap<>();
+    Map<BuildTargetDependency, BuildTargetIdentifier> dependencyToBuildTargetId = new HashMap<>();
     List<BuildTargetIdentifier> changedTargets = new LinkedList<>();
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
       String sourceSetName = sourceSet.getSourceSetName();
@@ -82,13 +83,11 @@ public class BuildTargetManager {
         changedTargets.add(btId);
       }
       newCache.put(btId, buildTarget);
-      // Store the relationship between the project dir and the build target id.
-      // 'test' and other source sets are ignored.
-      if ("main".equals(sourceSet.getSourceSetName())) {
-        projectPathToBuildTargetId.put(sourceSet.getProjectDir().getAbsolutePath(), btId);
-      }
+      // Store the relationship between the project/sourceset and the build target id.
+      BuildTargetDependency dependency = new DefaultBuildTargetDependency(sourceSet);
+      dependencyToBuildTargetId.put(dependency, btId);
     }
-    updateBuildTargetDependencies(newCache.values(), projectPathToBuildTargetId);
+    updateBuildTargetDependencies(newCache.values(), dependencyToBuildTargetId);
     this.cache = newCache;
     return changedTargets;
   }
@@ -169,21 +168,18 @@ public class BuildTargetManager {
 
   /**
    * Iterate all the gradle build targets, and update their dependencies with
-   * the help of 'project path to id' mapping.
+   * the help of 'build target to id' mapping.
    */
   private void updateBuildTargetDependencies(
       Collection<GradleBuildTarget> gradleBuildTargets,
-      Map<String, BuildTargetIdentifier> projectPathToBuildTargetId
+      Map<BuildTargetDependency, BuildTargetIdentifier> dependencyToBuildTargetId
   ) {
     for (GradleBuildTarget gradleBuildTarget : gradleBuildTargets) {
       Set<BuildTargetDependency> buildTargetDependencies =
           gradleBuildTarget.getSourceSet().getBuildTargetDependencies();
       if (buildTargetDependencies != null) {
         List<BuildTargetIdentifier> btDependencies = buildTargetDependencies.stream()
-            .map(btDependency -> {
-              String path = btDependency.getProjectDir();
-              return projectPathToBuildTargetId.get(path);
-            })
+            .map(dependencyToBuildTargetId::get)
             .filter(Objects::nonNull)
             .distinct()
             .collect(Collectors.toList());

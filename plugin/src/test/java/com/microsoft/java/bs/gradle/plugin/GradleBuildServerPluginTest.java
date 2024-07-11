@@ -20,13 +20,14 @@ import java.util.ArrayList;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
-import com.microsoft.java.bs.gradle.model.GradleSourceSetsMetadata;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.actions.GetSourceSetsAction;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
+
+import org.gradle.tooling.BuildActionExecuter;
 import org.gradle.tooling.GradleConnector;
-import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.util.GradleVersion;
 import org.junit.jupiter.api.BeforeAll;
@@ -47,25 +48,23 @@ class GradleBuildServerPluginTest {
   }
 
   private GradleSourceSets getGradleSourceSets(ProjectConnection connect) throws IOException {
-    ModelBuilder<GradleSourceSetsMetadata> modelBuilder =
-        connect.model(GradleSourceSetsMetadata.class);
+    BuildActionExecuter<GradleSourceSets> action = connect.action(new GetSourceSetsAction());
     File initScript = PluginHelper.getInitScript();
-    modelBuilder
+    action
         .addArguments("--init-script", initScript.getAbsolutePath())
         .addArguments("-Dorg.gradle.daemon.idletimeout=10")
         .addArguments("-Dorg.gradle.vfs.watch=false")
         .addArguments("-Dorg.gradle.logging.level=quiet")
         .addJvmArguments("-Dbsp.gradle.supportedLanguages="
             + String.join(",", SupportedLanguages.allBspNames));
-    GradleSourceSetsMetadata sourceSetsMetadata = modelBuilder.get();
-    return new DefaultGradleSourceSets(
-        new ArrayList<>(sourceSetsMetadata.getGradleSourceSetsToClasspath().keySet()));
+    GradleSourceSets sourceSets = action.run();
+    return new DefaultGradleSourceSets(new ArrayList<>(sourceSets.getGradleSourceSets()));
   }
 
   private interface ConnectionConsumer {
     void accept(ProjectConnection connection) throws IOException;
   }
-  
+
   private void withConnection(File projectDir, GradleVersion gradleVersion,
       ConnectionConsumer consumer) throws IOException {
     GradleConnector connector = GradleConnector.newConnector()
@@ -133,7 +132,7 @@ class GradleBuildServerPluginTest {
       // java source/target options specified in 2.14
       // tooling api jar name changed from gradle-tooling-api to gradle-api in 3.0
       new GradleJreVersion("3.0", 8),
-      // artifacts view added in 3.3
+      // artifacts view added in 4.0
       // RuntimeClasspathConfigurationName added to sourceset in 3.4
       // Test#getTestClassesDir -> Test#getTestClassesDirs in 4.0
       // sourceSet#getJava#getOutputDir added in 4.0
@@ -185,7 +184,7 @@ class GradleBuildServerPluginTest {
           assertEquals(1, gradleSourceSet.getGeneratedSourceDirs().size());
         }
         assertEquals(1, gradleSourceSet.getResourceDirs().size());
-        assertNotNull(gradleSourceSet.getSourceOutputDir());
+        assertNotNull(gradleSourceSet.getSourceOutputDirs());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
 
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
@@ -211,7 +210,30 @@ class GradleBuildServerPluginTest {
         assertNotNull(javaExtension.getSourceCompatibility());
         assertNotNull(javaExtension.getTargetCompatibility());
         assertNotNull(javaExtension.getCompilerArgs());
+        
+        // dirs not split by language before 4.0
+        if (gradleVersion.compareTo(GradleVersion.version("4.0")) >= 0) {
+          assertTrue(gradleSourceSet.getSourceOutputDirs().stream()
+              .anyMatch(file -> file.toPath().endsWith(Paths.get("classes", "java",
+              gradleSourceSet.getSourceSetName()))));
+          assertTrue(javaExtension.getClassesDir().toPath().endsWith(Paths.get("classes", "java",
+              gradleSourceSet.getSourceSetName())));
+        } else {
+          assertTrue(gradleSourceSet.getSourceOutputDirs().stream()
+              .anyMatch(file -> file.toPath().endsWith(Paths.get("classes",
+              gradleSourceSet.getSourceSetName()))));
+          assertTrue(javaExtension.getClassesDir().toPath().endsWith(Paths.get("classes",
+              gradleSourceSet.getSourceSetName())));
+        }
       }
+    });
+  }
+
+  @ParameterizedTest(name = "testGetSourceContainerFromOldGradle {0}")
+  @MethodSource("versionProvider")
+  void testMissingRepository(GradleVersion gradleVersion) throws IOException {
+    withSourceSets("missing-repository", gradleVersion, gradleSourceSets -> {
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
     });
   }
 
@@ -449,7 +471,6 @@ class GradleBuildServerPluginTest {
     withSourceSets("scala-2", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        assertEquals("scala-2", gradleSourceSet.getProjectName());
         assertEquals(":", gradleSourceSet.getProjectPath());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
                 || gradleSourceSet.getSourceSetName().equals("test"));
@@ -464,7 +485,7 @@ class GradleBuildServerPluginTest {
         assertEquals(1, gradleSourceSet.getResourceDirs().size());
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
-        assertNotNull(gradleSourceSet.getSourceOutputDir());
+        assertNotNull(gradleSourceSet.getSourceOutputDirs());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
 
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
@@ -505,6 +526,28 @@ class GradleBuildServerPluginTest {
         assertFalse(scalaExtension.getScalaCompilerArgs().isEmpty());
         assertTrue(scalaExtension.getScalaCompilerArgs().stream()
                 .anyMatch(arg -> arg.equals("-deprecation")));
+
+        // dirs not split by language before 4.0
+        if (gradleVersion.compareTo(GradleVersion.version("4.0")) >= 0) {
+          assertTrue(gradleSourceSet.getSourceOutputDirs().stream()
+              .anyMatch(file -> file.toPath().endsWith(Paths.get("classes", "java",
+              gradleSourceSet.getSourceSetName()))));
+          assertTrue(gradleSourceSet.getSourceOutputDirs().stream()
+              .anyMatch(file -> file.toPath().endsWith(Paths.get("classes", "scala",
+              gradleSourceSet.getSourceSetName()))));
+          assertTrue(javaExtension.getClassesDir().toPath().endsWith(Paths.get("classes", "java",
+              gradleSourceSet.getSourceSetName())));
+          assertTrue(scalaExtension.getClassesDir().toPath().endsWith(Paths.get("classes", "scala",
+              gradleSourceSet.getSourceSetName())));
+        } else {
+          assertTrue(gradleSourceSet.getSourceOutputDirs().stream()
+              .anyMatch(file -> file.toPath().endsWith(Paths.get("classes",
+              gradleSourceSet.getSourceSetName()))));
+          assertTrue(scalaExtension.getClassesDir().toPath().endsWith(Paths.get("classes",
+              gradleSourceSet.getSourceSetName())));
+          assertTrue(javaExtension.getClassesDir().toPath().endsWith(Paths.get("classes",
+              gradleSourceSet.getSourceSetName())));
+        }
       }
     });
   }
@@ -517,7 +560,6 @@ class GradleBuildServerPluginTest {
     withSourceSets("scala-3", gradleVersion, gradleSourceSets -> {
       assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
       for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
-        assertEquals("scala-3", gradleSourceSet.getProjectName());
         assertEquals(":", gradleSourceSet.getProjectPath());
         assertTrue(gradleSourceSet.getSourceSetName().equals("main")
                 || gradleSourceSet.getSourceSetName().equals("test"));
@@ -530,7 +572,7 @@ class GradleBuildServerPluginTest {
           assertEquals(1, gradleSourceSet.getGeneratedSourceDirs().size());
         }
         assertEquals(1, gradleSourceSet.getResourceDirs().size());
-        assertNotNull(gradleSourceSet.getSourceOutputDir());
+        assertNotNull(gradleSourceSet.getSourceOutputDirs());
         assertNotNull(gradleSourceSet.getResourceOutputDir());
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
@@ -568,6 +610,17 @@ class GradleBuildServerPluginTest {
         assertFalse(scalaExtension.getScalaCompilerArgs().isEmpty());
         assertTrue(scalaExtension.getScalaCompilerArgs().stream()
                 .anyMatch(arg -> arg.equals("-deprecation")));
+
+        assertTrue(gradleSourceSet.getSourceOutputDirs().stream()
+            .anyMatch(file -> file.toPath().endsWith(Paths.get("classes", "java",
+            gradleSourceSet.getSourceSetName()))));
+        assertTrue(gradleSourceSet.getSourceOutputDirs().stream()
+            .anyMatch(file -> file.toPath().endsWith(Paths.get("classes", "scala",
+            gradleSourceSet.getSourceSetName()))));
+        assertTrue(javaExtension.getClassesDir().toPath().endsWith(Paths.get("classes", "java",
+            gradleSourceSet.getSourceSetName())));
+        assertTrue(scalaExtension.getClassesDir().toPath().endsWith(Paths.get("classes", "scala",
+            gradleSourceSet.getSourceSetName())));
       }
     });
   }

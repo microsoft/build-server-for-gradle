@@ -3,7 +3,9 @@
 
 package com.microsoft.java.bs.gradle.model;
 
+import java.io.File;
 import java.io.Serializable;
+import java.util.Set;
 
 /**
  * Interface representing a language extension.
@@ -12,6 +14,34 @@ import java.io.Serializable;
  * @see ScalaExtension
  */
 public interface LanguageExtension extends Serializable {
+
+  /**
+   * returns all the source directories for this language.
+   *
+   * @return set of source directories
+   */
+  Set<File> getSourceDirs();
+
+  /**
+   * returns all the generated source directories for this language.
+   *
+   * @return set of generated source directories
+   */
+  Set<File> getGeneratedSourceDirs();
+
+  /**
+   * returns the output directory for this language.
+   *
+   * @return directory containing class files
+   */
+  File getClassesDir();
+
+  /**
+   * returns the name of the Gradle compile task for this language.
+   *
+   * @return name of Gradle compile task
+   */
+  String getCompileTaskName();
 
   /**
    * Checks if the implementing class is a {@link JavaExtension}.

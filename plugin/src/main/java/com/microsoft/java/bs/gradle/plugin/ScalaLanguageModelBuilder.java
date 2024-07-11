@@ -6,7 +6,6 @@ package com.microsoft.java.bs.gradle.plugin;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,6 +22,7 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.tasks.ScalaSourceDirectorySet;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.compile.AbstractCompile;
 import org.gradle.api.tasks.scala.ScalaCompile;
 import org.gradle.api.tasks.scala.ScalaCompileOptions;
 import org.gradle.util.GradleVersion;
@@ -35,24 +35,18 @@ import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
 
   @Override
-  public boolean appliesFor(Project project, SourceSet sourceSet) {
-    return getScalaCompileTask(project, sourceSet) != null;
-  }
-
-  @Override
   public SupportedLanguage<ScalaExtension> getLanguage() {
     return SupportedLanguages.SCALA;
   }
 
-  @Override
-  public Collection<File> getSourceFoldersFor(Project project, SourceSet sourceSet) {
+  private Set<File> getSourceFolders(SourceSet sourceSet) {
     if (GradleVersion.current().compareTo(GradleVersion.version("7.1")) >= 0) {
       SourceDirectorySet sourceDirectorySet = sourceSet.getExtensions()
               .findByType(ScalaSourceDirectorySet.class);
       return sourceDirectorySet == null ? Collections.emptySet() : sourceDirectorySet.getSrcDirs();
     } else {
-      // there is no way pre-Gradle 7.1 to get the scala source dirs separately from other
-      // languages.  Luckily source dirs from all languages are jumbled together in BSP,
+      // there appears to be no way pre-Gradle 7.1 to get the scala source dirs separately
+      // from other languages.  Source dirs from all languages are jumbled together in BSP,
       // so we can just reply with all.
       // resource dirs must be removed.
       Set<File> allSource = sourceSet.getAllSource().getSrcDirs();
@@ -62,30 +56,32 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
     }
   }
 
-  @Override
-  public Collection<File> getGeneratedSourceFoldersFor(Project project, SourceSet sourceSet) {
-    return Collections.emptySet();
-  }
-
   private ScalaCompile getScalaCompileTask(Project project, SourceSet sourceSet) {
     return (ScalaCompile) getLanguageCompileTask(project, sourceSet);
   }
 
   @Override
-  public DefaultScalaExtension getExtensionsFor(Project project, SourceSet sourceSet,
+  public DefaultScalaExtension getExtensionFor(Project project, SourceSet sourceSet,
       Set<GradleModuleDependency> moduleDependencies) {
+    ScalaCompile scalaCompile = getScalaCompileTask(project, sourceSet);
     GradleModuleDependency scalaLibraryDependency = getScalaLibraryDependency(moduleDependencies);
-    if (scalaLibraryDependency != null) {
-      ScalaCompile scalaCompile = getScalaCompileTask(project, sourceSet);
+    if (scalaCompile != null && scalaLibraryDependency != null) {
       DefaultScalaExtension extension = new DefaultScalaExtension();
+
+      extension.setCompileTaskName(scalaCompile.getName());
+
+      extension.setSourceDirs(getSourceFolders(sourceSet));
+      extension.setGeneratedSourceDirs(Collections.emptySet());
+      extension.setClassesDir(getClassesDir(scalaCompile));
+
       extension.setScalaOrganization(getScalaOrganization(scalaLibraryDependency));
       extension.setScalaVersion(getScalaVersion(scalaLibraryDependency));
       extension.setScalaBinaryVersion(getScalaBinaryVersion(scalaLibraryDependency));
       extension.setScalaCompilerArgs(getScalaCompilerArgs(scalaCompile));
       extension.setScalaJars(getScalaJars(scalaCompile));
+      extension.setClassesDir(getClassesDir(scalaCompile));
       return extension;
     }
-    // Scala plugin found but Scala library not found - should not be possible
     return null;
   }
 
@@ -177,5 +173,17 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
     }
 
     return args;
+  }
+
+  private File getClassesDir(AbstractCompile compile) {
+    if (compile != null) {
+      if (GradleVersion.current().compareTo(GradleVersion.version("6.1")) >= 0) {
+        return compile.getDestinationDirectory().get().getAsFile();
+      } else {
+        return compile.getDestinationDir();
+      }
+    }
+
+    return null;
   }
 }

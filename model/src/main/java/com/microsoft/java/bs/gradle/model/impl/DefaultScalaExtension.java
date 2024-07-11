@@ -9,6 +9,7 @@ import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import java.io.File;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Default implementation of {@link ScalaExtension}.
@@ -25,6 +26,14 @@ public class DefaultScalaExtension implements ScalaExtension {
   private String scalaBinaryVersion;
 
   private List<File> scalaJars;
+  
+  private Set<File> sourceDirs;
+
+  private Set<File> generatedSourceDirs;
+
+  private String compileTaskName;
+
+  private File classesDir;
 
   @Override
   public List<String> getScalaCompilerArgs() {
@@ -72,9 +81,45 @@ public class DefaultScalaExtension implements ScalaExtension {
   }
 
   @Override
+  public Set<File> getSourceDirs() {
+    return sourceDirs;
+  }
+
+  public void setSourceDirs(Set<File> sourceDirs) {
+    this.sourceDirs = sourceDirs;
+  }
+
+  @Override
+  public Set<File> getGeneratedSourceDirs() {
+    return generatedSourceDirs;
+  }
+
+  public void setGeneratedSourceDirs(Set<File> generatedSourceDirs) {
+    this.generatedSourceDirs = generatedSourceDirs;
+  }
+
+  @Override
+  public String getCompileTaskName() {
+    return compileTaskName;
+  }
+
+  public void setCompileTaskName(String compileTaskName) {
+    this.compileTaskName = compileTaskName;
+  }
+
+  @Override
+  public File getClassesDir() {
+    return classesDir;
+  }
+
+  public void setClassesDir(File classesDir) {
+    this.classesDir = classesDir;
+  }
+
+  @Override
   public int hashCode() {
-    return Objects.hash(scalaCompilerArgs, scalaOrganization,
-      scalaVersion, scalaBinaryVersion, scalaJars);
+    return Objects.hash(scalaCompilerArgs, scalaOrganization, scalaVersion, scalaBinaryVersion,
+        scalaJars, sourceDirs, generatedSourceDirs, compileTaskName, classesDir);
   }
 
   @Override
@@ -93,7 +138,11 @@ public class DefaultScalaExtension implements ScalaExtension {
             && Objects.equals(scalaOrganization, other.scalaOrganization)
             && Objects.equals(scalaVersion, other.scalaVersion)
             && Objects.equals(scalaBinaryVersion, other.scalaBinaryVersion)
-            && Objects.equals(scalaJars, other.scalaJars);
+            && Objects.equals(scalaJars, other.scalaJars)
+            && Objects.equals(sourceDirs, other.sourceDirs)
+            && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
+            && Objects.equals(compileTaskName, other.compileTaskName)
+            && Objects.equals(classesDir, other.classesDir);
   }
 
   @Override

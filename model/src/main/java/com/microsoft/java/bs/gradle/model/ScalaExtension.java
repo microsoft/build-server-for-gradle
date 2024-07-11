@@ -36,4 +36,9 @@ public interface ScalaExtension extends LanguageExtension {
    * E.g. scala-library, scala-compiler and scala-reflect.
    */
   List<File> getScalaJars();
+
+  /**
+   * The classes directory.
+   */
+  File getClassesDir();
 }

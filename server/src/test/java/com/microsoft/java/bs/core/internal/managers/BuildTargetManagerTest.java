@@ -26,6 +26,7 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.LanguageExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
 
 import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.JvmBuildTarget;
@@ -90,13 +91,15 @@ class BuildTargetManagerTest {
 
   @Test
   void testBuildTargetDependency() {
+    File fooProjectDir = new File("foo");
+    String fooSourceSetName = "main";
     GradleSourceSet gradleSourceSetFoo = getMockedTestGradleSourceSet();
     when(gradleSourceSetFoo.getProjectPath()).thenReturn(":foo");
-    when(gradleSourceSetFoo.getProjectDir()).thenReturn(new File("foo"));
+    when(gradleSourceSetFoo.getProjectDir()).thenReturn(fooProjectDir);
+    when(gradleSourceSetFoo.getSourceSetName()).thenReturn(fooSourceSetName);
 
-
-    BuildTargetDependency buildTargetDependency = mock(BuildTargetDependency.class);
-    when(buildTargetDependency.getProjectDir()).thenReturn(new File("foo").getAbsolutePath());
+    BuildTargetDependency buildTargetDependency = new DefaultBuildTargetDependency(
+        fooProjectDir.getAbsolutePath(), fooSourceSetName);
     Set<BuildTargetDependency> dependencies = new HashSet<>();
     dependencies.add(buildTargetDependency);
     GradleSourceSet gradleSourceSetBar = getMockedTestGradleSourceSet();

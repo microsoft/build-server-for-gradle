@@ -45,11 +45,13 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private Set<File> generatedSourceDirs;
 
-  private File sourceOutputDir;
+  private Set<File> sourceOutputDirs;
 
   private Set<File> resourceDirs;
 
   private File resourceOutputDir;
+
+  private Map<File, List<File>> archiveOutputFiles;
 
   private List<File> compileClasspath;
 
@@ -81,9 +83,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.taskNames = gradleSourceSet.getTaskNames();
     this.sourceDirs = gradleSourceSet.getSourceDirs();
     this.generatedSourceDirs = gradleSourceSet.getGeneratedSourceDirs();
-    this.sourceOutputDir = gradleSourceSet.getSourceOutputDir();
+    this.sourceOutputDirs = gradleSourceSet.getSourceOutputDirs();
     this.resourceDirs = gradleSourceSet.getResourceDirs();
     this.resourceOutputDir = gradleSourceSet.getResourceOutputDir();
+    this.archiveOutputFiles = gradleSourceSet.getArchiveOutputFiles();
     this.compileClasspath = gradleSourceSet.getCompileClasspath();
     this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
@@ -213,12 +216,12 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   }
 
   @Override
-  public File getSourceOutputDir() {
-    return sourceOutputDir;
+  public Set<File> getSourceOutputDirs() {
+    return sourceOutputDirs;
   }
 
-  public void setSourceOutputDir(File sourceOutputDir) {
-    this.sourceOutputDir = sourceOutputDir;
+  public void setSourceOutputDirs(Set<File> sourceOutputDirs) {
+    this.sourceOutputDirs = sourceOutputDirs;
   }
 
   @Override
@@ -237,6 +240,15 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   public void setResourceOutputDir(File resourceOutputDir) {
     this.resourceOutputDir = resourceOutputDir;
+  }
+
+  @Override
+  public Map<File, List<File>> getArchiveOutputFiles() {
+    return archiveOutputFiles;
+  }
+
+  public void setArchiveOutputFiles(Map<File, List<File>> archiveOutputFiles) {
+    this.archiveOutputFiles = archiveOutputFiles;
   }
 
   @Override
@@ -288,7 +300,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   public int hashCode() {
     return Objects.hash(gradleVersion, displayName, projectName, projectPath,
         projectDir, rootDir, sourceSetName, classesTaskName, cleanTaskName, taskNames, sourceDirs,
-        generatedSourceDirs, sourceOutputDir, resourceDirs, resourceOutputDir,
+        generatedSourceDirs, sourceOutputDirs, resourceDirs, resourceOutputDir, archiveOutputFiles,
         compileClasspath, moduleDependencies, buildTargetDependencies,
         hasTests, extensions);
   }
@@ -317,9 +329,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(taskNames, other.taskNames)
         && Objects.equals(sourceDirs, other.sourceDirs)
         && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
-        && Objects.equals(sourceOutputDir, other.sourceOutputDir)
+        && Objects.equals(sourceOutputDirs, other.sourceOutputDirs)
         && Objects.equals(resourceDirs, other.resourceDirs)
         && Objects.equals(resourceOutputDir, other.resourceOutputDir)
+        && Objects.equals(archiveOutputFiles, other.archiveOutputFiles)
         && Objects.equals(compileClasspath, other.compileClasspath)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(buildTargetDependencies, other.buildTargetDependencies)

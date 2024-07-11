@@ -1,0 +1,14 @@
+plugins {
+	id 'java'
+}
+// repo list deliberately NOT included to check plugin doesn't throw exception
+
+if (org.gradle.util.GradleVersion.current().compareTo(org.gradle.util.GradleVersion.version("4.6")) >= 0) {
+	dependencies {
+    testImplementation('org.testng:testng:7.9.0')
+	}
+} else {
+	dependencies {
+		testCompile('org.testng:testng:7.9.0')
+	}
+}

@@ -6,36 +6,36 @@ package com.microsoft.java.bs.gradle.plugin;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.microsoft.java.bs.gradle.model.GradleSourceSet;
-import com.microsoft.java.bs.gradle.model.GradleSourceSetsMetadata;
+import java.util.stream.Collectors;
 
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.file.CopySpec;
-import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.internal.file.copy.DefaultCopySpec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
-import org.gradle.api.tasks.SourceSetOutput;
-import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.tooling.provider.model.ToolingModelBuilder;
 import org.gradle.util.GradleVersion;
 
-import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
-import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSetsMetadata;
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
+import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.LanguageExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
 
 /**
@@ -44,179 +44,227 @@ import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
 public class SourceSetsModelBuilder implements ToolingModelBuilder {
   @Override
   public boolean canBuild(String modelName) {
-    return modelName.equals(GradleSourceSetsMetadata.class.getName());
+    return modelName.equals(GradleSourceSets.class.getName());
   }
 
   @Override
-  public Object buildAll(String modelName, Project rootProject) {
-
-    Map<GradleSourceSet, List<File>> sourceSetsToClasspath = new HashMap<>();
-    Map<File, GradleSourceSet> outputsToSourceSet = new HashMap<>();
-
-    Set<Project> allProject = rootProject.getAllprojects();
-    SourceSetCache cache = new SourceSetCache();
-    // this set is used to eliminate the source, resource and output
-    // directories from the module dependencies.
-    Set<File> exclusionFromDependencies = new HashSet<>();
+  public Object buildAll(String modelName, Project project) {
     // mapping Gradle source set to our customized model.
-    for (Project project : allProject) {
-      SourceSetContainer sourceSets = getSourceSetContainer(project);
-      if (sourceSets == null || sourceSets.isEmpty()) {
-        continue;
+    List<GradleSourceSet> sourceSets = getSourceSetContainer(project).stream()
+        .map(ss -> getSourceSet(project, ss)).collect(Collectors.toList());
+
+    excludeSourceDirsFromModules(sourceSets);
+
+    return new DefaultGradleSourceSets(sourceSets);
+  }
+  
+  private DefaultGradleSourceSet getSourceSet(Project project, SourceSet sourceSet) {
+    DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
+    // dependencies are populated by the GradleSourceSetsAction.  Make sure not null.
+    gradleSourceSet.setBuildTargetDependencies(new HashSet<>());
+    gradleSourceSet.setGradleVersion(project.getGradle().getGradleVersion());
+    gradleSourceSet.setProjectName(project.getName());
+    String projectPath = project.getPath();
+    gradleSourceSet.setProjectPath(projectPath);
+    gradleSourceSet.setProjectDir(project.getProjectDir());
+    gradleSourceSet.setRootDir(project.getRootDir());
+    gradleSourceSet.setSourceSetName(sourceSet.getName());
+    String classesTaskName = getFullTaskName(projectPath, sourceSet.getClassesTaskName());
+    gradleSourceSet.setClassesTaskName(classesTaskName);
+    String cleanTaskName = getFullTaskName(projectPath, "clean");
+    gradleSourceSet.setCleanTaskName(cleanTaskName);
+    Set<String> taskNames = new HashSet<>();
+    gradleSourceSet.setTaskNames(taskNames);
+    String projectName = stripPathPrefix(projectPath);
+    if (projectName.isEmpty()) {
+      projectName = project.getName();
+    }
+    String displayName = projectName + " [" + gradleSourceSet.getSourceSetName() + ']';
+    gradleSourceSet.setDisplayName(displayName);
+
+    // setup module dependencies before language support check.
+    gradleSourceSet.setModuleDependencies(getModuleDependencies(project, sourceSet));
+
+    // specific languages
+    Map<String, LanguageExtension> extensions = new HashMap<>();
+    Set<File> srcDirs = new HashSet<>();
+    Set<File> generatedSrcDirs = new HashSet<>();
+    Set<File> sourceOutputDirs = new HashSet<>();
+    for (LanguageModelBuilder languageModelBuilder : getSupportedLanguages()) {
+      LanguageExtension extension = languageModelBuilder.getExtensionFor(project, sourceSet,
+          gradleSourceSet.getModuleDependencies());
+      if (extension != null) {
+        String compileTaskName = getFullTaskName(projectPath, extension.getCompileTaskName());
+        taskNames.add(compileTaskName);
+
+        srcDirs.addAll(extension.getSourceDirs());
+        generatedSrcDirs.addAll(extension.getGeneratedSourceDirs());
+        sourceOutputDirs.add(extension.getClassesDir());
+
+        extensions.put(languageModelBuilder.getLanguageId(), extension);
       }
-      sourceSets.forEach(sourceSet -> {
-        DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
-        cache.addGradleSourceSet(sourceSet, gradleSourceSet);
-        cache.addProject(sourceSet, project);
-        gradleSourceSet.setBuildTargetDependencies(new HashSet<>());
-        gradleSourceSet.setGradleVersion(project.getGradle().getGradleVersion());
-        gradleSourceSet.setProjectName(project.getName());
-        String projectPath = project.getPath();
-        gradleSourceSet.setProjectPath(projectPath);
-        gradleSourceSet.setProjectDir(project.getProjectDir());
-        gradleSourceSet.setRootDir(project.getRootDir());
-        gradleSourceSet.setSourceSetName(sourceSet.getName());
-        String classesTaskName = getFullTaskName(projectPath, sourceSet.getClassesTaskName());
-        gradleSourceSet.setClassesTaskName(classesTaskName);
-        String cleanTaskName = getFullTaskName(projectPath, "clean");
-        gradleSourceSet.setCleanTaskName(cleanTaskName);
-        Set<String> taskNames = new HashSet<>();
-        gradleSourceSet.setTaskNames(taskNames);
-        String projectName = stripPathPrefix(projectPath);
-        if (projectName == null || projectName.length() == 0) {
-          projectName = gradleSourceSet.getProjectName();
-        }
-        String displayName = projectName + " [" + gradleSourceSet.getSourceSetName() + ']';
-        gradleSourceSet.setDisplayName(displayName);
+    }
+    gradleSourceSet.setSourceDirs(srcDirs);
+    gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
+    gradleSourceSet.setExtensions(extensions);
+    gradleSourceSet.setSourceOutputDirs(sourceOutputDirs);
 
-        // source
-        Set<File> srcDirs = new HashSet<>();
-        Set<File> generatedSrcDirs = new HashSet<>();
-        for (LanguageModelBuilder languageModelBuilder :
-            GradleBuildServerPlugin.SUPPORTED_LANGUAGE_BUILDERS) {
-          if (languageModelBuilder.appliesFor(project, sourceSet)) {
-            Task compileTask = languageModelBuilder.getLanguageCompileTask(project, sourceSet);
-            if (compileTask != null) {
-              String compileTaskName = getFullTaskName(projectPath, compileTask.getName());
-              taskNames.add(compileTaskName);
+    // classpath
+    List<File> compileClasspath = new LinkedList<>();
+    try {
+      compileClasspath.addAll(sourceSet.getCompileClasspath().getFiles());
+    } catch (GradleException e) {
+      // ignore
+    }
+    gradleSourceSet.setCompileClasspath(compileClasspath);
+
+    // resource
+    Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
+    gradleSourceSet.setResourceDirs(resourceDirs);
+
+    // resource output dir
+    File resourceOutputDir = sourceSet.getOutput().getResourcesDir();
+    if (resourceOutputDir != null) {
+      gradleSourceSet.setResourceOutputDir(resourceOutputDir);
+    }
+
+    // archive output dirs
+    Map<File, List<File>> archiveOutputFiles = getArchiveOutputFiles(project, sourceSet);
+    gradleSourceSet.setArchiveOutputFiles(archiveOutputFiles);
+
+    // tests
+    if (sourceOutputDirs != null) {
+      Set<Test> testTasks = tasksWithType(project, Test.class);
+      for (Test testTask : testTasks) {
+        if (GradleVersion.current().compareTo(GradleVersion.version("4.0")) >= 0) {
+          FileCollection files = testTask.getTestClassesDirs();
+          for (File sourceOutputDir : sourceOutputDirs) {
+            if (files.contains(sourceOutputDir)) {
+              gradleSourceSet.setHasTests(true);
+              break;
             }
-            srcDirs.addAll(languageModelBuilder.getSourceFoldersFor(project, sourceSet));
-            generatedSrcDirs.addAll(
-                languageModelBuilder.getGeneratedSourceFoldersFor(project, sourceSet));
           }
-        }
-        gradleSourceSet.setSourceDirs(srcDirs);
-        exclusionFromDependencies.addAll(srcDirs);
-        gradleSourceSet.setGeneratedSourceDirs(generatedSrcDirs);
-        exclusionFromDependencies.addAll(generatedSrcDirs);
-
-        // classpath
-        List<File> compileClasspath = new LinkedList<>();
-        try {
-          compileClasspath.addAll(sourceSet.getCompileClasspath().getFiles());
-        } catch (GradleException e) {
-          // ignore
-        }
-        gradleSourceSet.setCompileClasspath(compileClasspath);
-        sourceSetsToClasspath.put(gradleSourceSet, compileClasspath);
-
-        // source output dir
-        File sourceOutputDir = getSourceOutputDir(sourceSet);
-        if (sourceOutputDir != null) {
-          gradleSourceSet.setSourceOutputDir(sourceOutputDir);
-          outputsToSourceSet.put(sourceOutputDir, gradleSourceSet);
-          exclusionFromDependencies.add(sourceOutputDir);
-        }
-
-        // resource
-        Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
-        gradleSourceSet.setResourceDirs(resourceDirs);
-        exclusionFromDependencies.addAll(resourceDirs);
-
-        // resource output dir
-        File resourceOutputDir = sourceSet.getOutput().getResourcesDir();
-        if (resourceOutputDir != null) {
-          gradleSourceSet.setResourceOutputDir(resourceOutputDir);
-          outputsToSourceSet.put(resourceOutputDir, gradleSourceSet);
-          exclusionFromDependencies.add(resourceOutputDir);
-        }
-
-        // tests
-        if (sourceOutputDir != null) {
-          TaskCollection<Test> testTasks = project.getTasks().withType(Test.class);
-          for (Test testTask : testTasks) {
-            if (GradleVersion.current().compareTo(GradleVersion.version("4.0")) >= 0) {
-              FileCollection files = testTask.getTestClassesDirs();
-              if (files.contains(sourceOutputDir)) {
+          if (gradleSourceSet.hasTests()) {
+            break;
+          }
+        } else {
+          try {
+            Method getTestClassesDir = testTask.getClass().getMethod("getTestClassesDir");
+            Object testClassesDir = getTestClassesDir.invoke(testTask);
+            for (File sourceOutputDir : sourceOutputDirs) {
+              if (sourceOutputDir.equals(testClassesDir)) {
                 gradleSourceSet.setHasTests(true);
                 break;
               }
-            } else {
-              try {
-                Method getTestClassesDir = testTask.getClass().getMethod("getTestClassesDir");
-                Object testClassesDir = getTestClassesDir.invoke(testTask);
-                if (sourceOutputDir.equals(testClassesDir)) {
-                  gradleSourceSet.setHasTests(true);
-                  break;
-                }
-              } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-                       | IllegalArgumentException | InvocationTargetException  e) {
-                // ignore
-              }
             }
-          }
-        }
-      });
-
-      if (!sourceSets.isEmpty()) {
-        gatherArchiveTasks(outputsToSourceSet, cache, project, sourceSets);
-      }
-    }
-
-    setModuleDependencies(cache, exclusionFromDependencies);
-
-    for (SourceSet sourceSet : cache.getAllSourceSets()) {
-      DefaultGradleSourceSet gradleSourceSet = cache.getGradleSourceSet(sourceSet);
-      if (gradleSourceSet == null) {
-        continue;
-      }
-
-      Project project = cache.getProject(sourceSet);
-      if (project == null) {
-        continue;
-      }
-
-      Map<String, LanguageExtension> extensions = new HashMap<>();
-      for (LanguageModelBuilder languageModelBuilder :
-          GradleBuildServerPlugin.SUPPORTED_LANGUAGE_BUILDERS) {
-        if (languageModelBuilder.appliesFor(project, sourceSet)) {
-          LanguageExtension extension = languageModelBuilder.getExtensionsFor(project, sourceSet,
-              gradleSourceSet.getModuleDependencies());
-          if (extension != null) {
-            extensions.put(languageModelBuilder.getLanguageId(), extension);
+            if (gradleSourceSet.hasTests()) {
+              break;
+            }
+          } catch (NoSuchMethodException | SecurityException | IllegalAccessException
+                    | IllegalArgumentException | InvocationTargetException  e) {
+            // ignore
           }
         }
       }
-      gradleSourceSet.setExtensions(extensions);
     }
 
-    return new DefaultGradleSourceSetsMetadata(sourceSetsToClasspath, outputsToSourceSet);
+    return gradleSourceSet;
   }
 
-  private void setModuleDependencies(SourceSetCache cache, Set<File> exclusionFromDependencies) {
-    for (SourceSet sourceSet : cache.getAllSourceSets()) {
-      DefaultGradleSourceSet gradleSourceSet = cache.getGradleSourceSet(sourceSet);
-      if (gradleSourceSet == null) {
-        continue;
+  private List<LanguageModelBuilder> getSupportedLanguages() {
+    List<LanguageModelBuilder> results = new LinkedList<>();
+    String supportedLanguagesProps = System.getProperty("bsp.gradle.supportedLanguages");
+    if (supportedLanguagesProps != null) {
+      String[] supportedLanguages = supportedLanguagesProps.split(",");
+      for (String language : supportedLanguages) {
+        if (language.equalsIgnoreCase(SupportedLanguages.JAVA.getBspName())) {
+          results.add(new JavaLanguageModelBuilder());
+        } else if (language.equalsIgnoreCase(SupportedLanguages.SCALA.getBspName())) {
+          results.add(new ScalaLanguageModelBuilder());
+        }
       }
-      DependencyCollector collector = new DependencyCollector(cache.getProject(sourceSet),
-          exclusionFromDependencies);
-      collector.collectByConfigurationNames(getClasspathConfigurationNames(sourceSet));
-      gradleSourceSet.setModuleDependencies(collector.getModuleDependencies());
+    }
+    return results;
+  }
+
+  private <T extends Task> Set<T> tasksWithType(Project project, Class<T> clazz) {
+    // Gradle gives concurrentmodification exceptions if multiple threads resolve
+    // the tasks concurrently, which happens on multi-project builds
+    synchronized (project.getRootProject()) {
+      return new HashSet<>(project.getTasks().withType(clazz));
     }
   }
 
-  private SourceSetContainer getSourceSetContainer(Project project) {
+  /**
+   * get all archive tasks for this project and maintain the archive file
+   * to source set mapping.
+   */
+  private Map<File, List<File>> getArchiveOutputFiles(Project project, SourceSet sourceSet) {
+    // get all archive tasks for this project and find the dirs that are included in the archive
+    Set<AbstractArchiveTask> archiveTasks = tasksWithType(project, AbstractArchiveTask.class);
+    Map<File, List<File>> archiveOutputFiles = new HashMap<>();
+    for (AbstractArchiveTask archiveTask : archiveTasks) {
+      Set<Object> archiveSourcePaths = getArchiveSourcePaths(archiveTask.getRootSpec());
+      for (Object sourcePath : archiveSourcePaths) {
+        if (sourceSet.getOutput().equals(sourcePath)) {
+          File archiveFile;
+          if (GradleVersion.current().compareTo(GradleVersion.version("5.1")) >= 0) {
+            archiveFile = archiveTask.getArchiveFile().get().getAsFile();
+          } else {
+            archiveFile = archiveTask.getArchivePath();
+          }
+          List<File> sourceSetOutputs = new LinkedList<>();
+          sourceSetOutputs.addAll(sourceSet.getOutput().getFiles());
+          archiveOutputFiles.put(archiveFile, sourceSetOutputs);
+        }
+      }
+    }
+    return archiveOutputFiles;
+  }
+
+  private Set<GradleModuleDependency> getModuleDependencies(Project project, SourceSet sourceSet) {
+    Set<String> configurationNames = getClasspathConfigurationNames(sourceSet);
+    return DependencyCollector.getModuleDependencies(project, configurationNames);
+  }
+
+  // remove source set dirs from modules
+  private void excludeSourceDirsFromModules(List<GradleSourceSet> sourceSets) {
+    Set<File> exclusions = new HashSet<>();
+    for (GradleSourceSet sourceSet : sourceSets) {
+      if (sourceSet.getSourceDirs() != null) {
+        exclusions.addAll(sourceSet.getSourceDirs());
+      }
+      if (sourceSet.getGeneratedSourceDirs() != null) {
+        exclusions.addAll(sourceSet.getGeneratedSourceDirs());
+      }
+      if (sourceSet.getResourceDirs() != null) {
+        exclusions.addAll(sourceSet.getResourceDirs());
+      }
+      if (sourceSet.getSourceOutputDirs() != null) {
+        exclusions.addAll(sourceSet.getSourceOutputDirs());
+      }
+      if (sourceSet.getResourceOutputDir() != null) {
+        exclusions.add(sourceSet.getResourceOutputDir());
+      }
+      if (sourceSet.getArchiveOutputFiles() != null) {
+        exclusions.addAll(sourceSet.getArchiveOutputFiles().keySet());
+      }
+    }
+
+    Set<URI> exclusionUris = exclusions.stream().map(File::toURI).collect(Collectors.toSet());
+
+    for (GradleSourceSet sourceSet : sourceSets) {
+      Set<GradleModuleDependency> filteredModuleDependencies = sourceSet.getModuleDependencies()
+          .stream().filter(mod -> mod.getArtifacts()
+            .stream().anyMatch(art -> !exclusionUris.contains(art.getUri())))
+          .collect(Collectors.toSet());
+      if (sourceSet instanceof DefaultGradleSourceSet) {
+        ((DefaultGradleSourceSet) sourceSet).setModuleDependencies(filteredModuleDependencies);
+      }
+    }
+  }
+
+  private Collection<SourceSet> getSourceSetContainer(Project project) {
     if (GradleVersion.current().compareTo(GradleVersion.version("5.0")) >= 0) {
       SourceSetContainer sourceSetContainer = project.getExtensions()
               .findByType(SourceSetContainer.class);
@@ -242,7 +290,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
              | IllegalArgumentException | InvocationTargetException  e) {
       // ignore
     }
-    return null;
+    return new LinkedList<>();
   }
 
   /**
@@ -270,67 +318,6 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     return projectPath;
   }
 
-  private File getSourceOutputDir(SourceSet sourceSet) {
-    if (GradleVersion.current().compareTo(GradleVersion.version("6.1")) >= 0) {
-      Directory sourceOutputDir = sourceSet.getJava().getClassesDirectory().getOrNull();
-      if (sourceOutputDir != null) {
-        return sourceOutputDir.getAsFile();
-      }
-      return null;
-    } else if (GradleVersion.current().compareTo(GradleVersion.version("4.0")) >= 0) {
-      try {
-        // https://docs.gradle.org/4.0/javadoc/org/gradle/api/file/SourceDirectorySet.html#getOutputDir()
-        Method getOutputDirMethod = SourceDirectorySet.class.getMethod("getOutputDir");
-        return (File) getOutputDirMethod.invoke(sourceSet.getJava());
-      } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-               | IllegalArgumentException | InvocationTargetException e) {
-        // ignore
-      }
-    } else {
-      // get all output dirs and filter out resources output
-      SourceSetOutput output = sourceSet.getOutput();
-      Set<File> allOutputDirs = output.getFiles();
-      File resourceOutputDir = output.getResourcesDir();
-      allOutputDirs.remove(resourceOutputDir);
-      if (!allOutputDirs.isEmpty()) {
-        return allOutputDirs.iterator().next();
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * get all archive tasks for this project and maintain the archive file
-   * to source set mapping.
-   */
-  private void gatherArchiveTasks(Map<File, GradleSourceSet> outputsToSourceSet,
-      SourceSetCache cache, Project project, SourceSetContainer sourceSets) {
-    TaskCollection<AbstractArchiveTask> archiveTasks =
-        project.getTasks().withType(AbstractArchiveTask.class);
-    for (AbstractArchiveTask archiveTask : archiveTasks) {
-      Set<Object> archiveSourcePaths = getArchiveSourcePaths(archiveTask.getRootSpec());
-      for (Object sourcePath : archiveSourcePaths) {
-        sourceSets.forEach(sourceSet -> {
-          DefaultGradleSourceSet gradleSourceSet = cache.getGradleSourceSet(sourceSet);
-          if (gradleSourceSet == null) {
-            return;
-          }
-
-          if (sourceSet.getOutput().equals(sourcePath)) {
-            File archiveFile;
-            if (GradleVersion.current().compareTo(GradleVersion.version("5.1")) >= 0) {
-              archiveFile = archiveTask.getArchiveFile().get().getAsFile();
-            } else {
-              archiveFile = archiveTask.getArchivePath();
-            }
-            outputsToSourceSet.put(archiveFile, gradleSourceSet);
-          }
-        });
-      }
-    }
-  }
-
   private Set<Object> getArchiveSourcePaths(CopySpec copySpec) {
     Set<Object> sourcePaths = new HashSet<>();
     if (copySpec instanceof DefaultCopySpec) {
@@ -353,7 +340,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
             }
           }
         } catch (NoSuchMethodException | IllegalAccessException
-                 | IllegalArgumentException | InvocationTargetException e) {
+          | IllegalArgumentException | InvocationTargetException e) {
           // cannot get archive information
         }
       }

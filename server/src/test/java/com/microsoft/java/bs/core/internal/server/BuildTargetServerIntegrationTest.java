@@ -70,13 +70,11 @@ import ch.epfl.scala.bsp4j.extended.TestStartEx;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 
 import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
-import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
@@ -1796,6 +1794,8 @@ class BuildTargetServerIntegrationTest {
       passingTestParams.setDataKind(TestParamsDataKind.SCALA_TEST);
       passingTestParams.setData(passingScalaTestParams);
       TestResult passingTestResult = gradleBuildServer.buildTargetTest(passingTestParams).join();
+      // Caveat - this may fail if using too high JDK version for SPOCK.
+      // Dependency `org.spockframework:spock-core:2.3-groovy-4.0` may need upgrading.
       assertEquals(StatusCode.OK, passingTestResult.getStatusCode());
       assertEquals("originId", passingTestResult.getOriginId());
       client.waitOnStartReports(4);

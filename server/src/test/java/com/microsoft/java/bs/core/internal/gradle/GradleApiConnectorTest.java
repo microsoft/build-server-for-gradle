@@ -140,10 +140,7 @@ class GradleApiConnectorTest {
   @Test
   void testCompositeBuild1() {
     File projectDir = projectPath.resolve("composite-build-1").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
-    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+    GradleSourceSets gradleSourceSets = getGradleSourceSets(projectDir);
     assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
     findSourceSet(gradleSourceSets, "projectA [main]");
     findSourceSet(gradleSourceSets, "projectA [test]");
@@ -154,10 +151,7 @@ class GradleApiConnectorTest {
   @Test
   void testCompositeBuild2() {
     File projectDir = projectPath.resolve("composite-build-2").toFile();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    preferenceManager.setPreferences(new Preferences());
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
-    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+    GradleSourceSets gradleSourceSets = getGradleSourceSets(projectDir);
     assertEquals(6, gradleSourceSets.getGradleSourceSets().size());
     findSourceSet(gradleSourceSets, "app [test]");
     findSourceSet(gradleSourceSets, "string-utils [test]");

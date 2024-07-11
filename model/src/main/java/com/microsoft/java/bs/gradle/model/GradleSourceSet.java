@@ -81,14 +81,19 @@ public interface GradleSourceSet extends Serializable {
   public Set<File> getResourceDirs();
 
   /**
-   * The output directory of this source set.
+   * The output directories of this source set.
    */
-  public File getSourceOutputDir();
+  Set<File> getSourceOutputDirs();
 
   /**
    * The resource output directory of this source set.
    */
   public File getResourceOutputDir();
+
+  /**
+   * Any archive files created from the output of this source set to the output dirs.
+   */
+  Map<File, List<File>> getArchiveOutputFiles();
 
   /**
    * The compile classpath for this source set.

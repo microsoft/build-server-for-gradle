@@ -9,6 +9,7 @@ import com.microsoft.java.bs.gradle.model.ScalaExtension;
 import java.io.File;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Default implementation of {@link JavaExtension}.
@@ -25,6 +26,14 @@ public class DefaultJavaExtension implements JavaExtension {
   private String targetCompatibility;
 
   private List<String> compilerArgs;
+  
+  private Set<File> sourceDirs;
+
+  private Set<File> generatedSourceDirs;
+
+  private String compileTaskName;
+
+  private File classesDir;
 
   @Override
   public File getJavaHome() {
@@ -72,10 +81,45 @@ public class DefaultJavaExtension implements JavaExtension {
   }
 
   @Override
+  public Set<File> getSourceDirs() {
+    return sourceDirs;
+  }
+
+  public void setSourceDirs(Set<File> sourceDirs) {
+    this.sourceDirs = sourceDirs;
+  }
+
+  @Override
+  public Set<File> getGeneratedSourceDirs() {
+    return generatedSourceDirs;
+  }
+
+  public void setGeneratedSourceDirs(Set<File> generatedSourceDirs) {
+    this.generatedSourceDirs = generatedSourceDirs;
+  }
+
+  @Override
+  public String getCompileTaskName() {
+    return compileTaskName;
+  }
+
+  public void setCompileTaskName(String compileTaskName) {
+    this.compileTaskName = compileTaskName;
+  }
+
+  @Override
+  public File getClassesDir() {
+    return classesDir;
+  }
+
+  public void setClassesDir(File classesDir) {
+    this.classesDir = classesDir;
+  }
+
+  @Override
   public int hashCode() {
-    return Objects.hash(javaHome, javaVersion,
-        sourceCompatibility, targetCompatibility, compilerArgs
-    );
+    return Objects.hash(javaHome, javaVersion, sourceCompatibility, targetCompatibility,
+        compilerArgs, sourceDirs, generatedSourceDirs, compileTaskName, classesDir);
   }
 
   @Override
@@ -94,7 +138,11 @@ public class DefaultJavaExtension implements JavaExtension {
         && Objects.equals(javaVersion, other.javaVersion)
         && Objects.equals(sourceCompatibility, other.sourceCompatibility)
         && Objects.equals(targetCompatibility, other.targetCompatibility)
-        && Objects.equals(compilerArgs, other.compilerArgs);
+        && Objects.equals(compilerArgs, other.compilerArgs)
+        && Objects.equals(sourceDirs, other.sourceDirs)
+        && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
+        && Objects.equals(compileTaskName, other.compileTaskName)
+        && Objects.equals(classesDir, other.classesDir);
   }
 
   @Override

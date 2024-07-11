@@ -243,12 +243,14 @@ public class BuildTargetService {
       // output path.
       // TODO: file a BSP spec issue to support additional flags for each output path.
 
-      File sourceOutputDir = sourceSet.getSourceOutputDir();
-      if (sourceOutputDir != null) {
-        outputPaths.add(new OutputPathItem(
-            sourceOutputDir.toURI().toString() + "?kind=source",
-            OutputPathItemKind.DIRECTORY
-        ));
+      Set<File> sourceOutputDirs = sourceSet.getSourceOutputDirs();
+      if (sourceOutputDirs != null) {
+        for (File sourceOutputDir : sourceOutputDirs) {
+          outputPaths.add(new OutputPathItem(
+              sourceOutputDir.toURI().toString() + "?kind=source",
+              OutputPathItemKind.DIRECTORY
+          ));
+        }
       }
 
       File resourceOutputDir = sourceSet.getResourceOutputDir();
@@ -425,8 +427,8 @@ public class BuildTargetService {
           .map(file -> file.toURI().toString())
           .collect(Collectors.toList());
       String classesDir;
-      if (sourceSet.getSourceOutputDir() != null) {
-        classesDir = sourceSet.getSourceOutputDir().toURI().toString();
+      if (javaExtension.getClassesDir() != null) {
+        classesDir = javaExtension.getClassesDir().toURI().toString();
       } else {
         classesDir = "";
       }
@@ -464,8 +466,8 @@ public class BuildTargetService {
           .map(file -> file.toURI().toString())
           .collect(Collectors.toList());
       String classesDir;
-      if (sourceSet.getSourceOutputDir() != null) {
-        classesDir = sourceSet.getSourceOutputDir().toURI().toString();
+      if (scalaExtension.getClassesDir() != null) {
+        classesDir = scalaExtension.getClassesDir().toURI().toString();
       } else {
         classesDir = "";
       }
