@@ -84,8 +84,8 @@ class LifecycleServiceTest {
     jdks.put("17", "file:///path/to/jdk17");
 
     assertEquals(new File(new URI("file:///path/to/jdk11")),
-        LifecycleService.getJdkToLaunchDaemon(jdks, "13"));
+        LifecycleService.getJdkToLaunchDaemon(jdks, "1.8", "13"));
     assertEquals(new File(new URI("file:///path/to/jdk8")),
-        LifecycleService.getJdkToLaunchDaemon(jdks, "9"));
+        LifecycleService.getJdkToLaunchDaemon(jdks, "1.8", "9"));
   }
 }

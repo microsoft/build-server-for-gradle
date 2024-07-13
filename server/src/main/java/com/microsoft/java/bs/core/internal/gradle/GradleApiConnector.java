@@ -53,22 +53,39 @@ public class GradleApiConnector {
   }
 
   /**
-   * Get the Gradle version of the project.
+   * Extracts the GradleVersion for the given project.
+   *
+   * @param projectUri URI of the project to get the gradle version for.
+   * @return Gradle version of the project or empty upon failure.
    */
   public String getGradleVersion(URI projectUri) {
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      return getGradleVersion(connection);
+      return getBuildEnvironment(connection).getGradle().getGradleVersion();
     } catch (BuildException e) {
       LOGGER.severe("Failed to get Gradle version: " + e.getMessage());
       return "";
     }
   }
 
-  private String getGradleVersion(ProjectConnection connection) {
-    BuildEnvironment model = connection
+  /**
+   * Extracts the GradleJavaHome for the give project.
+   *
+   * @param projectUri URI of the project to get the gradle java home for.
+   * @return GradleJavaHome of the project or null upon failure.
+   */
+  public File getGradleJavaHome(URI projectUri) {
+    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
+      return getBuildEnvironment(connection).getJava().getJavaHome();
+    } catch (BuildException e) {
+      LOGGER.severe("Failed to get Java version: " + e.getMessage());
+      return null;
+    }
+  }
+
+  private BuildEnvironment getBuildEnvironment(ProjectConnection connection) {
+    return connection
         .model(BuildEnvironment.class)
         .get();
-    return model.getGradle().getGradleVersion();
   }
 
   /**
@@ -152,18 +169,20 @@ public class GradleApiConnector {
   /**
    * request Gradle to run tests.
    */
-  public StatusCode runTests(URI projectUri,
+  public StatusCode runTests(
+      URI projectUri,
       Map<BuildTargetIdentifier, Map<String, Set<String>>> testClassesMethodsMap,
       List<String> jvmOptions,
       List<String> args,
       Map<String, String> envVars,
       BuildClient client, String originId,
-      CompileProgressReporter compileProgressReporter) {
+      CompileProgressReporter compileProgressReporter
+  ) {
 
     StatusCode statusCode = StatusCode.OK;
     ProgressReporter reporter = new DefaultProgressReporter(client);
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      String gradleVersion = getGradleVersion(connection);
+      String gradleVersion = getGradleVersion(projectUri);
       if (GradleVersion.version(gradleVersion).compareTo(GradleVersion.version("2.6")) < 0) {
         reporter.sendError("Error running test classes: Gradle version "
             + gradleVersion + " must be >= 2.6");
