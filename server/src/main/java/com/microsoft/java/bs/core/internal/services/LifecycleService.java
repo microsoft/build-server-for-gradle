@@ -143,9 +143,15 @@ public class LifecycleService {
    */
   private File getSuitableJdk(URI rootUri) {
 
-    File gradleJavaHome = connector.getGradleJavaHome(rootUri);
-
     Preferences preferences = preferenceManager.getPreferences();
+    String filePath = preferences.getGradleJavaHome();
+    File gradleJavaHome;
+    if (StringUtils.isNotEmpty(filePath)) {
+      gradleJavaHome = new File(filePath);
+    } else {
+      gradleJavaHome = connector.getGradleJavaHome(rootUri);
+    }
+
     GradleBuildKind buildKind = Utils.getEffectiveBuildKind(new File(rootUri), preferences);
     Map<String, String> map = TelemetryUtils.getMetadataMap("buildKind", buildKind.name());
     LOGGER.log(Level.INFO, "Use build kind: " + buildKind.name(), map);
@@ -164,17 +170,23 @@ public class LifecycleService {
     map = TelemetryUtils.getMetadataMap("gradleVersion", gradleVersion);
     LOGGER.log(Level.INFO, "Gradle version: " + gradleVersion, map);
 
-    String highestJavaVersion = Utils.getHighestCompatibleJavaVersion(gradleVersion);
-    String minJavaVersion = Utils.getLeastCompatibleJavaVersion();
+    String latestCompatibleVersion = Utils.getLatestCompatibleJavaVersion(gradleVersion);
+    String oldestCompatibleVersion = Utils.getOldestCompatibleJavaVersion();
 
-    if (StringUtils.isNotBlank(highestJavaVersion)) {
+    if (StringUtils.isNotBlank(latestCompatibleVersion)) {
 
       // Use GradleJavaHome if compatible
       if (gradleJavaHome != null) {
 
         try {
           String gradleJavaHomeVersion = JavaUtils.getJavaVersionFromFile(gradleJavaHome);
-          if (JavaUtils.isCompatible(gradleJavaHomeVersion, minJavaVersion, highestJavaVersion)) {
+          if (
+              JavaUtils.isCompatible(
+                  gradleJavaHomeVersion,
+                  oldestCompatibleVersion,
+                  latestCompatibleVersion
+              )
+          ) {
             return gradleJavaHome;
           }
         } catch (IOException e) {
@@ -185,7 +197,11 @@ public class LifecycleService {
 
       // Pick a compatible JDK from the JDKs available in Preferences
       if (preferences.getJdks() != null && preferences.getJdks().isEmpty()) {
-        return getJdkToLaunchDaemon(preferences.getJdks(), minJavaVersion, highestJavaVersion);
+        return getJdkToLaunchDaemon(
+            preferences.getJdks(),
+            oldestCompatibleVersion,
+            latestCompatibleVersion
+        );
       }
 
     }
@@ -195,7 +211,7 @@ public class LifecycleService {
         MessageType.ERROR,
         "Failed to find a JDK compatible with current gradle version "
             + "(" + gradleVersion + "). Compatible JDK versions include ("
-            + minJavaVersion + " - " + highestJavaVersion + ")"
+            + oldestCompatibleVersion + " - " + latestCompatibleVersion + ")"
     );
 
     return null;
@@ -204,20 +220,28 @@ public class LifecycleService {
 
   /**
    * Finds the latest version of JDK from the given map of jdks
-   * between {@code minJavaVersion} and {@code highestJavaVersion}.
+   * between {@code oldestCompatibleJavaVersion} and {@code latestCompatibleJavaVersion}.
    */
   static File getJdkToLaunchDaemon(
       Map<String, String> jdks,
-      String minJavaVersion,
-      String highestJavaVersion
+      String oldestCompatibleJavaVersion,
+      String latestCompatibleJavaVersion
   ) {
 
     Entry<String, String> selected = null;
     for (Entry<String, String> jdk : jdks.entrySet()) {
       String javaVersion = jdk.getKey();
-      if (JavaUtils.isCompatible(javaVersion, minJavaVersion, highestJavaVersion)
-          && (selected == null || Version.parse(selected.getKey())
-          .compareTo(Version.parse(javaVersion)) < 0)) {
+      Boolean isSelectedVersionHigher =
+          selected == null
+          || Version.parse(selected.getKey()).feature()
+          < Version.parse(javaVersion).feature();
+      if (
+          JavaUtils.isCompatible(
+              javaVersion,
+              oldestCompatibleJavaVersion,
+              latestCompatibleJavaVersion
+          ) && isSelectedVersionHigher
+      ) {
         selected = jdk;
       }
     }

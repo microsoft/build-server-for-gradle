@@ -49,35 +49,35 @@ class JavaUtilsTest {
   }
 
   @Test
-  void testIsCompatibleValid() {
+  void testIsCompatible_Valid() {
 
     String javaVersion = "17.0.3";
-    String minJavaVersion = "17.0.1";
-    String maxJavaVersion = "17.0.5";
+    String oldestVersion = "17.0.1";
+    String latestVersion = "17.0.5";
 
-    assertTrue(JavaUtils.isCompatible(javaVersion, minJavaVersion, maxJavaVersion));
+    assertTrue(JavaUtils.isCompatible(javaVersion, oldestVersion, latestVersion));
 
   }
 
   @Test
-  void testIsCompatibleMinInvalid() {
+  void testIsCompatible_OldestInvalid() {
 
     String javaVersion = "11.0.1";
-    String minJavaVersion = "17.0.1";
-    String maxJavaVersion = "17.0.5";
+    String oldestVersion = "17.0.1";
+    String latestVersion = "17.0.5";
 
-    assertFalse(JavaUtils.isCompatible(javaVersion, minJavaVersion, maxJavaVersion));
+    assertFalse(JavaUtils.isCompatible(javaVersion, oldestVersion, latestVersion));
 
   }
 
   @Test
-  void testIsCompatibleMaxInvalid() {
+  void testIsCompatible_LatestInvalid() {
 
     String javaVersion = "19.0.1";
-    String minJavaVersion = "17.0.1";
-    String maxJavaVersion = "17.0.5";
+    String oldestVersion = "17.0.1";
+    String latestVersion = "17.0.5";
 
-    assertFalse(JavaUtils.isCompatible(javaVersion, minJavaVersion, maxJavaVersion));
+    assertFalse(JavaUtils.isCompatible(javaVersion, oldestVersion, latestVersion));
 
   }
 

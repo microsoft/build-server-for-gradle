@@ -146,13 +146,13 @@ public class Utils {
   }
 
   /**
-   * Get the highest compatible Java version for the current Gradle version, according
+   * Get the latest compatible Java version for the current Gradle version, according
    * to <a href="https://docs.gradle.org/current/userguide/compatibility.html">
    * compatibility matrix</a>
    *
-   * <p>If none of the compatible Java versions is found, an empty string will be returned.
+   * <p>If a compatible Java versions is not found, an empty string will be returned.
    */
-  public static String getHighestCompatibleJavaVersion(String gradleVersion) {
+  public static String getLatestCompatibleJavaVersion(String gradleVersion) {
     GradleVersion version = GradleVersion.version(gradleVersion);
     if (version.compareTo(GradleVersion.version("8.8")) >= 0) {
       return "22";
@@ -190,9 +190,9 @@ public class Utils {
   }
 
   /**
-   * Get the least compatible Java version for the current Gradle version.
+   * Get the oldest compatible Java version for the current Gradle version.
    */
-  public static String getLeastCompatibleJavaVersion() {
+  public static String getOldestCompatibleJavaVersion() {
     return "1.8";
   }
 

@@ -332,7 +332,8 @@ class BuildTargetServerIntegrationTest {
 
   private static InitializeBuildParams getInitializedBuildParamsWithJdks(
       String projectDir,
-      String jdkVersion
+      String jdkVersion,
+      String gradleJavaVersionPath
   ) {
     File root = Paths.get(
         System.getProperty("user.dir"),
@@ -342,7 +343,7 @@ class BuildTargetServerIntegrationTest {
 
     BuildClientCapabilities capabilities =
         new BuildClientCapabilities(SupportedLanguages.allBspNames);
-    InitializeBuildParams initParams = new InitializeBuildParams(
+    final InitializeBuildParams initParams = new InitializeBuildParams(
         "test-client",
         "0.1.0",
         "0.1.0",
@@ -354,10 +355,10 @@ class BuildTargetServerIntegrationTest {
     var jdks = new HashMap<String, String>();
     jdks.put(jdkVersion, "file:///tmp/nonexistent_file.txt");
     preferences.setJdks(jdks);
+    preferences.setGradleJavaHome(gradleJavaVersionPath);
 
-    initParams.setData(
-        preferences
-    );
+    initParams.setData(preferences);
+
     return initParams;
   }
 
@@ -552,7 +553,11 @@ class BuildTargetServerIntegrationTest {
       try {
 
         InitializeBuildParams initParams =
-            getInitializedBuildParamsWithJdks("Non-Existent Project 1", "23");
+            getInitializedBuildParamsWithJdks(
+                "Non-Existent Project 1",
+                "23.0.1",
+                "file:///tmp/nonexistent_file.txt"
+            );
 
         testServer.buildInitialize(initParams).join();
         client.waitOnShowMessages(1);
@@ -591,7 +596,7 @@ class BuildTargetServerIntegrationTest {
       try {
 
         InitializeBuildParams initParams =
-            getInitializedBuildParamsWithJdks("Non-Existent Project 2", "1.8");
+            getInitializedBuildParamsWithJdks("Non-Existent Project 2", "1.8", null);
 
         testServer.buildInitialize(initParams).join();
         client.waitOnShowMessages(0);

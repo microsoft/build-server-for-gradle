@@ -17,7 +17,7 @@ import com.microsoft.java.bs.core.internal.model.Preferences;
 
 class UtilsTest {
 
-  private File projectDir = Paths.get(
+  private final File projectDir = Paths.get(
       System.getProperty("user.dir"),
       "..",
       "testProjects",
@@ -31,12 +31,17 @@ class UtilsTest {
   }
 
   @Test
-  void testGetHighestCompatibleJavaVersion() {
-    assertEquals("22", Utils.getHighestCompatibleJavaVersion("8.8"));
-    assertEquals("21", Utils.getHighestCompatibleJavaVersion("8.5"));
-    assertEquals("20", Utils.getHighestCompatibleJavaVersion("8.3"));
-    assertEquals("11", Utils.getHighestCompatibleJavaVersion("5.2.4"));
-    assertEquals("", Utils.getHighestCompatibleJavaVersion("1.0"));
+  void testGetLatestCompatibleJavaVersion() {
+    assertEquals("22", Utils.getLatestCompatibleJavaVersion("8.8"));
+    assertEquals("21", Utils.getLatestCompatibleJavaVersion("8.5"));
+    assertEquals("20", Utils.getLatestCompatibleJavaVersion("8.3"));
+    assertEquals("11", Utils.getLatestCompatibleJavaVersion("5.2.4"));
+    assertEquals("", Utils.getLatestCompatibleJavaVersion("1.0"));
+  }
+
+  @Test
+  void testGetOldestCompatibleJavaVersion() {
+    assertEquals("1.8", Utils.getOldestCompatibleJavaVersion());
   }
 
   @Test

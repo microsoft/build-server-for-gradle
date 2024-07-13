@@ -55,24 +55,24 @@ public class JavaUtils {
   /**
    * Checks if the given Java Version is compatible based on feature release.
    *
-   * @param javaVersion Java version to compare.
-   * @param minJavaVersion min Java version for compatibility check.
-   * @param maxJavaVersion max Java version for compatibility check.
-   * @return true if given javaVersion is less than or equal to the maxJavaVersion
-   *        and greater than or equal to the minJavaVersion.
+   * @param javaVersion Java version to check for compatibility.
+   * @param oldestJavaVersion oldest compatible Java version.
+   * @param latestJavaVersion latest compatible Java version.
+   * @return true if given javaVersion is less than or equal to the latestJavaVersion
+   *        and greater than or equal to the oldestJavaVersion.
    */
   public static Boolean isCompatible(
       String javaVersion,
-      String minJavaVersion,
-      String maxJavaVersion
+      String oldestJavaVersion,
+      String latestJavaVersion
   ) {
 
     Version versionToCheck = Version.parse(javaVersion);
-    Version minVersion = Version.parse(minJavaVersion);
-    Version highestVersion = Version.parse(maxJavaVersion);
+    Version oldestVersion = Version.parse(oldestJavaVersion);
+    Version latestVersion = Version.parse(latestJavaVersion);
 
-    return versionToCheck.feature() >= minVersion.feature()
-        && versionToCheck.feature() <= highestVersion.feature();
+    return versionToCheck.feature() >= oldestVersion.feature()
+        && versionToCheck.feature() <= latestVersion.feature();
 
   }
 
