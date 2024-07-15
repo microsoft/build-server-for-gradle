@@ -67,7 +67,6 @@ public class GradleApiConnector {
   private String getGradleVersion(ProjectConnection connection) {
     BuildEnvironment model = connection
         .model(BuildEnvironment.class)
-        .withArguments("--no-daemon")
         .get();
     return model.getGradle().getGradleVersion();
   }
