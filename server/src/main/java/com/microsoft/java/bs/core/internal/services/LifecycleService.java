@@ -207,7 +207,8 @@ public class LifecycleService {
     }
 
     // Notify client, for no compatible JDK can be found
-    new ClientNotifier(client).sendNotification(
+    ClientNotifier.sendNotification(
+        client,
         MessageType.ERROR,
         "Failed to find a JDK compatible with current gradle version "
             + "(" + gradleVersion + "). Compatible JDK versions include ("

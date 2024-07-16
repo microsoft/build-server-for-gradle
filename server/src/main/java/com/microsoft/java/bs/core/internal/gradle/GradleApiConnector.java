@@ -68,7 +68,7 @@ public class GradleApiConnector {
   }
 
   /**
-   * Extracts the GradleJavaHome for the give project.
+   * Extracts the GradleJavaHome for the given project.
    *
    * @param projectUri URI of the project to get the gradle java home for.
    * @return GradleJavaHome of the project or null upon failure.
