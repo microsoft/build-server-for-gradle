@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 
-import com.microsoft.java.bs.core.internal.reporter.ClientNotifier;
 import org.apache.commons.lang3.StringUtils;
 
 import com.microsoft.java.bs.core.Constants;
@@ -35,6 +34,7 @@ import ch.epfl.scala.bsp4j.CompileProvider;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.InitializeBuildResult;
 import ch.epfl.scala.bsp4j.MessageType;
+import ch.epfl.scala.bsp4j.ShowMessageParams;
 
 /**
  * Lifecycle service.
@@ -207,13 +207,15 @@ public class LifecycleService {
     }
 
     // Notify client, for no compatible JDK can be found
-    ClientNotifier.sendNotification(
-        client,
-        MessageType.ERROR,
-        "Failed to find a JDK compatible with current gradle version "
-            + "(" + gradleVersion + "). Compatible JDK versions include ("
-            + oldestCompatibleVersion + " - " + latestCompatibleVersion + ")"
-    );
+    if (client != null) {
+      ShowMessageParams messageParams = new ShowMessageParams(
+          MessageType.ERROR,
+          "Failed to find a JDK compatible with current gradle version "
+              + "(" + gradleVersion + "). Compatible JDK versions include ("
+              + oldestCompatibleVersion + " - " + latestCompatibleVersion + ")"
+      );
+      client.onBuildShowMessage(messageParams);
+    }
 
     return null;
 
