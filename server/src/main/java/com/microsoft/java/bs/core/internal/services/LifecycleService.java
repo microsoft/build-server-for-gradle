@@ -138,7 +138,7 @@ public class LifecycleService {
   }
 
   /**
-   * Finds a suitable version of JDK to use for compilation of Java programs.
+   * Finds a suitable version of JDK to use for gradle operations.
    * Returns {@code null} if no suitable JDK can be found.
    */
   private File getSuitableJdk(URI rootUri) {

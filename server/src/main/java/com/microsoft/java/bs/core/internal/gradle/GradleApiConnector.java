@@ -68,6 +68,21 @@ public class GradleApiConnector {
   }
 
   /**
+   * Extracts the GradleVersion for the given project connection.
+   *
+   * @param connection Project Connection to get the gradle version from.
+   * @return Gradle version of the project or empty upon failure.
+   */
+  public String getGradleVersion(ProjectConnection connection) {
+    try {
+      return getBuildEnvironment(connection).getGradle().getGradleVersion();
+    } catch (BuildException e) {
+      LOGGER.severe("Failed to get Gradle version: " + e.getMessage());
+      return "";
+    }
+  }
+
+  /**
    * Extracts the GradleJavaHome for the given project.
    *
    * @param projectUri URI of the project to get the gradle java home for.
@@ -182,7 +197,7 @@ public class GradleApiConnector {
     StatusCode statusCode = StatusCode.OK;
     ProgressReporter reporter = new DefaultProgressReporter(client);
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      String gradleVersion = getGradleVersion(projectUri);
+      String gradleVersion = getGradleVersion(connection);
       if (GradleVersion.version(gradleVersion).compareTo(GradleVersion.version("2.6")) < 0) {
         reporter.sendError("Error running test classes: Gradle version "
             + gradleVersion + " must be >= 2.6");
