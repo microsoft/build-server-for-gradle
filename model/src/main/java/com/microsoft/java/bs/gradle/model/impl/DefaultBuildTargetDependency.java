@@ -14,19 +14,18 @@ import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 public class DefaultBuildTargetDependency implements BuildTargetDependency {
   private static final long serialVersionUID = 1L;
 
-  private String projectPath;
+  private String projectDir;
 
   private String sourceSetName;
 
-  public DefaultBuildTargetDependency(String projectPath, String sourceSetName) {
-    this.projectPath = projectPath;
+  public DefaultBuildTargetDependency(String projectDir, String sourceSetName) {
+    this.projectDir = projectDir;
     this.sourceSetName = sourceSetName;
   }
 
   public DefaultBuildTargetDependency(GradleSourceSet sourceSet) {
-    this(sourceSet.getProjectPath(), sourceSet.getSourceSetName());
+    this(sourceSet.getProjectDir().getAbsolutePath(), sourceSet.getSourceSetName());
   }
-
 
   /**
    * Copy constructor.
@@ -34,18 +33,20 @@ public class DefaultBuildTargetDependency implements BuildTargetDependency {
    * @param buildTargetDependency the other instance to copy from.
    */
   public DefaultBuildTargetDependency(BuildTargetDependency buildTargetDependency) {
-    this.projectPath = buildTargetDependency.getProjectPath();
+    this.projectDir = buildTargetDependency.getProjectDir();
     this.sourceSetName = buildTargetDependency.getSourceSetName();
   }
 
-  public String getProjectPath() {
-    return projectPath;
+  @Override
+  public String getProjectDir() {
+    return projectDir;
   }
 
-  public void setProjectPath(String projectPath) {
-    this.projectPath = projectPath;
+  public void setProjectDir(String projectDir) {
+    this.projectDir = projectDir;
   }
 
+  @Override
   public String getSourceSetName() {
     return sourceSetName;
   }
@@ -56,7 +57,7 @@ public class DefaultBuildTargetDependency implements BuildTargetDependency {
 
   @Override
   public int hashCode() {
-    return Objects.hash(projectPath, sourceSetName);
+    return Objects.hash(projectDir, sourceSetName);
   }
 
   @Override
@@ -71,7 +72,7 @@ public class DefaultBuildTargetDependency implements BuildTargetDependency {
       return false;
     }
     DefaultBuildTargetDependency other = (DefaultBuildTargetDependency) obj;
-    return Objects.equals(projectPath, other.projectPath)
+    return Objects.equals(projectDir, other.projectDir)
         && Objects.equals(sourceSetName, other.sourceSetName);
   }
 }

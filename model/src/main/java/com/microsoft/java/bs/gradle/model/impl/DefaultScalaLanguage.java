@@ -26,6 +26,15 @@ public class DefaultScalaLanguage implements SupportedLanguage<ScalaExtension> {
 
   @Override
   public ScalaExtension getExtension(Map<String, LanguageExtension> extensions) {
-    return (ScalaExtension) extensions.get(getBspName());
+    LanguageExtension extension = extensions.get(getBspName());
+    if (extension == null) {
+      return null;
+    }
+    if (extension.isScalaExtension()) {
+      return extension.getAsScalaExtension();
+    }
+    throw new IllegalArgumentException(
+        "LanguageExtension: " + extension + " is not a ScalaExtension."
+    );
   }
 }

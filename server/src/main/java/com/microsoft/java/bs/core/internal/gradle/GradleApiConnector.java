@@ -15,11 +15,13 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
+import org.gradle.tooling.BuildActionExecuter;
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnectionException;
 import org.gradle.tooling.GradleConnector;
-import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.TestLauncher;
 import org.gradle.tooling.events.OperationType;
@@ -32,7 +34,7 @@ import com.microsoft.java.bs.core.internal.reporter.DefaultProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.reporter.TestReportReporter;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
-import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
+import com.microsoft.java.bs.gradle.model.actions.GetSourceSetsAction;
 
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
@@ -65,7 +67,6 @@ public class GradleApiConnector {
   private String getGradleVersion(ProjectConnection connection) {
     BuildEnvironment model = connection
         .model(BuildEnvironment.class)
-        .withArguments("--no-daemon")
         .get();
     return model.getGradle().getGradleVersion();
   }
@@ -74,7 +75,7 @@ public class GradleApiConnector {
    * Get the source sets of the Gradle project.
    *
    * @param projectUri uri of the project
-   * @param client connection to BSP client
+   * @param client     connection to BSP client
    * @return an instance of {@link GradleSourceSets}
    */
   public GradleSourceSets getGradleSourceSets(URI projectUri, BuildClient client) {
@@ -85,25 +86,23 @@ public class GradleApiConnector {
     ProgressReporter reporter = new DefaultProgressReporter(client);
     ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut) {
-      ModelBuilder<GradleSourceSets> customModelBuilder = Utils.getModelBuilder(
-          connection,
-          preferenceManager.getPreferences(),
-          GradleSourceSets.class
-      );
-      customModelBuilder.addProgressListener(reporter,
-          OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
+         errorOut) {
+      BuildActionExecuter<GradleSourceSets> buildExecutor =
+          Utils.getBuildActionExecuter(connection, preferenceManager.getPreferences(),
+            new GetSourceSetsAction());
+      buildExecutor.addProgressListener(reporter,
+              OperationType.FILE_DOWNLOAD, OperationType.PROJECT_CONFIGURATION)
           .setStandardError(errorOut)
           .addArguments("--init-script", initScript.getAbsolutePath());
       if (Boolean.getBoolean("bsp.plugin.debug.enabled")) {
-        customModelBuilder.addJvmArguments(
+        buildExecutor.addJvmArguments(
             "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005");
       }
-      customModelBuilder.addJvmArguments("-Dbsp.gradle.supportedLanguages="
+      buildExecutor.addJvmArguments("-Dbsp.gradle.supportedLanguages="
           + String.join(",", preferenceManager.getClientSupportedLanguages()));
       // since the model returned from Gradle TAPI is a wrapped object, here we re-construct it
       // via a copy constructor and return as a POJO.
-      return new DefaultGradleSourceSets(customModelBuilder.get());
+      return new DefaultGradleSourceSets(buildExecutor.run());
     } catch (GradleConnectionException | IllegalStateException | IOException e) {
       String summary = e.getMessage();
       if (errorOut.size() > 0) {
@@ -118,15 +117,15 @@ public class GradleApiConnector {
    * Request Gradle daemon to run the tasks.
    *
    * @param projectUri uri of the project
-   * @param reporter reporter on feedback from Gradle
-   * @param tasks tasks to run
+   * @param reporter   reporter on feedback from Gradle
+   * @param tasks      tasks to run
    */
   public StatusCode runTasks(URI projectUri, ProgressReporter reporter, String... tasks) {
     // Don't issue a start progress update - the listener will pick that up automatically
     final ByteArrayOutputStream errorOut = new ByteArrayOutputStream();
     StatusCode statusCode = StatusCode.OK;
     try (ProjectConnection connection = getGradleConnector(projectUri).connect();
-        errorOut
+         errorOut
     ) {
       BuildLauncher launcher = Utils.getBuildLauncher(connection,
           preferenceManager.getPreferences());
@@ -197,7 +196,14 @@ public class GradleApiConnector {
             launcher.withArguments(args);
             launcher.setJvmArguments(jvmOptions);
             // env vars requires Gradle >= 3.5
-            launcher.setEnvironmentVariables(envVars);
+            if (envVars != null) {
+              // Running Gradle tests on Windows seems to require the `SystemRoot` env var
+              // Otherwise Windows complains "Unrecognized Windows Sockets error: 10106"
+              // Assumption is that current env vars plus specified env vars are all wanted.
+              Map<String, String> allEnvVars = new HashMap<>(System.getenv());
+              allEnvVars.putAll(envVars);
+              launcher.setEnvironmentVariables(allEnvVars);
+            }
             launcher.run();
           } catch (IOException e) {
             // caused by close the output stream, just simply log the error.

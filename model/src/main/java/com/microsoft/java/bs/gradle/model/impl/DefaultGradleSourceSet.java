@@ -96,7 +96,15 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   }
 
   private LanguageExtension convertLanguageExtension(LanguageExtension object) {
-    return (LanguageExtension) object.convert(getClass().getClassLoader());
+    if (object.isJavaExtension()) {
+      return object.getAsJavaExtension();
+    }
+
+    if (object.isScalaExtension()) {
+      return object.getAsScalaExtension();
+    }
+
+    throw new IllegalArgumentException("No conversion methods defined for object: " + object);
   }
 
   @Override

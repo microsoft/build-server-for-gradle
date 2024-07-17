@@ -82,10 +82,10 @@ public class BuildTargetManager {
         changedTargets.add(btId);
       }
       newCache.put(btId, buildTarget);
-      // Store the relationship between the project path and the build target id.
+      // Store the relationship between the project dir and the build target id.
       // 'test' and other source sets are ignored.
       if ("main".equals(sourceSet.getSourceSetName())) {
-        projectPathToBuildTargetId.put(sourceSet.getProjectPath(), btId);
+        projectPathToBuildTargetId.put(sourceSet.getProjectDir().getAbsolutePath(), btId);
       }
     }
     updateBuildTargetDependencies(newCache.values(), projectPathToBuildTargetId);
@@ -181,7 +181,7 @@ public class BuildTargetManager {
       if (buildTargetDependencies != null) {
         List<BuildTargetIdentifier> btDependencies = buildTargetDependencies.stream()
             .map(btDependency -> {
-              String path = btDependency.getProjectPath();
+              String path = btDependency.getProjectDir();
               return projectPathToBuildTargetId.get(path);
             })
             .filter(Objects::nonNull)

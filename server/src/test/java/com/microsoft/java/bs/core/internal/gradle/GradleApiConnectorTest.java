@@ -137,14 +137,46 @@ class GradleApiConnectorTest {
     assertFalse(findSourceSet(gradleSourceSets, "test-tag [testFixtures]").hasTests());
   }
 
+  @Test
+  void testCompositeBuild1() {
+    File projectDir = projectPath.resolve("composite-build-1").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
+    findSourceSet(gradleSourceSets, "projectA [main]");
+    findSourceSet(gradleSourceSets, "projectA [test]");
+    findSourceSet(gradleSourceSets, "projectB [main]");
+    findSourceSet(gradleSourceSets, "projectB [test]");
+  }
+
+  @Test
+  void testCompositeBuild2() {
+    File projectDir = projectPath.resolve("composite-build-2").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+    assertEquals(6, gradleSourceSets.getGradleSourceSets().size());
+    findSourceSet(gradleSourceSets, "app [test]");
+    findSourceSet(gradleSourceSets, "string-utils [test]");
+    findSourceSet(gradleSourceSets, "number-utils [test]");
+    GradleSourceSet mainApp = findSourceSet(gradleSourceSets, "app [main]");
+    GradleSourceSet mainStringUtils = findSourceSet(gradleSourceSets, "string-utils [main]");
+    GradleSourceSet mainNumberUtils = findSourceSet(gradleSourceSets, "number-utils [main]");
+    assertHasBuildTargetDependency(mainApp, mainStringUtils);
+    assertHasBuildTargetDependency(mainApp, mainNumberUtils);
+  }
+
   private void assertHasBuildTargetDependency(GradleSourceSet sourceSet,
       GradleSourceSet dependency) {
     boolean exists = sourceSet.getBuildTargetDependencies().stream()
-        .anyMatch(dep -> dep.getProjectPath().equals(dependency.getProjectPath())
+        .anyMatch(dep -> dep.getProjectDir().equals(dependency.getProjectDir().getAbsolutePath())
                       && dep.getSourceSetName().equals(dependency.getSourceSetName()));
     assertTrue(exists, () -> {
       String availableDependencies = sourceSet.getBuildTargetDependencies().stream()
-          .map(ss -> ss.getProjectPath() + ' ' + ss.getSourceSetName())
+          .map(ss -> ss.getProjectDir() + ' ' + ss.getSourceSetName())
           .collect(Collectors.joining(", "));
       return "Dependency not found " + dependency.getProjectPath() + ' '
         + dependency.getSourceSetName() + ". Available: " + availableDependencies;

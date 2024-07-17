@@ -88,7 +88,7 @@ public class TestReportReporter extends ProgressReporter {
       String displayName;
       try {
         displayName = desc.getTestDisplayName();
-      } catch (NoSuchMethodError e) {
+      } catch (NoSuchMethodError | AbstractMethodError e) {
         displayName = desc.getDisplayName();
       }
       TestName currentTestName = new TestName(displayName, desc.getSuiteName(),

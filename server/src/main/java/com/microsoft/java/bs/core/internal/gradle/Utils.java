@@ -12,10 +12,11 @@ import java.util.List;
 import java.util.Optional;
 
 import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
+import org.gradle.tooling.BuildAction;
+import org.gradle.tooling.BuildActionExecuter;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.ConfigurableLauncher;
 import org.gradle.tooling.GradleConnector;
-import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.TestLauncher;
 import org.gradle.util.GradleVersion;
@@ -48,7 +49,7 @@ public class Utils {
    * Get the Gradle connector for the project.
    *
    * @param projectUri The project uri.
-   */ 
+   */
   public static GradleConnector getProjectConnector(URI projectUri,
       Preferences preferences) {
     return getProjectConnector(new File(projectUri), preferences);
@@ -84,15 +85,16 @@ public class Utils {
   }
 
   /**
-   * Get the model builder for the given project connection.
+   * Get the build action executer for the given project connection.
    *
-   * @param <T> The type of the model.
+   * @param <T> the result type
    * @param connection The project connection.
-   * @param clazz The class of the model.
+   * @param preferences The preferences.
+   * @param action The build action.
    */
-  public static <T> ModelBuilder<T> getModelBuilder(ProjectConnection connection,
-      Preferences preferences, Class<T> clazz) {
-    return setLauncherProperties(connection.model(clazz), preferences);
+  public static <T> BuildActionExecuter<T> getBuildActionExecuter(ProjectConnection connection,
+      Preferences preferences, BuildAction<T> action) {
+    return setLauncherProperties(connection.action(action), preferences);
   }
 
   /**
@@ -194,7 +196,7 @@ public class Utils {
     if (StringUtils.isNotBlank(gradleUserHome)) {
       return new File(gradleUserHome);
     }
-    
+
     return getFileFromEnvOrProperty(GRADLE_USER_HOME);
   }
 

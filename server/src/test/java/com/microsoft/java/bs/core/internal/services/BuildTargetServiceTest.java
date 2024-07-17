@@ -295,6 +295,8 @@ class BuildTargetServiceTest {
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
 
     JavaExtension mockedJavaExtension = mock(JavaExtension.class);
+    when(mockedJavaExtension.isJavaExtension()).thenReturn(true);
+    when(mockedJavaExtension.getAsJavaExtension()).thenReturn(mockedJavaExtension);
     List<String> compilerArgs = new ArrayList<>();
     compilerArgs.add("--add-opens");
     compilerArgs.add("java.base/java.lang=ALL-UNNAMED");
@@ -326,6 +328,8 @@ class BuildTargetServiceTest {
     compilerArgs.add("-encoding");
     compilerArgs.add("utf8");
     ScalaExtension mockedScalaExtension = mock(ScalaExtension.class);
+    when(mockedScalaExtension.isScalaExtension()).thenReturn(true);
+    when(mockedScalaExtension.getAsScalaExtension()).thenReturn(mockedScalaExtension);
     when(mockedScalaExtension.getScalaCompilerArgs()).thenReturn(compilerArgs);
     Map<String, LanguageExtension> extensions = new HashMap<>();
     extensions.put(SupportedLanguages.SCALA.getBspName(), mockedScalaExtension);

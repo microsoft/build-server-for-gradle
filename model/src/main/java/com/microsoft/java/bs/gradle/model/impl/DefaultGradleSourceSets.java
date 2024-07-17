@@ -3,12 +3,12 @@
 
 package com.microsoft.java.bs.gradle.model.impl;
 
+import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import com.microsoft.java.bs.gradle.model.GradleSourceSet;
-import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 
 /**
  * Default implementation of {@link GradleSourceSets}.
@@ -26,10 +26,12 @@ public class DefaultGradleSourceSets implements GradleSourceSets {
    * Copy constructor.
    */
   public DefaultGradleSourceSets(GradleSourceSets sourceSets) {
-    this.gradleSourceSets = sourceSets.getGradleSourceSets().stream()
-        .map(DefaultGradleSourceSet::new).collect(Collectors.toList());
+    this(sourceSets.getGradleSourceSets().stream()
+        .map(DefaultGradleSourceSet::new)
+        .collect(Collectors.toList()));
   }
 
+  @Override
   public List<GradleSourceSet> getGradleSourceSets() {
     return gradleSourceSets;
   }

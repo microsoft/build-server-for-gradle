@@ -16,9 +16,14 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import java.util.ArrayList;
 
+import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.GradleSourceSets;
+import com.microsoft.java.bs.gradle.model.GradleSourceSetsMetadata;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ModelBuilder;
@@ -27,10 +32,6 @@ import org.gradle.util.GradleVersion;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import com.microsoft.java.bs.gradle.model.GradleSourceSet;
-import com.microsoft.java.bs.gradle.model.GradleSourceSets;
-import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 
 class GradleBuildServerPluginTest {
 
@@ -46,7 +47,8 @@ class GradleBuildServerPluginTest {
   }
 
   private GradleSourceSets getGradleSourceSets(ProjectConnection connect) throws IOException {
-    ModelBuilder<GradleSourceSets> modelBuilder = connect.model(GradleSourceSets.class);
+    ModelBuilder<GradleSourceSetsMetadata> modelBuilder =
+        connect.model(GradleSourceSetsMetadata.class);
     File initScript = PluginHelper.getInitScript();
     modelBuilder
         .addArguments("--init-script", initScript.getAbsolutePath())
@@ -55,7 +57,9 @@ class GradleBuildServerPluginTest {
         .addArguments("-Dorg.gradle.logging.level=quiet")
         .addJvmArguments("-Dbsp.gradle.supportedLanguages="
             + String.join(",", SupportedLanguages.allBspNames));
-    return new DefaultGradleSourceSets(modelBuilder.get());
+    GradleSourceSetsMetadata sourceSetsMetadata = modelBuilder.get();
+    return new DefaultGradleSourceSets(
+        new ArrayList<>(sourceSetsMetadata.getGradleSourceSetsToClasspath().keySet()));
   }
 
   private interface ConnectionConsumer {

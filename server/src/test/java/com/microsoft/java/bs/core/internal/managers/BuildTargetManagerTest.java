@@ -96,7 +96,7 @@ class BuildTargetManagerTest {
 
 
     BuildTargetDependency buildTargetDependency = mock(BuildTargetDependency.class);
-    when(buildTargetDependency.getProjectPath()).thenReturn(":foo");
+    when(buildTargetDependency.getProjectDir()).thenReturn(new File("foo").getAbsolutePath());
     Set<BuildTargetDependency> dependencies = new HashSet<>();
     dependencies.add(buildTargetDependency);
     GradleSourceSet gradleSourceSetBar = getMockedTestGradleSourceSet();
@@ -138,6 +138,8 @@ class BuildTargetManagerTest {
     when(mocked.getModuleDependencies()).thenReturn(Collections.emptySet());
     when(mocked.getBuildTargetDependencies()).thenReturn(Collections.emptySet());
     JavaExtension mockedJavaExtension = mock(JavaExtension.class);
+    when(mockedJavaExtension.isJavaExtension()).thenReturn(true);
+    when(mockedJavaExtension.getAsJavaExtension()).thenReturn(mockedJavaExtension);
     when(mockedJavaExtension.getJavaVersion()).thenReturn("17");
     when(mockedJavaExtension.getSourceCompatibility()).thenReturn("17");
     when(mockedJavaExtension.getTargetCompatibility()).thenReturn("17");
