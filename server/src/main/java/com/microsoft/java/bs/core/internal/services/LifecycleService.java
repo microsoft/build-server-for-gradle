@@ -197,11 +197,14 @@ public class LifecycleService {
 
       // Pick a compatible JDK from the JDKs available in Preferences
       if (preferences.getJdks() != null && preferences.getJdks().isEmpty()) {
-        return getJdkToLaunchDaemon(
+        File selectedJDK = getLatestCompatibleJdk(
             preferences.getJdks(),
             oldestCompatibleVersion,
             latestCompatibleVersion
         );
+        if (selectedJDK != null) {
+          return selectedJDK;
+        }
       }
 
     }
@@ -225,7 +228,7 @@ public class LifecycleService {
    * Finds the latest version of JDK from the given map of jdks
    * between {@code oldestCompatibleJavaVersion} and {@code latestCompatibleJavaVersion}.
    */
-  static File getJdkToLaunchDaemon(
+  static File getLatestCompatibleJdk(
       Map<String, String> jdks,
       String oldestCompatibleJavaVersion,
       String latestCompatibleJavaVersion

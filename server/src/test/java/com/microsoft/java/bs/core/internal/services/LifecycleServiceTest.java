@@ -77,15 +77,15 @@ class LifecycleServiceTest {
   }
 
   @Test
-  void testGetJdkToLaunchDaemon() throws URISyntaxException {
+  void testGetLatestCompatibleJdk() throws URISyntaxException {
     Map<String, String> jdks = new HashMap<>();
     jdks.put("1.8", "file:///path/to/jdk8");
     jdks.put("11", "file:///path/to/jdk11");
     jdks.put("17", "file:///path/to/jdk17");
 
     assertEquals(new File(new URI("file:///path/to/jdk11")),
-        LifecycleService.getJdkToLaunchDaemon(jdks, "1.8", "13"));
+        LifecycleService.getLatestCompatibleJdk(jdks, "1.8", "13"));
     assertEquals(new File(new URI("file:///path/to/jdk8")),
-        LifecycleService.getJdkToLaunchDaemon(jdks, "1.8", "9"));
+        LifecycleService.getLatestCompatibleJdk(jdks, "1.8", "9"));
   }
 }
