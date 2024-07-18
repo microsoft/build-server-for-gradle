@@ -197,13 +197,13 @@ public class LifecycleService {
 
       // Pick a compatible JDK from the JDKs available in Preferences
       if (preferences.getJdks() != null && preferences.getJdks().isEmpty()) {
-        File selectedJDK = getLatestCompatibleJdk(
+        File selectedJdk = getLatestCompatibleJdk(
             preferences.getJdks(),
             oldestCompatibleVersion,
             latestCompatibleVersion
         );
-        if (selectedJDK != null) {
-          return selectedJDK;
+        if (selectedJdk != null) {
+          return selectedJdk;
         }
       }
 
