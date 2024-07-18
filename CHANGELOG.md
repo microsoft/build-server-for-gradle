@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.0
+## What's Changed
+* enhancement - Add support for running tests by @Arthurm1 in https://github.com/microsoft/build-server-for-gradle/pull/144
+* fix - Only send build target count during initialization by @jdneo in https://github.com/microsoft/build-server-for-gradle/pull/153
+* fix - Handle older versions of Gradle by @Arthurm1 in https://github.com/microsoft/build-server-for-gradle/pull/149
+* fix - Add JDK 22 compatibility support by @jdneo in https://github.com/microsoft/build-server-for-gradle/pull/152
+* fix- Return the root cause of the message by @jdneo in https://github.com/microsoft/build-server-for-gradle/pull/156
+* fix - LanguageExtension downcast resolution by @Tanish-Ranjan in https://github.com/microsoft/build-server-for-gradle/pull/160
+* fix - Set env vars for Windows testing by @Arthurm1 in https://github.com/microsoft/build-server-for-gradle/pull/164
+* fix - Composite Builds using Build Actions by @Tanish-Ranjan in https://github.com/microsoft/build-server-for-gradle/pull/154
+* fix - Cannot get test display name by @jdneo in https://github.com/microsoft/build-server-for-gradle/pull/166
+* fix - Unsupported class file for the build action class by @jdneo in https://github.com/microsoft/build-server-for-gradle/pull/170
+* fix - Use project dir instead of project path by @jdneo in https://github.com/microsoft/build-server-for-gradle/pull/171
+* fix - --no-daemon not working on Gradle 8.9 by @jdneo in https://github.com/microsoft/build-server-for-gradle/pull/172
+
+## New Contributors
+* @Tanish-Ranjan made their first contribution in https://github.com/microsoft/build-server-for-gradle/pull/160
+
 ## 0.2.0
 ## What's Changed
 * enhancement - Populate more JavacOptionsResult info by @Arthurm1 in [#105](https://github.com/microsoft/build-server-for-gradle/pull/105)
