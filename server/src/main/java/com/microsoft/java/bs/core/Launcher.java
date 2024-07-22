@@ -21,6 +21,7 @@ import com.microsoft.java.bs.core.internal.server.GradleBuildServer;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
 import com.microsoft.java.bs.core.internal.transport.NamedPipeStream;
+
 import ch.epfl.scala.bsp4j.BuildClient;
 import org.apache.commons.lang3.StringUtils;
 
@@ -32,8 +33,7 @@ public class Launcher {
   public static final Logger LOGGER = Logger.getLogger("GradleBuildServerLogger");
 
   /**
-   * The property name for the directory location storing the plugin and init
-   * script.
+   * The property name for the directory location storing the plugin and init script.
    */
   public static final String PROP_PLUGIN_DIR = "plugin.dir";
 

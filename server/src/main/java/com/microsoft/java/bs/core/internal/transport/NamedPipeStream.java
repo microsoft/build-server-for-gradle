@@ -21,7 +21,6 @@ import java.util.concurrent.Future;
 /**
  * A named pipe stream implementation.
  */
-
 public class NamedPipeStream {
   private String pipeName;
   private StreamProvider provider;
