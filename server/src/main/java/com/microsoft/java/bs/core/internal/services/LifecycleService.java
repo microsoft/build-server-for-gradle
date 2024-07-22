@@ -181,7 +181,8 @@ public class LifecycleService {
         try {
           String gradleJavaHomeVersion = JavaUtils.getJavaVersionFromFile(gradleJavaHome);
           if (
-              JavaUtils.isCompatible(
+              gradleJavaHomeVersion != null
+                  && JavaUtils.isCompatible(
                   gradleJavaHomeVersion,
                   oldestCompatibleVersion,
                   latestCompatibleVersion
@@ -189,7 +190,7 @@ public class LifecycleService {
           ) {
             return gradleJavaHome;
           }
-        } catch (IOException e) {
+        } catch (IllegalArgumentException | IOException e) {
           LOGGER.severe("Invalid GradleJavaHome: " + e.getMessage());
         }
 
@@ -237,7 +238,7 @@ public class LifecycleService {
     Entry<String, String> selected = null;
     for (Entry<String, String> jdk : jdks.entrySet()) {
       String javaVersion = jdk.getKey();
-      Boolean isSelectedVersionHigher =
+      boolean isHigherThanSelected =
           selected == null
           || Version.parse(selected.getKey()).feature()
           < Version.parse(javaVersion).feature();
@@ -246,7 +247,7 @@ public class LifecycleService {
               javaVersion,
               oldestCompatibleJavaVersion,
               latestCompatibleJavaVersion
-          ) && isSelectedVersionHigher
+          ) && isHigherThanSelected
       ) {
         selected = jdk;
       }
