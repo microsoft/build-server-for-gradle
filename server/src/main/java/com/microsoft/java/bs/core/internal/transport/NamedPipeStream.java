@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-package com.microsoft.java.bs.core.internal.utils;
+package com.microsoft.java.bs.core.internal.transport;
 
 import java.io.File;
 import java.io.IOException;

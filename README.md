@@ -37,6 +37,15 @@ The main class of the build server is `com.microsoft.java.bs.core.Launcher`. Whe
 ### Preferences
 
 A [Preferences](./server/src/main/java/com/microsoft/java/bs/core/internal/model/Preferences.java) object can be put into the data field of the `build/initialize` request for customization. Please check the comments in the code for the meaning of each preference.
+### Transport Method
+
+The Build Server for Gradle supports both the standard input/output transport and the named pipe transport. The standard input/output transport is used by default when no argument was specify. 
+
+To use the named pipe (unix socket) transport, you need to start the server by passing `--pipe=<pipeName>` as the argument. For example:
+```java
+java -Dplugin.dir=<pluginDir> -jar <buildServerJar> --pipe=<pipeName>
+```
+The client should connect to the named pipe with the same name.
 
 ## Contributing
 

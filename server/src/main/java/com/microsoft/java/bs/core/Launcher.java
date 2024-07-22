@@ -3,6 +3,8 @@
 
 package com.microsoft.java.bs.core;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,8 +20,9 @@ import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.server.GradleBuildServer;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
-import com.microsoft.java.bs.core.internal.utils.NamedPipeStream;
+import com.microsoft.java.bs.core.internal.transport.NamedPipeStream;
 import ch.epfl.scala.bsp4j.BuildClient;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Main entry point for the BSP server.
@@ -40,15 +43,10 @@ public class Launcher {
   public static void main(String[] args) {
     checkRequiredProperties();
 
-    String pipePath = null;
-    for (String arg : args) {
-      if (arg.startsWith("--pipe=")) {
-        pipePath = arg.substring("--pipe=".length());
-        break;
-      }
-    }
     org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher;
-    if (pipePath != null && !pipePath.isEmpty()) {
+    Map<String, String> params = parseArgs(args);
+    String pipePath = params.get("pipe");
+    if (StringUtils.isNotBlank(pipePath)) {
       launcher = createLauncherUsingPipe(pipePath);
     } else {
       launcher = createLauncherUsingStdIo();
@@ -111,5 +109,23 @@ public class Launcher {
       telemetryHandler.setLevel(Level.INFO);
       LOGGER.addHandler(telemetryHandler);
     }
+  }
+
+  /**
+   * Parse the arguments and return a map of key-value pairs.
+   */
+  public static Map<String, String> parseArgs(String[] args) {
+    Map<String, String> paramMap = new HashMap<>();
+    for (String arg : args) {
+      if (arg.startsWith("--")) {
+        int index = arg.indexOf('=');
+        if (index != -1) {
+          String key = arg.substring(2, index);
+          String value = arg.substring(index + 1);
+          paramMap.put(key, value);
+        }
+      }
+    }
+    return paramMap;
   }
 }
