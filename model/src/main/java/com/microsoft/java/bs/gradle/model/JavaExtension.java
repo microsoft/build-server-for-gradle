@@ -35,9 +35,4 @@ public interface JavaExtension extends LanguageExtension {
    * The list of compiler arguments.
    */
   public List<String> getCompilerArgs();
-
-  /**
-   * The classes directory.
-   */
-  File getClassesDir();
 }

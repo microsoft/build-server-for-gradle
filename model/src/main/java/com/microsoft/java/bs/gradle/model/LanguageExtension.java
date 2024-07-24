@@ -80,5 +80,4 @@ public interface LanguageExtension extends Serializable {
    *        or null if the cast fails.
    */
   ScalaExtension getAsScalaExtension();
-
 }

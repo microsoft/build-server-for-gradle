@@ -89,7 +89,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
   private List<GradleSourceSet> fetchModels(BuildController buildController,
       Collection<GradleBuild> builds) {
 
-    List<GetSourceSetAction> projectActions = new ArrayList<GetSourceSetAction>();
+    List<GetSourceSetAction> projectActions = new ArrayList<>();
     for (GradleBuild build : builds) {
       for (BasicGradleProject project : build.getProjects()) {
         projectActions.add(new GetSourceSetAction(project));
