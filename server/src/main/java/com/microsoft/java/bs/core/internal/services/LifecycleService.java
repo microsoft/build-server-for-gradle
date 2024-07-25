@@ -14,8 +14,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 
-import org.apache.commons.lang3.StringUtils;
-
 import com.microsoft.java.bs.core.Constants;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.gradle.GradleBuildKind;
@@ -35,6 +33,7 @@ import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.InitializeBuildResult;
 import ch.epfl.scala.bsp4j.MessageType;
 import ch.epfl.scala.bsp4j.ShowMessageParams;
+import org.gradle.tooling.model.build.BuildEnvironment;
 
 /**
  * Lifecycle service.
@@ -89,10 +88,8 @@ public class LifecycleService {
 
     preferenceManager.setPreferences(preferences);
 
-    File jdk = getSuitableJdk(rootUri);
-    if (jdk != null) {
-      preferences.setGradleJavaHome(jdk.getAbsolutePath());
-    }
+    setGradleJavaHome(rootUri);
+
   }
 
   private BuildServerCapabilities initializeServerCapabilities() {
@@ -138,87 +135,115 @@ public class LifecycleService {
   }
 
   /**
-   * Finds a suitable version of JDK to use for gradle operations.
-   * Returns {@code null} if no suitable JDK can be found.
+   * Finds and stores the compatible JDK path for executing gradle operations.
    */
-  private File getSuitableJdk(URI rootUri) {
+  private void setGradleJavaHome(URI rootUri) {
 
-    Preferences preferences = preferenceManager.getPreferences();
-    String filePath = preferences.getGradleJavaHome();
-    File gradleJavaHome;
-    if (StringUtils.isNotEmpty(filePath)) {
-      gradleJavaHome = new File(filePath);
-    } else {
-      gradleJavaHome = connector.getGradleJavaHome(rootUri);
+    BuildEnvironment buildEnv = connector.getBuildEnvironment(rootUri);
+
+    String gradleVersion = getGradleVersion(rootUri, buildEnv);
+    if (gradleVersion == null) {
+      LOGGER.severe("Failed to find current gradle version.");
+      return;
     }
 
-    GradleBuildKind buildKind = Utils.getEffectiveBuildKind(new File(rootUri), preferences);
-    Map<String, String> map = TelemetryUtils.getMetadataMap("buildKind", buildKind.name());
-    LOGGER.log(Level.INFO, "Use build kind: " + buildKind.name(), map);
-
-    String gradleVersion;
-    if (buildKind == GradleBuildKind.SPECIFIED_VERSION) {
-      gradleVersion = preferences.getGradleVersion();
-    } else {
-      gradleVersion = connector.getGradleVersion(rootUri);
-    }
-
-    if (StringUtils.isEmpty(gradleVersion)) {
-      return null;
-    }
-
-    map = TelemetryUtils.getMetadataMap("gradleVersion", gradleVersion);
-    LOGGER.log(Level.INFO, "Gradle version: " + gradleVersion, map);
-
+    // Get gradle compatible jdk versions
     String latestCompatibleVersion = Utils.getLatestCompatibleJavaVersion(gradleVersion);
     String oldestCompatibleVersion = Utils.getOldestCompatibleJavaVersion();
 
-    if (StringUtils.isNotBlank(latestCompatibleVersion)) {
+    // Get compatible jdk
+    File jdk = getGradleCompatibleJdk(buildEnv, latestCompatibleVersion, oldestCompatibleVersion);
 
-      // Use GradleJavaHome if compatible
-      if (gradleJavaHome != null) {
-
-        try {
-          String gradleJavaHomeVersion = JavaUtils.getJavaVersionFromFile(gradleJavaHome);
-          if (
-              gradleJavaHomeVersion != null
-                  && JavaUtils.isCompatible(
-                  gradleJavaHomeVersion,
-                  oldestCompatibleVersion,
-                  latestCompatibleVersion
-              )
-          ) {
-            return gradleJavaHome;
-          }
-        } catch (IllegalArgumentException | IOException e) {
-          LOGGER.severe("Invalid GradleJavaHome: " + e.getMessage());
-        }
-
-      }
-
-      // Pick a compatible JDK from the JDKs available in Preferences
-      if (preferences.getJdks() != null && preferences.getJdks().isEmpty()) {
-        File selectedJdk = getLatestCompatibleJdk(
-            preferences.getJdks(),
-            oldestCompatibleVersion,
-            latestCompatibleVersion
+    if (jdk != null) {
+      preferenceManager.getPreferences().setGradleJavaHome(jdk.getAbsolutePath());
+    } else {
+      if (client != null) {
+        ShowMessageParams messageParams = new ShowMessageParams(
+            MessageType.ERROR,
+            "Failed to find a JDK compatible with current gradle version (" + gradleVersion + ")."
         );
-        if (selectedJdk != null) {
-          return selectedJdk;
-        }
+        client.onBuildShowMessage(messageParams);
       }
-
     }
 
-    // Notify client, for no compatible JDK can be found
-    if (client != null) {
-      ShowMessageParams messageParams = new ShowMessageParams(
-          MessageType.ERROR,
-          "Failed to find a JDK compatible with current gradle version "
-              + "(" + gradleVersion + "). Compatible JDK versions include ("
-              + oldestCompatibleVersion + " - " + latestCompatibleVersion + ")"
+  }
+
+  /**
+   * Finds the gradle version for the given project.
+   * Returns {@code null} if failed to determine the gradle version.
+   */
+  private String getGradleVersion(URI rootUri, BuildEnvironment buildEnv) {
+
+    Preferences preferences = preferenceManager.getPreferences();
+    GradleBuildKind buildKind = Utils.getEffectiveBuildKind(new File(rootUri), preferences);
+
+    // Send telemetry data for build kind
+    Map<String, String> map = TelemetryUtils.getMetadataMap("buildKind", buildKind.name());
+    LOGGER.log(Level.INFO, "Use build kind: " + buildKind.name(), map);
+
+    // Determine gradle version
+    String gradleVersion = buildKind.equals(GradleBuildKind.SPECIFIED_VERSION)
+        ? preferences.getGradleVersion()
+        : (buildEnv != null ? buildEnv.getGradle().getGradleVersion() : null);
+
+    // Send telemetry data for gradle version
+    if (gradleVersion != null) {
+      map = TelemetryUtils.getMetadataMap("gradleVersion", gradleVersion);
+      LOGGER.log(Level.INFO, "Gradle version: " + gradleVersion, map);
+    }
+
+    return gradleVersion;
+
+  }
+
+  /**
+   * Finds a compatible JDK version.
+   * Returns {@code null} if no compatible JDK can be found.
+   */
+  private File getGradleCompatibleJdk(
+      BuildEnvironment buildEnv,
+      String latestCompatibleVersion,
+      String oldestCompatibleVersion
+  ) {
+
+    Preferences preferences = preferenceManager.getPreferences();
+    String preferencesGradleJavaHome = preferences.getGradleJavaHome();
+
+    // Determine gradle java home
+    File gradleJavaHome = preferencesGradleJavaHome != null
+        ? new File(preferencesGradleJavaHome)
+        : (buildEnv != null ? buildEnv.getJava().getJavaHome() : null);
+
+    if (latestCompatibleVersion.isEmpty()) {
+      return null;
+    }
+
+    // Prefer gradle java home
+    if (gradleJavaHome != null) {
+      try {
+        String gradleJavaHomeVersion = JavaUtils.getJavaVersionFromFile(gradleJavaHome);
+        if (
+            JavaUtils.isCompatible(
+                gradleJavaHomeVersion,
+                oldestCompatibleVersion,
+                latestCompatibleVersion
+            )
+        ) {
+          return gradleJavaHome;
+        }
+      } catch (IOException | IllegalArgumentException e) {
+        LOGGER.severe("Invalid GradleJavaHome: " + e.getMessage());
+      }
+    }
+
+    // Fallback to user java home
+    Map<String, String> userJdks = preferences.getJdks();
+    if (userJdks != null && !userJdks.isEmpty()) {
+      return getLatestCompatibleJdk(
+          preferences.getJdks(),
+          oldestCompatibleVersion,
+          latestCompatibleVersion
       );
-      client.onBuildShowMessage(messageParams);
     }
 
     return null;
@@ -237,32 +262,36 @@ public class LifecycleService {
 
     Entry<String, String> selected = null;
     for (Entry<String, String> jdk : jdks.entrySet()) {
+
       String javaVersion = jdk.getKey();
-      boolean isHigherThanSelected =
-          selected == null
-          || Version.parse(selected.getKey()).feature()
-          < Version.parse(javaVersion).feature();
-      if (
-          JavaUtils.isCompatible(
-              javaVersion,
-              oldestCompatibleJavaVersion,
-              latestCompatibleJavaVersion
-          ) && isHigherThanSelected
-      ) {
-        selected = jdk;
+      boolean isHigherThanSelected = selected == null
+          || Version.parse(selected.getKey()).feature() < Version.parse(javaVersion).feature();
+
+      try {
+        if (
+            JavaUtils.isCompatible(
+                javaVersion,
+                oldestCompatibleJavaVersion,
+                latestCompatibleJavaVersion
+            ) && isHigherThanSelected
+        ) {
+          selected = jdk;
+        }
+      } catch (IllegalArgumentException e) {
+        LOGGER.severe("Invalid JDK version: " + e.getMessage());
+      }
+
+    }
+
+    if (selected != null) {
+      try {
+        return new File(new URI(selected.getValue()));
+      } catch (URISyntaxException e) {
+        LOGGER.severe("Invalid JDK URI: " + selected.getValue());
       }
     }
 
-    if (selected == null) {
-      return null;
-    }
-
-    try {
-      return new File(new URI(selected.getValue()));
-    } catch (URISyntaxException e) {
-      LOGGER.severe("Invalid JDK URI: " + selected.getValue());
-      return null;
-    }
+    return null;
 
   }
 

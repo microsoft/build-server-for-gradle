@@ -56,7 +56,7 @@ public class GradleApiConnector {
    * Extracts the GradleVersion for the given project.
    *
    * @param projectUri URI of the project to get the gradle version for.
-   * @return Gradle version of the project or empty upon failure.
+   * @return Gradle version of the project or empty string upon failure.
    */
   public String getGradleVersion(URI projectUri) {
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
@@ -70,8 +70,8 @@ public class GradleApiConnector {
   /**
    * Extracts the GradleVersion for the given project connection.
    *
-   * @param connection Project Connection to get the gradle version from.
-   * @return Gradle version of the project or empty upon failure.
+   * @param connection ProjectConnection to get the gradle version from.
+   * @return Gradle version of the project or empty string upon failure.
    */
   public String getGradleVersion(ProjectConnection connection) {
     try {
@@ -83,20 +83,29 @@ public class GradleApiConnector {
   }
 
   /**
-   * Extracts the GradleJavaHome for the given project.
+   * Extracts the BuildEnvironment model for the given project.
    *
-   * @param projectUri URI of the project to get the gradle java home for.
-   * @return GradleJavaHome of the project or null upon failure.
+   * @param projectUri URI of the project ot get the gradle java home for.
+   * @return BuildEnvironment of the project or {@code null} upon failure.
    */
-  public File getGradleJavaHome(URI projectUri) {
+  public BuildEnvironment getBuildEnvironment(URI projectUri) {
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      return getBuildEnvironment(connection).getJava().getJavaHome();
+      return connection
+          .model(BuildEnvironment.class)
+          .withArguments("--no-daemon")
+          .get();
     } catch (BuildException e) {
-      LOGGER.severe("Failed to get Java version: " + e.getMessage());
+      LOGGER.severe("Failed to get Build Environment: " + e.getMessage());
       return null;
     }
   }
 
+  /**
+   * Extracts the BuildEnvironment model for the given project.
+   *
+   * @param connection ProjectConnection to get the gradle version from.
+   * @return BuildEnvironment of the project.
+   */
   private BuildEnvironment getBuildEnvironment(ProjectConnection connection) {
     return connection
         .model(BuildEnvironment.class)
