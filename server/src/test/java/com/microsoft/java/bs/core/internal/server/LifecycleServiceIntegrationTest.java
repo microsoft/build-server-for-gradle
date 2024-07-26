@@ -1,0 +1,99 @@
+package com.microsoft.java.bs.core.internal.server;
+
+import ch.epfl.scala.bsp4j.InitializeBuildParams;
+import ch.epfl.scala.bsp4j.MessageType;
+import ch.epfl.scala.bsp4j.ShowMessageParams;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class LifecycleServiceIntegrationTest extends IntegrationTest {
+  
+  @Test
+  void testIncompatibleUserJavaHomeProjectServer() {
+
+    ExecutorService threadPool = Executors.newCachedThreadPool();
+    try (PipedInputStream clientIn = new PipedInputStream();
+         PipedOutputStream clientOut = new PipedOutputStream();
+         PipedInputStream serverIn = new PipedInputStream();
+         PipedOutputStream serverOut = new PipedOutputStream()) {
+      try {
+        clientIn.connect(serverOut);
+        clientOut.connect(serverIn);
+      } catch (IOException e) {
+        throw new IllegalStateException("Cannot setup streams", e);
+      }
+      var pair = setupClientServer(clientIn, clientOut, serverIn, serverOut, threadPool);
+      TestClient client = pair.getLeft();
+      TestServer testServer = pair.getRight();
+      try {
+
+        InitializeBuildParams initParams =
+            getInitializedBuildParamsWithJdks(
+                "Non-Existent Project 1",
+                "23.0.1",
+                "file:///tmp/nonexistent_file.txt"
+            );
+
+        testServer.buildInitialize(initParams).join();
+        client.waitOnShowMessages(1);
+        ShowMessageParams param = client.showMessages.get(0);
+        assertEquals(MessageType.ERROR, param.getType());
+        testServer.onBuildInitialized();
+        client.clearMessages();
+
+      } finally {
+        testServer.buildShutdown().join();
+        threadPool.shutdown();
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException("Error closing streams", e);
+    }
+
+  }
+
+  @Test
+  void testCompatibleUserJavaHomeProjectServer() {
+
+    ExecutorService threadPool = Executors.newCachedThreadPool();
+    try (PipedInputStream clientIn = new PipedInputStream();
+         PipedOutputStream clientOut = new PipedOutputStream();
+         PipedInputStream serverIn = new PipedInputStream();
+         PipedOutputStream serverOut = new PipedOutputStream()) {
+      try {
+        clientIn.connect(serverOut);
+        clientOut.connect(serverIn);
+      } catch (IOException e) {
+        throw new IllegalStateException("Cannot setup streams", e);
+      }
+      var pair = setupClientServer(clientIn, clientOut, serverIn, serverOut, threadPool);
+      TestClient client = pair.getLeft();
+      TestServer testServer = pair.getRight();
+      try {
+
+        InitializeBuildParams initParams =
+            getInitializedBuildParamsWithJdks("Non-Existent Project 2", "1.8", null);
+
+        testServer.buildInitialize(initParams).join();
+        client.waitOnShowMessages(0);
+        assertEquals(0, client.showMessages.size());
+        testServer.onBuildInitialized();
+        client.clearMessages();
+
+      } finally {
+        testServer.buildShutdown().join();
+        threadPool.shutdown();
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException("Error closing streams", e);
+    }
+
+  }
+
+}

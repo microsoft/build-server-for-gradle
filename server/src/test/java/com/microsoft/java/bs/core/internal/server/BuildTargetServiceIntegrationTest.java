@@ -1,453 +1,46 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT license.
-
 package com.microsoft.java.bs.core.internal.server;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.function.BiConsumer;
-import java.util.function.IntSupplier;
-import java.util.stream.Collectors;
-
-import ch.epfl.scala.bsp4j.BuildClient;
-import ch.epfl.scala.bsp4j.BuildClientCapabilities;
-import ch.epfl.scala.bsp4j.BuildServer;
-import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier;
+import ch.epfl.scala.bsp4j.BuildTarget;
 import ch.epfl.scala.bsp4j.CleanCacheParams;
 import ch.epfl.scala.bsp4j.CleanCacheResult;
 import ch.epfl.scala.bsp4j.CompileParams;
 import ch.epfl.scala.bsp4j.CompileReport;
 import ch.epfl.scala.bsp4j.CompileResult;
-import ch.epfl.scala.bsp4j.CompileTask;
 import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.DependencySourcesParams;
 import ch.epfl.scala.bsp4j.DependencySourcesResult;
-import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
-import ch.epfl.scala.bsp4j.InitializeBuildParams;
-import ch.epfl.scala.bsp4j.JavaBuildServer;
-import ch.epfl.scala.bsp4j.JvmBuildServer;
 import ch.epfl.scala.bsp4j.LogMessageParams;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.MessageType;
-import ch.epfl.scala.bsp4j.PublishDiagnosticsParams;
 import ch.epfl.scala.bsp4j.ScalaTestClassesItem;
 import ch.epfl.scala.bsp4j.ScalaTestParams;
-import ch.epfl.scala.bsp4j.ScalaTestSuiteSelection;
 import ch.epfl.scala.bsp4j.ScalaTestSuites;
-import ch.epfl.scala.bsp4j.ShowMessageParams;
+import ch.epfl.scala.bsp4j.ScalaTestSuiteSelection;
 import ch.epfl.scala.bsp4j.StatusCode;
 import ch.epfl.scala.bsp4j.TaskFinishParams;
-import ch.epfl.scala.bsp4j.TaskProgressParams;
-import ch.epfl.scala.bsp4j.TaskStartParams;
 import ch.epfl.scala.bsp4j.TestParams;
 import ch.epfl.scala.bsp4j.TestParamsDataKind;
 import ch.epfl.scala.bsp4j.TestReport;
 import ch.epfl.scala.bsp4j.TestResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 import ch.epfl.scala.bsp4j.extended.TestFinishEx;
-import ch.epfl.scala.bsp4j.extended.TestName;
-import ch.epfl.scala.bsp4j.extended.TestStartEx;
-
-import org.apache.commons.lang3.tuple.Pair;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import org.junit.jupiter.api.Test;
 
-import com.microsoft.java.bs.core.Launcher;
-import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
-import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
-import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
-import com.microsoft.java.bs.core.internal.services.BuildTargetService;
-import com.microsoft.java.bs.core.internal.services.LifecycleService;
-import com.microsoft.java.bs.core.internal.utils.JsonUtils;
-import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.stream.Collectors;
 
-// TODO: Move to a dedicated source set for integration tests
-class BuildTargetServerIntegrationTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-  private interface TestServer extends BuildServer, JavaBuildServer, JvmBuildServer {
-  }
-
-  private static class TestClient implements BuildClient {
-
-    private final List<TaskStartParams> startReports = new ArrayList<>();
-    private final List<TaskFinishParams> finishReports = new ArrayList<>();
-    private final List<CompileReport> compileReports = new ArrayList<>();
-    private final List<CompileTask> compileTasks = new ArrayList<>();
-    private final List<LogMessageParams> logMessages = new ArrayList<>();
-    private final List<ShowMessageParams> showMessages = new ArrayList<>();
-    private final List<TestReport> testReports = new ArrayList<>();
-    private final List<TestStartEx> testStarts = new ArrayList<>();
-    private final List<TestFinishEx> testFinishes = new ArrayList<>();
-
-    void clearMessages() {
-      startReports.clear();
-      finishReports.clear();
-      compileReports.clear();
-      compileTasks.clear();
-      logMessages.clear();
-      showMessages.clear();
-      testReports.clear();
-      testStarts.clear();
-      testFinishes.clear();
-    }
-
-    void waitOnStartReports(int size) {
-      waitOnMessages("Start Reports", size, startReports::size);
-    }
-
-    void waitOnFinishReports(int size) {
-      waitOnMessages("Finish Reports", size, finishReports::size);
-    }
-
-    void waitOnCompileReports(int size) {
-      waitOnMessages("Compile Reports", size, compileReports::size);
-    }
-
-    void waitOnCompileTasks(int size) {
-      waitOnMessages("Compile Tasks", size, compileTasks::size);
-    }
-
-    void waitOnLogMessages(int size) {
-      waitOnMessages("Log Messages", size, logMessages::size);
-    }
-
-    void waitOnShowMessages(int size) {
-      waitOnMessages("Show Messages", size, showMessages::size);
-    }
-
-    void waitOnTestReports(int size) {
-      waitOnMessages("Test Reports", size, testReports::size);
-    }
-
-    void waitOnTestStarts(int size) {
-      waitOnMessages("Test Starts", size, testStarts::size);
-    }
-
-    void waitOnTestFinishes(int size) {
-      waitOnMessages("Test Finishes", size, testFinishes::size);
-    }
-
-    long finishReportErrorCount() {
-      return finishReports.stream()
-          .filter(report -> report.getStatus() == StatusCode.ERROR)
-          .count();
-    }
-
-    private static List<String> getTestNameHierarchy(TestName testName) {
-      List<String> names = new LinkedList<>();
-      while (testName != null) {
-        names.add(testName.getDisplayName());
-        testName = testName.getParent();
-      }
-      return names;
-    }
-
-    private static boolean matchesTest(TestName testName, String suiteName, String className,
-        String methodName, List<String> testNames) {
-      return Objects.equals(testName.getSuiteName(), suiteName)
-          && Objects.equals(testName.getClassName(), className)
-          && Objects.equals(testName.getMethodName(), methodName)
-          && Objects.equals(getTestNameHierarchy(testName), testNames);
-    }
-
-    private static String testNameAsString(TestName testName) {
-      return testName.getSuiteName() + "," + testName.getClassName() + ","
-          + testName.getMethodName() + "," + getTestNameHierarchy(testName);
-    }
-
-    TestStartEx getTestStart(String suiteName, String className, String methodName,
-        List<String> testNames) {
-      return testStarts.stream().filter(ts -> matchesTest(ts.getTestName(),
-          suiteName, className, methodName, testNames)).findAny()
-          .orElseThrow(() -> new IllegalStateException("Missing test start for \n" + suiteName
-              + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testStarts
-                  .stream().map(ts -> testNameAsString(ts.getTestName()))
-                  .collect(Collectors.joining("\n"))));
-    }
-
-    TestFinishEx getTestFinish(String suiteName, String className, String methodName,
-        List<String> testNames) {
-      return testFinishes.stream().filter(ts -> matchesTest(ts.getTestName(),
-          suiteName, className, methodName, testNames)).findAny()
-          .orElseThrow(() -> new IllegalStateException("Missing test finish for\n" + suiteName
-              + "," + className + "," + methodName + "," + testNames + "\nonly found\n"
-              + testFinishes
-                  .stream().map(ts -> testNameAsString(ts.getTestName()))
-                  .collect(Collectors.joining("\n"))));
-    }
-
-    private void waitOnMessages(String message, int size, IntSupplier sizeSupplier) {
-      // set to 5000ms because it seems reasonable
-      long timeoutMs = 5000;
-      long endTime = System.currentTimeMillis() + timeoutMs;
-      while (sizeSupplier.getAsInt() < size
-          && System.currentTimeMillis() < endTime) {
-        synchronized (this) {
-          long waitTime = endTime - System.currentTimeMillis();
-          if (waitTime > 0) {
-            try {
-              wait(waitTime);
-            } catch (InterruptedException e) {
-              // do nothing
-            }
-          }
-        }
-      }
-      assertEquals(size, sizeSupplier.getAsInt(), message + " count error");
-    }
-
-    private CompileReport findCompileReport(BuildTargetIdentifier btId) {
-      CompileReport compileReport = compileReports.stream()
-          .filter(report -> report.getTarget().equals(btId))
-          .findFirst()
-          .orElse(null);
-      assertNotNull(compileReport, () -> {
-        String availableTargets = compileReports.stream()
-            .map(report -> report.getTarget().toString())
-            .collect(Collectors.joining(", "));
-        return "Target not found " + btId + ". Available: " + availableTargets;
-      });
-      return compileReport;
-    }
-
-    @Override
-    public void onBuildShowMessage(ShowMessageParams params) {
-      showMessages.add(params);
-      synchronized (this) {
-        notify();
-      }
-    }
-
-    @Override
-    public void onBuildLogMessage(LogMessageParams params) {
-      logMessages.add(params);
-      synchronized (this) {
-        notify();
-      }
-    }
-
-    @Override
-    public void onBuildTaskStart(TaskStartParams params) {
-      if (params.getDataKind() != null) {
-        if (params.getDataKind().equals("compile-task")) {
-          compileTasks.add(JsonUtils.toModel(params.getData(), CompileTask.class));
-        } else if (params.getDataKind().equals("test-start")) {
-          testStarts.add(JsonUtils.toModel(params.getData(), TestStartEx.class));
-        } else {
-          fail("Task Start kind not handled " + params.getDataKind());
-        }
-      }
-      startReports.add(params);
-      synchronized (this) {
-        notify();
-      }
-    }
-
-    @Override
-    public void onBuildTaskProgress(TaskProgressParams params) {
-      // do nothing
-    }
-
-    @Override
-    public void onBuildTaskFinish(TaskFinishParams params) {
-      if (params.getDataKind() != null) {
-        if (params.getDataKind().equals("compile-report")) {
-          compileReports.add(JsonUtils.toModel(params.getData(), CompileReport.class));
-        } else if (params.getDataKind().equals("test-report")) {
-          testReports.add(JsonUtils.toModel(params.getData(), TestReport.class));
-        } else if (params.getDataKind().equals("test-finish")) {
-          testFinishes.add(JsonUtils.toModel(params.getData(), TestFinishEx.class));
-        } else {
-          fail("Task Finish kind not handled " + params.getDataKind());
-        }
-      }
-      finishReports.add(params);
-      synchronized (this) {
-        notify();
-      }
-    }
-
-    @Override
-    public void onBuildPublishDiagnostics(PublishDiagnosticsParams params) {
-      // do nothing
-    }
-
-    @Override
-    public void onBuildTargetDidChange(DidChangeBuildTarget params) {
-      // do nothing
-    }
-  }
-
-  @BeforeAll
-  static void beforeClass() {
-    String pluginDir = Paths.get(System.getProperty("user.dir"),
-        "build", "libs", "plugins").toString();
-    System.setProperty(Launcher.PROP_PLUGIN_DIR, pluginDir);
-    System.setProperty("bsp.plugin.reloadworkspace.disabled", "true");
-  }
-
-  @AfterAll
-  static void afterClass() {
-    System.clearProperty(Launcher.PROP_PLUGIN_DIR);
-    System.clearProperty("bsp.plugin.reloadworkspace.disabled");
-  }
-
-  private InitializeBuildParams getInitializeBuildParams(String projectDir) {
-    File root = Paths.get(
-        System.getProperty("user.dir"),
-        "..",
-        "testProjects",
-        projectDir).toFile();
-
-    BuildClientCapabilities capabilities =
-        new BuildClientCapabilities(SupportedLanguages.allBspNames);
-    return new InitializeBuildParams(
-        "test-client",
-        "0.1.0",
-        "0.1.0",
-        root.toURI().toString(),
-        capabilities);
-  }
-
-  private static InitializeBuildParams getInitializedBuildParamsWithJdks(
-      String projectDir,
-      String jdkVersion,
-      String gradleJavaVersionPath
-  ) {
-    File root = Paths.get(
-        System.getProperty("user.dir"),
-        "..",
-        "testProjects",
-        projectDir).toFile();
-
-    BuildClientCapabilities capabilities =
-        new BuildClientCapabilities(SupportedLanguages.allBspNames);
-    final InitializeBuildParams initParams = new InitializeBuildParams(
-        "test-client",
-        "0.1.0",
-        "0.1.0",
-        root.toURI().toString(),
-        capabilities
-    );
-
-    Preferences preferences = new Preferences();
-    var jdks = new HashMap<String, String>();
-    jdks.put(jdkVersion, "file:///tmp/nonexistent_file.txt");
-    preferences.setJdks(jdks);
-    preferences.setGradleJavaHome(gradleJavaVersionPath);
-
-    initParams.setData(preferences);
-
-    return initParams;
-  }
-
-  private Pair<TestClient, TestServer> setupClientServer(
-      PipedInputStream clientIn,
-      PipedOutputStream clientOut,
-      PipedInputStream serverIn,
-      PipedOutputStream serverOut,
-      ExecutorService threadPool
-  ) {
-    // server
-    BuildTargetManager buildTargetManager = new BuildTargetManager();
-    PreferenceManager preferenceManager = new PreferenceManager();
-    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
-    LifecycleService lifecycleService = new LifecycleService(connector, preferenceManager);
-    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
-        connector, preferenceManager);
-    GradleBuildServer gradleBuildServer = new GradleBuildServer(lifecycleService,
-        buildTargetService);
-    org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> serverLauncher =
-        new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<BuildClient>()
-            .setLocalService(gradleBuildServer)
-            .setRemoteInterface(BuildClient.class)
-            .setOutput(serverOut)
-            .setInput(serverIn)
-            .setExecutorService(threadPool)
-            .create();
-    BuildClient serverBuildClient = serverLauncher.getRemoteProxy();
-    lifecycleService.setClient(serverBuildClient);
-    buildTargetService.setClient(serverBuildClient);
-    // client
-    TestClient client = new TestClient();
-    org.eclipse.lsp4j.jsonrpc.Launcher<TestServer> clientLauncher =
-        new org.eclipse.lsp4j.jsonrpc.Launcher.Builder<TestServer>()
-            .setLocalService(client)
-            .setRemoteInterface(TestServer.class)
-            .setInput(clientIn)
-            .setOutput(clientOut)
-            .setExecutorService(threadPool)
-            .create();
-    // start
-    clientLauncher.startListening();
-    serverLauncher.startListening();
-    TestServer testServer = clientLauncher.getRemoteProxy();
-    return Pair.of(client, testServer);
-  }
-
-  private void withNewTestServer(String project, BiConsumer<TestServer, TestClient> consumer) {
-    ExecutorService threadPool = Executors.newCachedThreadPool();
-    try (PipedInputStream clientIn = new PipedInputStream();
-        PipedOutputStream clientOut = new PipedOutputStream();
-        PipedInputStream serverIn = new PipedInputStream();
-        PipedOutputStream serverOut = new PipedOutputStream()) {
-      try {
-        clientIn.connect(serverOut);
-        clientOut.connect(serverIn);
-      } catch (IOException e) {
-        throw new IllegalStateException("Cannot setup streams", e);
-      }
-      var pair = setupClientServer(clientIn, clientOut, serverIn, serverOut, threadPool);
-      TestClient client = pair.getLeft();
-      TestServer testServer = pair.getRight();
-      try {
-        InitializeBuildParams params = getInitializeBuildParams(project);
-        testServer.buildInitialize(params).join();
-        testServer.onBuildInitialized();
-        consumer.accept(testServer, client);
-      } finally {
-        testServer.buildShutdown().join();
-        threadPool.shutdown();
-      }
-    } catch (IOException e) {
-      throw new IllegalStateException("Error closing streams", e);
-    }
-  }
-
-  private static BuildTargetIdentifier findTarget(List<BuildTarget> targets,
-      String displayName) {
-    Optional<BuildTarget> matchingTargets = targets.stream()
-        .filter(res -> displayName.equals(res.getDisplayName()))
-        .findAny();
-    assertFalse(matchingTargets.isEmpty(), () -> {
-      List<String> targetNames = targets.stream()
-          .map(BuildTarget::getDisplayName)
-          .collect(Collectors.toList());
-      return "Target " + displayName + " not found in " + targetNames;
-    });
-    return matchingTargets.get().getId();
-  }
+class BuildTargetServiceIntegrationTest extends IntegrationTest {
 
   @Test
   void testCompilingSingleProjectServer() {
@@ -534,87 +127,6 @@ class BuildTargetServerIntegrationTest {
   }
 
   @Test
-  void testIncompatibleUserJavaHomeProjectServer() {
-
-    ExecutorService threadPool = Executors.newCachedThreadPool();
-    try (PipedInputStream clientIn = new PipedInputStream();
-         PipedOutputStream clientOut = new PipedOutputStream();
-         PipedInputStream serverIn = new PipedInputStream();
-         PipedOutputStream serverOut = new PipedOutputStream()) {
-      try {
-        clientIn.connect(serverOut);
-        clientOut.connect(serverIn);
-      } catch (IOException e) {
-        throw new IllegalStateException("Cannot setup streams", e);
-      }
-      var pair = setupClientServer(clientIn, clientOut, serverIn, serverOut, threadPool);
-      TestClient client = pair.getLeft();
-      TestServer testServer = pair.getRight();
-      try {
-
-        InitializeBuildParams initParams =
-            getInitializedBuildParamsWithJdks(
-                "Non-Existent Project 1",
-                "23.0.1",
-                "file:///tmp/nonexistent_file.txt"
-            );
-
-        testServer.buildInitialize(initParams).join();
-        client.waitOnShowMessages(1);
-        ShowMessageParams param = client.showMessages.get(0);
-        assertEquals(MessageType.ERROR, param.getType());
-        testServer.onBuildInitialized();
-        client.clearMessages();
-
-      } finally {
-        testServer.buildShutdown().join();
-        threadPool.shutdown();
-      }
-    } catch (IOException e) {
-      throw new IllegalStateException("Error closing streams", e);
-    }
-
-  }
-
-  @Test
-  void testCompatibleUserJavaHomeProjectServer() {
-
-    ExecutorService threadPool = Executors.newCachedThreadPool();
-    try (PipedInputStream clientIn = new PipedInputStream();
-         PipedOutputStream clientOut = new PipedOutputStream();
-         PipedInputStream serverIn = new PipedInputStream();
-         PipedOutputStream serverOut = new PipedOutputStream()) {
-      try {
-        clientIn.connect(serverOut);
-        clientOut.connect(serverIn);
-      } catch (IOException e) {
-        throw new IllegalStateException("Cannot setup streams", e);
-      }
-      var pair = setupClientServer(clientIn, clientOut, serverIn, serverOut, threadPool);
-      TestClient client = pair.getLeft();
-      TestServer testServer = pair.getRight();
-      try {
-
-        InitializeBuildParams initParams =
-            getInitializedBuildParamsWithJdks("Non-Existent Project 2", "1.8", null);
-
-        testServer.buildInitialize(initParams).join();
-        client.waitOnShowMessages(0);
-        assertEquals(0, client.showMessages.size());
-        testServer.onBuildInitialized();
-        client.clearMessages();
-
-      } finally {
-        testServer.buildShutdown().join();
-        threadPool.shutdown();
-      }
-    } catch (IOException e) {
-      throw new IllegalStateException("Error closing streams", e);
-    }
-
-  }
-
-  @Test
   void testPassingJunit() {
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
       // get targets
@@ -694,7 +206,7 @@ class BuildTargetServerIntegrationTest {
           "com.example.project.PassingTests",
           "isParameterized(int)",
           List.of("isParameterized(int)",
-            "PassingTests")));
+              "PassingTests")));
       assertNotNull(client.getTestStart(
           null,
           "com.example.project.PassingTests",
@@ -738,7 +250,7 @@ class BuildTargetServerIntegrationTest {
           "com.example.project.PassingTests",
           "isParameterized(int)",
           List.of("isParameterized(int)",
-            "PassingTests")));
+              "PassingTests")));
       assertNotNull(client.getTestFinish(
           null,
           "com.example.project.PassingTests",
@@ -1091,7 +603,7 @@ class BuildTargetServerIntegrationTest {
       assertEquals(0, complexTestsReport.getFailed());
       assertEquals(0, complexTestsReport.getIgnored());
       assertEquals(0, complexTestsReport.getSkipped());
-      
+
       assertNotNull(client.getTestStart(
           "com.example.project.TestFactoryTests",
           "com.example.project.TestFactoryTests",
@@ -1102,54 +614,54 @@ class BuildTargetServerIntegrationTest {
           "com.example.project.TestFactoryTests",
           "testContainer()",
           List.of("testContainer()",
-            "TestFactoryTests")));
+              "TestFactoryTests")));
       assertNotNull(client.getTestStart(
           "testContainer()[1]",
           "com.example.project.TestFactoryTests",
           "testContainer()[1]",
           List.of("First Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestStart(
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[1][1]",
           List.of("First test of first container",
-            "First Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "First Container",
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestStart(
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[1][2]",
           List.of("Second test of first container",
-            "First Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "First Container",
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestStart(
           "testContainer()[2]",
           "com.example.project.TestFactoryTests",
           "testContainer()[2]",
           List.of("Second Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestStart(
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[2][1]",
           List.of("First test of second container",
-            "Second Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "Second Container",
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestStart(
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[2][2]",
           List.of("Second test of second container",
-            "Second Container",
-            "testContainer()",
-            "TestFactoryTests")));
-      
+              "Second Container",
+              "testContainer()",
+              "TestFactoryTests")));
+
       assertNotNull(client.getTestFinish(
           "com.example.project.TestFactoryTests",
           "com.example.project.TestFactoryTests",
@@ -1160,53 +672,53 @@ class BuildTargetServerIntegrationTest {
           "com.example.project.TestFactoryTests",
           "testContainer()",
           List.of("testContainer()",
-            "TestFactoryTests")));
+              "TestFactoryTests")));
       assertNotNull(client.getTestFinish(
           "testContainer()[1]",
           "com.example.project.TestFactoryTests",
           "testContainer()[1]",
           List.of("First Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestFinish(
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[1][1]",
           List.of("First test of first container",
-            "First Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "First Container",
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestFinish(
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[1][2]",
           List.of("Second test of first container",
-            "First Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "First Container",
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestFinish(
           "testContainer()[2]",
           "com.example.project.TestFactoryTests",
           "testContainer()[2]",
           List.of("Second Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestFinish(
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[2][1]",
           List.of("First test of second container",
-            "Second Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "Second Container",
+              "testContainer()",
+              "TestFactoryTests")));
       assertNotNull(client.getTestFinish(
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[2][2]",
           List.of("Second test of second container",
-            "Second Container",
-            "testContainer()",
-            "TestFactoryTests")));
+              "Second Container",
+              "testContainer()",
+              "TestFactoryTests")));
       client.clearMessages();
     });
   }
@@ -1987,7 +1499,6 @@ class BuildTargetServerIntegrationTest {
     });
   }
 
-
   @Test
   void testExtraConfiguration() {
     withNewTestServer("java-tests", (gradleBuildServer, client) -> {
@@ -2014,7 +1525,7 @@ class BuildTargetServerIntegrationTest {
       // run single method tests
       List<BuildTargetIdentifier> singleBt = new ArrayList<>();
       singleBt.add(btId);
-      
+
       List<String> passingTestMainClasses = new LinkedList<>();
       passingTestMainClasses.add("com.example.project.ExtraTests");
       ScalaTestClassesItem passingTestClassesItem =
@@ -2079,4 +1590,5 @@ class BuildTargetServerIntegrationTest {
       client.clearMessages();
     });
   }
+
 }
