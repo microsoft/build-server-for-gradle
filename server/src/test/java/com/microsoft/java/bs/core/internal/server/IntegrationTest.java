@@ -20,13 +20,11 @@ import ch.epfl.scala.bsp4j.TaskProgressParams;
 import ch.epfl.scala.bsp4j.TestReport;
 import ch.epfl.scala.bsp4j.TaskStartParams;
 import ch.epfl.scala.bsp4j.extended.TestFinishEx;
-import ch.epfl.scala.bsp4j.extended.TestName;
 import ch.epfl.scala.bsp4j.extended.TestStartEx;
 import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.managers.BuildTargetManager;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
-import com.microsoft.java.bs.core.internal.model.Preferences;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
@@ -41,10 +39,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,7 +49,6 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 abstract class IntegrationTest {
@@ -128,49 +122,6 @@ abstract class IntegrationTest {
           .count();
     }
 
-    private static List<String> getTestNameHierarchy(TestName testName) {
-      List<String> names = new LinkedList<>();
-      while (testName != null) {
-        names.add(testName.getDisplayName());
-        testName = testName.getParent();
-      }
-      return names;
-    }
-
-    private static boolean matchesTest(TestName testName, String suiteName, String className,
-                                       String methodName, List<String> testNames) {
-      return Objects.equals(testName.getSuiteName(), suiteName)
-          && Objects.equals(testName.getClassName(), className)
-          && Objects.equals(testName.getMethodName(), methodName)
-          && Objects.equals(getTestNameHierarchy(testName), testNames);
-    }
-
-    private static String testNameAsString(TestName testName) {
-      return testName.getSuiteName() + "," + testName.getClassName() + ","
-          + testName.getMethodName() + "," + getTestNameHierarchy(testName);
-    }
-
-    TestStartEx getTestStart(String suiteName, String className, String methodName,
-                             List<String> testNames) {
-      return testStarts.stream().filter(ts -> matchesTest(ts.getTestName(),
-              suiteName, className, methodName, testNames)).findAny()
-          .orElseThrow(() -> new IllegalStateException("Missing test start for \n" + suiteName
-              + "," + className + "," + methodName + "," + testNames + "\nonly found\n" + testStarts
-              .stream().map(ts -> testNameAsString(ts.getTestName()))
-              .collect(Collectors.joining("\n"))));
-    }
-
-    TestFinishEx getTestFinish(String suiteName, String className, String methodName,
-                               List<String> testNames) {
-      return testFinishes.stream().filter(ts -> matchesTest(ts.getTestName(),
-              suiteName, className, methodName, testNames)).findAny()
-          .orElseThrow(() -> new IllegalStateException("Missing test finish for\n" + suiteName
-              + "," + className + "," + methodName + "," + testNames + "\nonly found\n"
-              + testFinishes
-              .stream().map(ts -> testNameAsString(ts.getTestName()))
-              .collect(Collectors.joining("\n"))));
-    }
-
     private void waitOnMessages(String message, int size, IntSupplier sizeSupplier) {
       // set to 5000ms because it seems reasonable
       long timeoutMs = 5000;
@@ -189,20 +140,6 @@ abstract class IntegrationTest {
         }
       }
       assertEquals(size, sizeSupplier.getAsInt(), message + " count error");
-    }
-
-    protected CompileReport findCompileReport(BuildTargetIdentifier btId) {
-      CompileReport compileReport = compileReports.stream()
-          .filter(report -> report.getTarget().equals(btId))
-          .findFirst()
-          .orElse(null);
-      assertNotNull(compileReport, () -> {
-        String availableTargets = compileReports.stream()
-            .map(report -> report.getTarget().toString())
-            .collect(Collectors.joining(", "));
-        return "Target not found " + btId + ". Available: " + availableTargets;
-      });
-      return compileReport;
     }
 
     @Override
@@ -302,38 +239,6 @@ abstract class IntegrationTest {
         "0.1.0",
         root.toURI().toString(),
         capabilities);
-  }
-
-  protected static InitializeBuildParams getInitializedBuildParamsWithJdks(
-      String projectDir,
-      String jdkVersion,
-      String gradleJavaVersionPath
-  ) {
-    File root = Paths.get(
-        System.getProperty("user.dir"),
-        "..",
-        "testProjects",
-        projectDir).toFile();
-
-    BuildClientCapabilities capabilities =
-        new BuildClientCapabilities(SupportedLanguages.allBspNames);
-    final InitializeBuildParams initParams = new InitializeBuildParams(
-        "test-client",
-        "0.1.0",
-        "0.1.0",
-        root.toURI().toString(),
-        capabilities
-    );
-
-    Preferences preferences = new Preferences();
-    var jdks = new HashMap<String, String>();
-    jdks.put(jdkVersion, "file:///tmp/nonexistent_file.txt");
-    preferences.setJdks(jdks);
-    preferences.setGradleJavaHome(gradleJavaVersionPath);
-
-    initParams.setData(preferences);
-
-    return initParams;
   }
 
   protected static Pair<TestClient, TestServer> setupClientServer(

@@ -90,10 +90,7 @@ public class GradleApiConnector {
    */
   public BuildEnvironment getBuildEnvironment(URI projectUri) {
     try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
-      return connection
-          .model(BuildEnvironment.class)
-          .withArguments("--no-daemon")
-          .get();
+      return getBuildEnvironment(connection);
     } catch (BuildException e) {
       LOGGER.severe("Failed to get Build Environment: " + e.getMessage());
       return null;

@@ -27,12 +27,15 @@ import ch.epfl.scala.bsp4j.TestReport;
 import ch.epfl.scala.bsp4j.TestResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 import ch.epfl.scala.bsp4j.extended.TestFinishEx;
+import ch.epfl.scala.bsp4j.extended.TestName;
+import ch.epfl.scala.bsp4j.extended.TestStartEx;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,6 +44,63 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class BuildTargetServiceIntegrationTest extends IntegrationTest {
+
+  private CompileReport findCompileReport(TestClient client, BuildTargetIdentifier btId) {
+    CompileReport compileReport = client.compileReports.stream()
+        .filter(report -> report.getTarget().equals(btId))
+        .findFirst()
+        .orElse(null);
+    assertNotNull(compileReport, () -> {
+      String availableTargets = client.compileReports.stream()
+          .map(report -> report.getTarget().toString())
+          .collect(Collectors.joining(", "));
+      return "Target not found " + btId + ". Available: " + availableTargets;
+    });
+    return compileReport;
+  }
+
+  private List<String> getTestNameHierarchy(TestName testName) {
+    List<String> names = new LinkedList<>();
+    while (testName != null) {
+      names.add(testName.getDisplayName());
+      testName = testName.getParent();
+    }
+    return names;
+  }
+
+  private boolean matchesTest(TestName testName, String suiteName, String className,
+                                     String methodName, List<String> testNames) {
+    return Objects.equals(testName.getSuiteName(), suiteName)
+        && Objects.equals(testName.getClassName(), className)
+        && Objects.equals(testName.getMethodName(), methodName)
+        && Objects.equals(getTestNameHierarchy(testName), testNames);
+  }
+
+  private String testNameAsString(TestName testName) {
+    return testName.getSuiteName() + "," + testName.getClassName() + ","
+        + testName.getMethodName() + "," + getTestNameHierarchy(testName);
+  }
+
+  TestStartEx getTestStart(TestClient client, String suiteName, String className, String methodName,
+                           List<String> testNames) {
+    return client.testStarts.stream().filter(ts -> matchesTest(ts.getTestName(),
+            suiteName, className, methodName, testNames)).findAny()
+        .orElseThrow(() -> new IllegalStateException("Missing test start for \n" + suiteName
+            + "," + className + "," + methodName + "," + testNames + "\nonly found\n"
+            + client.testStarts.stream().map(ts -> testNameAsString(ts.getTestName()))
+            .collect(Collectors.joining("\n"))));
+  }
+
+  TestFinishEx getTestFinish(TestClient client, String suiteName, String className,
+                             String methodName, List<String> testNames) {
+    return client.testFinishes.stream().filter(ts -> matchesTest(ts.getTestName(),
+            suiteName, className, methodName, testNames)).findAny()
+        .orElseThrow(() -> new IllegalStateException("Missing test finish for\n" + suiteName
+            + "," + className + "," + methodName + "," + testNames + "\nonly found\n"
+            + client.testFinishes
+            .stream().map(ts -> testNameAsString(ts.getTestName()))
+            .collect(Collectors.joining("\n"))));
+  }
 
   @Test
   void testCompilingSingleProjectServer() {
@@ -116,7 +176,7 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
         assertEquals(StatusCode.OK, message.getStatus());
       }
       for (BuildTargetIdentifier btId : btIds) {
-        CompileReport compileReport = client.findCompileReport(btId);
+        CompileReport compileReport = findCompileReport(client, btId);
         assertEquals("originId", compileReport.getOriginId());
         // TODO compile results are not yet implemented so always zero for now.
         assertEquals(0, compileReport.getWarnings());
@@ -185,43 +245,51 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, passingTestsReport.getIgnored());
       assertEquals(0, passingTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.PassingTests",
           "com.example.project.PassingTests",
           null,
           List.of("PassingTests")));
 
-      assertNotNull(client.getTestStart(null,
+      assertNotNull(getTestStart(
+          client,
+          null,
           "com.example.project.PassingTests",
           "isBasicTest()",
           List.of("isBasicTest()",
               "PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "hasDisplayName()",
           List.of("Display Name", "PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "isParameterized(int)",
           "com.example.project.PassingTests",
           "isParameterized(int)",
           List.of("isParameterized(int)",
               "PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized(int)[1]",
           List.of("0",
               "isParameterized(int)",
               "PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized(int)[2]",
           List.of("1",
               "isParameterized(int)",
               "PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized(int)[3]",
@@ -229,43 +297,51 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "isParameterized(int)",
               "PassingTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.PassingTests",
           "com.example.project.PassingTests",
           null,
           List.of("PassingTests")));
 
-      assertNotNull(client.getTestFinish(null,
+      assertNotNull(getTestFinish(
+          client,
+          null,
           "com.example.project.PassingTests",
           "isBasicTest()",
           List.of("isBasicTest()",
               "PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "hasDisplayName()",
           List.of("Display Name", "PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "isParameterized(int)",
           "com.example.project.PassingTests",
           "isParameterized(int)",
           List.of("isParameterized(int)",
               "PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized(int)[1]",
           List.of("0",
               "isParameterized(int)",
               "PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized(int)[2]",
           List.of("1",
               "isParameterized(int)",
               "PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized(int)[3]",
@@ -333,24 +409,28 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, failingTestsReport.getIgnored());
       assertEquals(0, failingTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.FailingTests",
           "com.example.project.FailingTests",
           null,
           List.of("FailingTests")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.FailingTests",
           "failingTest()",
           List.of("failingTest()", "FailingTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.FailingTests",
           "com.example.project.FailingTests",
           null,
           List.of("FailingTests")));
-      TestFinishEx failingTestsFinish = client.getTestFinish(
+      TestFinishEx failingTestsFinish = getTestFinish(
+          client,
           null,
           "com.example.project.FailingTests",
           "failingTest()",
@@ -420,25 +500,29 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, stacktraceTestsReport.getIgnored());
       assertEquals(0, stacktraceTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.ExceptionInBefore",
           "com.example.project.ExceptionInBefore",
           null,
           List.of("ExceptionInBefore")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.ExceptionInBefore",
           "initializationError",
           List.of("initializationError",
               "ExceptionInBefore")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.ExceptionInBefore",
           "com.example.project.ExceptionInBefore",
           null,
           List.of("ExceptionInBefore")));
-      TestFinishEx stacktraceTestsFinish = client.getTestFinish(
+      TestFinishEx stacktraceTestsFinish = getTestFinish(
+          client,
           null,
           "com.example.project.ExceptionInBefore",
           "initializationError",
@@ -516,26 +600,30 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, singleMethodTestsReport.getIgnored());
       assertEquals(0, singleMethodTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.EnvVarTests",
           "com.example.project.EnvVarTests",
           null,
           List.of("EnvVarTests")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.EnvVarTests",
           "envVarSetTest()",
           List.of("envVarSetTest()",
               "EnvVarTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.EnvVarTests",
           "com.example.project.EnvVarTests",
           null,
           List.of("EnvVarTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.EnvVarTests",
           "envVarSetTest()",
@@ -604,25 +692,29 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, complexTestsReport.getIgnored());
       assertEquals(0, complexTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.TestFactoryTests",
           "com.example.project.TestFactoryTests",
           null,
           List.of("TestFactoryTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "testContainer()",
           "com.example.project.TestFactoryTests",
           "testContainer()",
           List.of("testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "testContainer()[1]",
           "com.example.project.TestFactoryTests",
           "testContainer()[1]",
           List.of("First Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[1][1]",
@@ -630,7 +722,8 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "First Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[1][2]",
@@ -638,14 +731,16 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "First Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "testContainer()[2]",
           "com.example.project.TestFactoryTests",
           "testContainer()[2]",
           List.of("Second Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[2][1]",
@@ -653,7 +748,8 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "Second Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[2][2]",
@@ -662,25 +758,29 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "testContainer()",
               "TestFactoryTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.TestFactoryTests",
           "com.example.project.TestFactoryTests",
           null,
           List.of("TestFactoryTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "testContainer()",
           "com.example.project.TestFactoryTests",
           "testContainer()",
           List.of("testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "testContainer()[1]",
           "com.example.project.TestFactoryTests",
           "testContainer()[1]",
           List.of("First Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[1][1]",
@@ -688,7 +788,8 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "First Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[1][2]",
@@ -696,14 +797,16 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "First Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "testContainer()[2]",
           "com.example.project.TestFactoryTests",
           "testContainer()[2]",
           List.of("Second Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[2][1]",
@@ -711,7 +814,8 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "Second Container",
               "testContainer()",
               "TestFactoryTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.TestFactoryTests",
           "testContainer()[2][2]",
@@ -782,31 +886,36 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, nestedTestsReport.getIgnored());
       assertEquals(0, nestedTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.NestedTests",
           "com.example.project.NestedTests",
           null,
           List.of("NestedTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.NestedTests$NestedClassB",
           "com.example.project.NestedTests$NestedClassB",
           null,
           List.of("NestedClassB", "NestedTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.NestedTests$NestedClassB",
           "test()",
           List.of("test()",
               "NestedClassB",
               "NestedTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           null,
           List.of("ADeeperClass",
               "NestedClassB",
               "NestedTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           "test()",
@@ -814,13 +923,15 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "ADeeperClass",
               "NestedClassB",
               "NestedTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.NestedTests$NestedClassA",
           "com.example.project.NestedTests$NestedClassA",
           null,
           List.of("NestedClassA",
               "NestedTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.NestedTests$NestedClassA",
           "test()",
@@ -828,31 +939,36 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "NestedClassA",
               "NestedTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.NestedTests",
           "com.example.project.NestedTests",
           null,
           List.of("NestedTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.NestedTests$NestedClassB",
           "com.example.project.NestedTests$NestedClassB",
           null,
           List.of("NestedClassB", "NestedTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.NestedTests$NestedClassB",
           "test()",
           List.of("test()",
               "NestedClassB",
               "NestedTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           null,
           List.of("ADeeperClass",
               "NestedClassB",
               "NestedTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.NestedTests$NestedClassB$ADeeperClass",
           "test()",
@@ -860,13 +976,15 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "ADeeperClass",
               "NestedClassB",
               "NestedTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.NestedTests$NestedClassA",
           "com.example.project.NestedTests$NestedClassA",
           null,
           List.of("NestedClassA",
               "NestedTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.NestedTests$NestedClassA",
           "test()",
@@ -975,7 +1093,7 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       client.waitOnLogMessages(1);
       assertEquals(1, client.finishReportErrorCount());
       for (BuildTargetIdentifier btId : btIds) {
-        CompileReport compileReport = client.findCompileReport(btId);
+        CompileReport compileReport = findCompileReport(client, btId);
         assertEquals("originId", compileReport.getOriginId());
         // TODO compile results are not yet implemented so always zero for now.
         assertEquals(0, compileReport.getWarnings());
@@ -1049,70 +1167,84 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, passingTestsReport.getIgnored());
       assertEquals(0, passingTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart("com.example.project.PassingTests",
+      assertNotNull(getTestStart(
+          client,
+          "com.example.project.PassingTests",
           "com.example.project.PassingTests", null,
           List.of("com.example.project.PassingTests")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "isBasicTest",
           List.of("isBasicTest",
               "com.example.project.PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "hasDisplayName",
           List.of("hasDisplayName",
               "com.example.project.PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized[0](0)",
           List.of("isParameterized[0](0)",
               "com.example.project.PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized[1](1)",
           List.of("isParameterized[1](1)",
               "com.example.project.PassingTests")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized[2](2)",
           List.of("isParameterized[2](2)",
               "com.example.project.PassingTests")));
 
-      assertNotNull(client.getTestFinish("com.example.project.PassingTests",
+      assertNotNull(getTestFinish(
+          client,
+          "com.example.project.PassingTests",
           "com.example.project.PassingTests", null,
           List.of("com.example.project.PassingTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "isBasicTest",
           List.of("isBasicTest",
               "com.example.project.PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "hasDisplayName",
           List.of("hasDisplayName",
               "com.example.project.PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized[0](0)",
           List.of("isParameterized[0](0)",
               "com.example.project.PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized[1](1)",
           List.of("isParameterized[1](1)",
               "com.example.project.PassingTests")));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.PassingTests",
           "isParameterized[2](2)",
@@ -1180,25 +1312,29 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, failingTestsReport.getIgnored());
       assertEquals(0, failingTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.FailingTests",
           "com.example.project.FailingTests",
           null,
           List.of("com.example.project.FailingTests")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.FailingTests",
           "failingTest",
           List.of("failingTest",
               "com.example.project.FailingTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.FailingTests",
           "com.example.project.FailingTests",
           null,
           List.of("com.example.project.FailingTests")));
-      TestFinishEx failingTestsFinish = client.getTestFinish(
+      TestFinishEx failingTestsFinish = getTestFinish(
+          client,
           null,
           "com.example.project.FailingTests",
           "failingTest",
@@ -1270,32 +1406,37 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, stacktraceTestsReport.getIgnored());
       assertEquals(1, stacktraceTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.ExceptionInBefore",
           "com.example.project.ExceptionInBefore",
           null,
           List.of("com.example.project.ExceptionInBefore")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.ExceptionInBefore",
           "beforeAll",
           List.of("beforeAll",
               "com.example.project.ExceptionInBefore")));
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.ExceptionInBefore",
           "test",
           List.of("test",
               "com.example.project.ExceptionInBefore")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.ExceptionInBefore",
           "com.example.project.ExceptionInBefore",
           null,
           List.of("com.example.project.ExceptionInBefore")));
 
-      TestFinishEx stacktraceTestsFinish = client.getTestFinish(
+      TestFinishEx stacktraceTestsFinish = getTestFinish(
+          client,
           null,
           "com.example.project.ExceptionInBefore",
           "beforeAll",
@@ -1303,7 +1444,8 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "com.example.project.ExceptionInBefore"));
       assertTrue(stacktraceTestsFinish.getStackTrace().contains(
           "at com.example.project.ExceptionInBefore.beforeAll(ExceptionInBefore.java:12)"));
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.ExceptionInBefore",
           "test",
@@ -1380,26 +1522,30 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, singleMethodTestsReport.getIgnored());
       assertEquals(0, singleMethodTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.EnvVarTests",
           "com.example.project.EnvVarTests",
           null,
           List.of("com.example.project.EnvVarTests")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.EnvVarTests",
           "envVarSetTest",
           List.of("envVarSetTest",
               "com.example.project.EnvVarTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.EnvVarTests",
           "com.example.project.EnvVarTests",
           null,
           List.of("com.example.project.EnvVarTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.EnvVarTests",
           "envVarSetTest",
@@ -1470,26 +1616,30 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, passingTestsReport.getIgnored());
       assertEquals(0, passingTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.SpockTest",
           "com.example.project.SpockTest",
           null,
           List.of("SpockTest")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.SpockTest",
           "zero is zero",
           List.of("zero is zero",
               "SpockTest")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.SpockTest",
           "com.example.project.SpockTest",
           null,
           List.of("SpockTest")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.SpockTest",
           "zero is zero",
@@ -1562,26 +1712,30 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
       assertEquals(0, singleMethodTestsReport.getIgnored());
       assertEquals(0, singleMethodTestsReport.getSkipped());
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           "com.example.project.ExtraTests",
           "com.example.project.ExtraTests",
           null,
           List.of("ExtraTests")));
 
-      assertNotNull(client.getTestStart(
+      assertNotNull(getTestStart(
+          client,
           null,
           "com.example.project.ExtraTests",
           "extraTest()",
           List.of("extraTest()",
               "ExtraTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           "com.example.project.ExtraTests",
           "com.example.project.ExtraTests",
           null,
           List.of("ExtraTests")));
 
-      assertNotNull(client.getTestFinish(
+      assertNotNull(getTestFinish(
+          client,
           null,
           "com.example.project.ExtraTests",
           "extraTest()",

@@ -1,19 +1,57 @@
 package com.microsoft.java.bs.core.internal.server;
 
+import ch.epfl.scala.bsp4j.BuildClientCapabilities;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.MessageType;
 import ch.epfl.scala.bsp4j.ShowMessageParams;
+import com.microsoft.java.bs.core.internal.model.Preferences;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class LifecycleServiceIntegrationTest extends IntegrationTest {
+
+  private static InitializeBuildParams getInitializedBuildParamsWithJdks(
+      String projectDir,
+      String jdkVersion,
+      String gradleJavaVersionPath
+  ) {
+    File root = Paths.get(
+        System.getProperty("user.dir"),
+        "..",
+        "testProjects",
+        projectDir).toFile();
+
+    BuildClientCapabilities capabilities =
+        new BuildClientCapabilities(SupportedLanguages.allBspNames);
+    final InitializeBuildParams initParams = new InitializeBuildParams(
+        "test-client",
+        "0.1.0",
+        "0.1.0",
+        root.toURI().toString(),
+        capabilities
+    );
+
+    Preferences preferences = new Preferences();
+    var jdks = new HashMap<String, String>();
+    jdks.put(jdkVersion, "file:///tmp/nonexistent_file.txt");
+    preferences.setJdks(jdks);
+    preferences.setGradleJavaHome(gradleJavaVersionPath);
+
+    initParams.setData(preferences);
+
+    return initParams;
+  }
   
   @Test
   void testIncompatibleUserJavaHomeProjectServer() {
