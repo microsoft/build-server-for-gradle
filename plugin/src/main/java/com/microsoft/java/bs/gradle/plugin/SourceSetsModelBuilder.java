@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.microsoft.java.bs.gradle.plugin.model.AndroidSourceSet;
+import com.microsoft.java.bs.gradle.plugin.utils.SourceSetUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -57,7 +59,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
 
     return new DefaultGradleSourceSets(sourceSets);
   }
-  
+
   private DefaultGradleSourceSet getSourceSet(Project project, SourceSet sourceSet) {
     DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
     // dependencies are populated by the GradleSourceSetsAction.  Make sure not null.

@@ -92,6 +92,16 @@ class GradleApiConnectorTest {
         "junit5-jupiter-starter-gradle [test]").getSourceSetName());
   }
 
+  @Test
+  void testGetAndroidSourceSets() {
+    File projectDir = projectPath.resolve("android-test").toFile();
+    PreferenceManager preferenceManager = new PreferenceManager();
+    preferenceManager.setPreferences(new Preferences());
+    GradleApiConnector connector = new GradleApiConnector(preferenceManager);
+    GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+    // TODO: Verify if complete source sets were retrieved
+  }
+
   private GradleSourceSet findSourceSet(GradleSourceSets gradleSourceSets, String displayName) {
     GradleSourceSet sourceSet = gradleSourceSets.getGradleSourceSets().stream()
         .filter(ss -> ss.getDisplayName().equals(displayName))
