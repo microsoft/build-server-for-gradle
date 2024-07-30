@@ -9,6 +9,7 @@ public class AndroidSourceSet {
   private String name;
   private Set<File> aidlDirectories;
   private Set<File> assetsDirectories;
+  private Set<File> cDirectories;
   private Set<File> cppDirectories;
   private List<File> customDirectories;
   private Set<File> javaDirectories;
@@ -19,6 +20,7 @@ public class AndroidSourceSet {
   private Set<File> resDirectories;
   private Set<File> resourceDirectories;
   private Set<File> shaderDirectories;
+  private Set<File> compileClasspath;
 
   public AndroidSourceSet() {
   }
@@ -27,6 +29,7 @@ public class AndroidSourceSet {
       String name,
       Set<File> aidlDirectories,
       Set<File> assetsDirectories,
+      Set<File> cDirectories,
       Set<File> cppDirectories,
       List<File> customDirectories,
       Set<File> javaDirectories,
@@ -36,11 +39,13 @@ public class AndroidSourceSet {
       Set<File> renderScriptDirectories,
       Set<File> resDirectories,
       Set<File> resourceDirectories,
-      Set<File> shaderDirectories
+      Set<File> shaderDirectories,
+      Set<File> compileClasspath
   ) {
     this.name = name;
     this.aidlDirectories = aidlDirectories;
     this.assetsDirectories = assetsDirectories;
+    this.cDirectories = cDirectories;
     this.cppDirectories = cppDirectories;
     this.customDirectories = customDirectories;
     this.javaDirectories = javaDirectories;
@@ -51,6 +56,7 @@ public class AndroidSourceSet {
     this.resDirectories = resDirectories;
     this.resourceDirectories = resourceDirectories;
     this.shaderDirectories = shaderDirectories;
+    this.compileClasspath = compileClasspath;
   }
 
   public String getName() {
@@ -75,6 +81,14 @@ public class AndroidSourceSet {
 
   public void setAssetsDirectories(Set<File> assetsDirectories) {
     this.assetsDirectories = assetsDirectories;
+  }
+
+  public Set<File> getCDirectories() {
+    return cDirectories;
+  }
+
+  public void setCDirectories(Set<File> cDirectories) {
+    this.cDirectories = cDirectories;
   }
 
   public Set<File> getCppDirectories() {
@@ -156,4 +170,13 @@ public class AndroidSourceSet {
   public void setShaderDirectories(Set<File> shaderDirectories) {
     this.shaderDirectories = shaderDirectories;
   }
+
+  public Set<File> getCompileClasspath() {
+    return compileClasspath;
+  }
+
+  public void setCompileClasspath(Set<File> compileClasspath) {
+    this.compileClasspath = compileClasspath;
+  }
+
 }

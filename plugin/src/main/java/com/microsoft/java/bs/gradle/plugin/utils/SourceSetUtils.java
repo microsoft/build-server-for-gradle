@@ -3,6 +3,8 @@ package com.microsoft.java.bs.gradle.plugin.utils;
 import com.microsoft.java.bs.gradle.plugin.model.AndroidSourceSet;
 import org.gradle.api.Project;
 import org.gradle.api.UnknownDomainObjectException;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.util.GradleVersion;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
@@ -16,43 +18,40 @@ public class SourceSetUtils {
 
   public static boolean isAndroidProject(Project project) {
 
-    try {
-      project.getExtensions().getByName("android");
-      return true;
-    } catch (UnknownDomainObjectException e) {
-      // do nothing
-    }
-
-    return false;
+    return getProjectExtension(project, "android") != null;
 
   }
 
   public static List<AndroidSourceSet> getAndroidSourceSets(Project project) {
 
+    List<AndroidSourceSet> androidSourceSets = new LinkedList<>();
+
+    Object androidExtension = getProjectExtension(project, "android");
+    if (androidExtension == null) {
+      return androidSourceSets;
+    }
+
     try {
-      // TODO: Extensions not available for older gradle versions, use conventions instead?
-      Object androidExtension = project.getExtensions().getByName("android");
+
       Method getSourceSets = androidExtension.getClass().getMethod("getSourceSets");
       List<Object> sourceSets = new ArrayList<>(((Collection<Object>) getSourceSets.invoke(androidExtension)));
 
-      List<AndroidSourceSet> androidSourceSets = new LinkedList<>();
       for (Object sourceSet : sourceSets) {
-        AndroidSourceSet androidSourceSet = convertToAndroidSourceSet(sourceSet);
+        AndroidSourceSet androidSourceSet = convertToAndroidSourceSet(sourceSet, project);
         if (androidSourceSet != null) {
           androidSourceSets.add(androidSourceSet);
         }
       }
-      return androidSourceSets;
 
-    } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+    } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException | UnknownDomainObjectException e) {
       // do nothing
     }
 
-    return new LinkedList<>();
+    return androidSourceSets;
 
   }
 
-  public static AndroidSourceSet convertToAndroidSourceSet(Object object) {
+  public static AndroidSourceSet convertToAndroidSourceSet(Object object, Project project) {
 
     try {
 
@@ -61,6 +60,7 @@ public class SourceSetUtils {
       String name = (String) clazz.getMethod("getName").invoke(object);
       Set<File> aidlDirs = (Set<File>) clazz.getMethod("getAidlDirectories").invoke(object);
       Set<File> assetsDirs = (Set<File>) clazz.getMethod("getAssetsDirectories").invoke(object);
+      Set<File> cDirs = (Set<File>) clazz.getMethod("getCDirectories").invoke(object);
       Set<File> cppDirs = (Set<File>) clazz.getMethod("getCppDirectories").invoke(object);
       List<File> customDirs = (List<File>) clazz.getMethod("getCustomDirectories").invoke(object);
       Set<File> javaDirs = (Set<File>) clazz.getMethod("getJavaDirectories").invoke(object);
@@ -72,9 +72,17 @@ public class SourceSetUtils {
       Set<File> resourceDirs = (Set<File>) clazz.getMethod("getResourcesDirectories").invoke(object);
       Set<File> shaderDirs = (Set<File>) clazz.getMethod("getShadersDirectories").invoke(object);
 
+      Set<File> classpath = new HashSet<>();
+      String compileConfigName = (String) clazz.getMethod("getCompileConfigurationName").invoke(object);
+
+      Configuration compileConfig = project.getConfigurations().findByName(compileConfigName);
+      if (compileConfig != null) {
+        classpath.addAll(compileConfig.getFiles());
+      }
+
       return new AndroidSourceSet(
-          name, aidlDirs, assetsDirs, cppDirs, customDirs, javaDirs, kotlinDirs,
-          manifestFile, mlModelsDirs, renderScriptDirs, resDirs, resourceDirs, shaderDirs
+          name, aidlDirs, assetsDirs, cDirs, cppDirs, customDirs, javaDirs, kotlinDirs, manifestFile,
+          mlModelsDirs, renderScriptDirs, resDirs, resourceDirs, shaderDirs, classpath
       );
 
     } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
@@ -82,6 +90,27 @@ public class SourceSetUtils {
     }
 
     return null;
+
+  }
+
+  public static Object getProjectExtension(Project project, String extensionName) {
+
+    Object extension = null;
+
+    try {
+      if (GradleVersion.current().compareTo(GradleVersion.version("5.0")) >= 0) {
+        // Extension is supported
+        extension = project.getExtensions().findByName(extensionName);
+      } else {
+        // Fallback to Convention
+        Object convention = project.getClass().getMethod("getConvention").invoke(project);
+        extension = convention.getClass().getMethod("getByName").invoke(convention, extensionName);
+      }
+    } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
+      // do nothing
+    }
+
+    return extension;
 
   }
 
