@@ -1,18 +1,14 @@
 package com.microsoft.java.bs.core.internal.server;
 
-import ch.epfl.scala.bsp4j.BuildClientCapabilities;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.MessageType;
 import ch.epfl.scala.bsp4j.ShowMessageParams;
 import com.microsoft.java.bs.core.internal.model.Preferences;
-import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,21 +22,7 @@ class LifecycleServiceIntegrationTest extends IntegrationTest {
       String jdkVersion,
       String gradleJavaVersionPath
   ) {
-    File root = Paths.get(
-        System.getProperty("user.dir"),
-        "..",
-        "testProjects",
-        projectDir).toFile();
-
-    BuildClientCapabilities capabilities =
-        new BuildClientCapabilities(SupportedLanguages.allBspNames);
-    final InitializeBuildParams initParams = new InitializeBuildParams(
-        "test-client",
-        "0.1.0",
-        "0.1.0",
-        root.toURI().toString(),
-        capabilities
-    );
+    InitializeBuildParams initParams = getInitializeBuildParams(projectDir);
 
     Preferences preferences = new Preferences();
     var jdks = new HashMap<String, String>();
