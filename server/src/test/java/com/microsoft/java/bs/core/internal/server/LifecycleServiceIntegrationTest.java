@@ -22,7 +22,6 @@ class LifecycleServiceIntegrationTest extends IntegrationTest {
       String jdkVersion,
       String gradleJavaVersionPath
   ) {
-    InitializeBuildParams initParams = getInitializeBuildParams(projectDir);
 
     Preferences preferences = new Preferences();
     var jdks = new HashMap<String, String>();
@@ -30,9 +29,10 @@ class LifecycleServiceIntegrationTest extends IntegrationTest {
     preferences.setJdks(jdks);
     preferences.setGradleJavaHome(gradleJavaVersionPath);
 
+    InitializeBuildParams initParams = getInitializeBuildParams(projectDir);
     initParams.setData(preferences);
-
     return initParams;
+
   }
   
   @Test
