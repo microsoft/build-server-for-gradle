@@ -99,7 +99,7 @@ class GradleApiConnectorTest {
         .orElse(null);
     assertNotNull(sourceSet, () -> {
       String availableSourceSets = gradleSourceSets.getGradleSourceSets().stream()
-          .map(ss -> ss.getDisplayName())
+          .map(GradleSourceSet::getDisplayName)
           .collect(Collectors.joining(", "));
       return "DisplayName not found " + displayName + ". Available: " + availableSourceSets;
     });

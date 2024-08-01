@@ -139,6 +139,12 @@ public class LifecycleService {
    */
   private void setGradleJavaHome(URI rootUri) {
 
+    boolean isCompatible = connector.checkCompatibilityWithProbeBuild(rootUri);
+    if (isCompatible) {
+      // Default configuration is compatible, no need for extra work
+      return;
+    }
+
     BuildEnvironment buildEnv = connector.getBuildEnvironment(rootUri);
 
     String gradleVersion = getGradleVersion(rootUri, buildEnv);
@@ -156,6 +162,16 @@ public class LifecycleService {
 
     if (jdk != null) {
       preferenceManager.getPreferences().setGradleJavaHome(jdk.getAbsolutePath());
+      if (client != null) {
+        ShowMessageParams messageParams = new ShowMessageParams(
+            MessageType.INFORMATION,
+            String.format(
+                "Default JDK wasn't compatible with current gradle version (" + gradleVersion + ")."
+                + "Using \"%s\" instead.", jdk.getAbsolutePath()
+            )
+        );
+        client.onBuildShowMessage(messageParams);
+      }
     } else {
       if (client != null) {
         ShowMessageParams messageParams = new ShowMessageParams(

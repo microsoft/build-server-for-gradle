@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,10 +23,12 @@ import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnectionException;
 import org.gradle.tooling.GradleConnector;
+import org.gradle.tooling.ModelBuilder;
 import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.TestLauncher;
 import org.gradle.tooling.events.OperationType;
 import org.gradle.tooling.model.build.BuildEnvironment;
+import org.gradle.tooling.model.gradle.GradleBuild;
 import org.gradle.util.GradleVersion;
 
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
@@ -47,6 +50,10 @@ public class GradleApiConnector {
   private final Map<File, GradleConnector> connectors;
   private final PreferenceManager preferenceManager;
 
+  private static final String UNSUPPORTED_BUILD_ENVIRONMENT_MESSAGE =
+      "Could not create an instance of Tooling API implementation "
+      + "using the specified Gradle distribution";
+
   public GradleApiConnector(PreferenceManager preferenceManager) {
     this.preferenceManager = preferenceManager;
     connectors = new HashMap<>();
@@ -55,7 +62,7 @@ public class GradleApiConnector {
   /**
    * Extracts the GradleVersion for the given project.
    *
-   * @param projectUri URI of the project to get the gradle version for.
+   * @param projectUri URI of the project used to fetch the gradle version.
    * @return Gradle version of the project or empty string upon failure.
    */
   public String getGradleVersion(URI projectUri) {
@@ -70,7 +77,7 @@ public class GradleApiConnector {
   /**
    * Extracts the GradleVersion for the given project connection.
    *
-   * @param connection ProjectConnection to get the gradle version from.
+   * @param connection ProjectConnection used to fetch the gradle version.
    * @return Gradle version of the project or empty string upon failure.
    */
   public String getGradleVersion(ProjectConnection connection) {
@@ -85,7 +92,7 @@ public class GradleApiConnector {
   /**
    * Extracts the BuildEnvironment model for the given project.
    *
-   * @param projectUri URI of the project ot get the gradle java home for.
+   * @param projectUri URI of the project used to fetch the gradle java home.
    * @return BuildEnvironment of the project or {@code null} upon failure.
    */
   public BuildEnvironment getBuildEnvironment(URI projectUri) {
@@ -100,13 +107,46 @@ public class GradleApiConnector {
   /**
    * Extracts the BuildEnvironment model for the given project.
    *
-   * @param connection ProjectConnection to get the gradle version from.
+   * @param connection ProjectConnection used to fetch the gradle version.
    * @return BuildEnvironment of the project.
    */
   private BuildEnvironment getBuildEnvironment(ProjectConnection connection) {
     return connection
         .model(BuildEnvironment.class)
         .get();
+  }
+
+  /**
+   * Runs a probe build to check if the build fails due to java home incompatibility.
+   *
+   * @param projectUri URI of the project for which the check needs to be performed.
+   * @return true if the given project has compatible java home, false otherwise.
+   */
+  public boolean checkCompatibilityWithProbeBuild(URI projectUri) {
+    try (ProjectConnection connection = getGradleConnector(projectUri).connect()) {
+      ModelBuilder<GradleBuild> modelBuilder = Utils.setLauncherProperties(
+          connection.model(GradleBuild.class), preferenceManager.getPreferences()
+      );
+      modelBuilder.get();
+      return true;
+    } catch (BuildException e) {
+      return hasUnsupportedBuildEnvironmentMessage(e);
+    }
+  }
+
+  private boolean hasUnsupportedBuildEnvironmentMessage(BuildException e) {
+    Set<Throwable> seen = new HashSet<>();
+    Throwable current = e;
+    while (current != null) {
+      if (current.getMessage().contains(UNSUPPORTED_BUILD_ENVIRONMENT_MESSAGE)) {
+        return true;
+      }
+      if (!seen.add(current)) {
+        break;
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   /**
