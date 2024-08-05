@@ -1,10 +1,10 @@
 package com.microsoft.java.bs.gradle.plugin.utils;
 
 import com.microsoft.java.bs.gradle.plugin.model.AndroidSourceSet;
+import com.microsoft.java.bs.gradle.plugin.model.AndroidVariant;
 import org.gradle.api.Project;
 import org.gradle.api.UnknownDomainObjectException;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.util.GradleVersion;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
@@ -17,8 +17,83 @@ public class SourceSetUtils {
   }
 
   public static boolean isAndroidProject(Project project) {
-
     return getProjectExtension(project, "android") != null;
+  }
+
+  public static List<AndroidVariant> getAndroidBuildVariants(Project project) {
+
+    List<AndroidVariant> androidBuildVariants = new LinkedList<>();
+
+    Object androidExtension = getProjectExtension(project, "android");
+    if (androidExtension == null) {
+      return androidBuildVariants;
+    }
+
+    AndroidProjectType type = getProjectType(project);
+    if (type == null) {
+      return androidBuildVariants;
+    }
+
+    String methodName = "";
+    switch (type) {
+      case APPLICATION:
+      case DYNAMIC_FEATURE:
+        methodName = "getApplicationVariants";
+        break;
+      case LIBRARY:
+        methodName = "getLibraryVariants";
+        break;
+      case INSTANT_APP_FEATURE:
+        methodName = "getFeatureVariants";
+        break;
+      case ANDROID_TEST:
+        methodName = "getTestVariants";
+        break;
+    }
+
+    try {
+      Set<Object> variants = (Set<Object>) androidExtension.getClass().getMethod(methodName).invoke(androidExtension);
+      for (Object variant : variants) {
+        AndroidVariant androidVariant = convertToAndroidVariant(project, variant);
+        if (androidVariant == null) {
+          continue;
+        }
+        androidBuildVariants.add(androidVariant);
+      }
+    } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | ClassCastException e) {
+      // do nothing
+      androidBuildVariants.size();
+    }
+
+    return androidBuildVariants;
+
+  }
+
+  public static AndroidVariant convertToAndroidVariant(Project project, Object variant) {
+
+    try {
+
+      AndroidVariant androidVariant = new AndroidVariant();
+
+      androidVariant.setGradleVersion(project.getGradle().getGradleVersion());
+      androidVariant.setProjectName(project.getName());
+      androidVariant.setDisplayName(project.getDisplayName());
+      androidVariant.setProjectPath(project.getPath());
+      androidVariant.setProjectDir(project.getProjectDir());
+      androidVariant.setRootDir(project.getRootDir());
+
+      String variantName = (String) variant.getClass().getMethod("getName").invoke(variant);
+      androidVariant.setVariantName(variantName);
+
+      Object compileConfig = variant.getClass().getMethod("getCompileConfiguration").invoke(variant);
+      Set<File> classpathFiles = (Set<File>) compileConfig.getClass().getMethod("getFiles").invoke(compileConfig);
+      androidVariant.setCompileClasspath(classpathFiles);
+
+      return androidVariant;
+
+    } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+      return null;
+    }
 
   }
 
@@ -37,13 +112,14 @@ public class SourceSetUtils {
       List<Object> sourceSets = new ArrayList<>(((Collection<Object>) getSourceSets.invoke(androidExtension)));
 
       for (Object sourceSet : sourceSets) {
-        AndroidSourceSet androidSourceSet = convertToAndroidSourceSet(sourceSet, project);
+        AndroidSourceSet androidSourceSet = convertToAndroidSourceSet(project, sourceSet);
         if (androidSourceSet != null) {
           androidSourceSets.add(androidSourceSet);
         }
       }
 
-    } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException | UnknownDomainObjectException e) {
+    } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException |
+             UnknownDomainObjectException e) {
       // do nothing
     }
 
@@ -51,7 +127,7 @@ public class SourceSetUtils {
 
   }
 
-  public static AndroidSourceSet convertToAndroidSourceSet(Object object, Project project) {
+  public static AndroidSourceSet convertToAndroidSourceSet(Project project, Object object) {
 
     try {
 
@@ -98,20 +174,47 @@ public class SourceSetUtils {
     Object extension = null;
 
     try {
-      if (GradleVersion.current().compareTo(GradleVersion.version("5.0")) >= 0) {
-        // Extension is supported
-        extension = project.getExtensions().findByName(extensionName);
-      } else {
-        // Fallback to Convention
-        Object convention = project.getClass().getMethod("getConvention").invoke(project);
-        extension = convention.getClass().getMethod("getByName").invoke(convention, extensionName);
-      }
-    } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
+      Object convention = project.getClass().getMethod("getConvention").invoke(project);
+      Object extensionMap = convention.getClass().getMethod("getAsMap").invoke(convention);
+      extension = extensionMap.getClass().getMethod("get", Object.class).invoke(extensionMap, extensionName);
+    } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       // do nothing
     }
 
     return extension;
 
+  }
+
+  public static AndroidProjectType getProjectType(Project project) {
+
+    if (getProjectExtension(project, "android") == null) {
+      return null;
+    }
+
+    AndroidProjectType projectType = null;
+
+    if (project.getPluginManager().hasPlugin("com.android.application")) {
+      projectType = AndroidProjectType.APPLICATION;
+    } else if (project.getPluginManager().hasPlugin("com.android.library")) {
+      projectType = AndroidProjectType.LIBRARY;
+    } else if (project.getPluginManager().hasPlugin("com.android.dynamic-feature")) {
+      projectType = AndroidProjectType.DYNAMIC_FEATURE;
+    } else if (project.getPluginManager().hasPlugin("com.android.feature")) {
+      projectType = AndroidProjectType.INSTANT_APP_FEATURE;
+    } else if (project.getPluginManager().hasPlugin("com.android.test")) {
+      projectType = AndroidProjectType.ANDROID_TEST;
+    }
+
+    return projectType;
+
+  }
+
+  public enum AndroidProjectType {
+    APPLICATION,
+    LIBRARY,
+    DYNAMIC_FEATURE,
+    INSTANT_APP_FEATURE,
+    ANDROID_TEST
   }
 
 }

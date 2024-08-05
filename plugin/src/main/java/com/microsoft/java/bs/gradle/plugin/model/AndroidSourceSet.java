@@ -56,7 +56,6 @@ public class AndroidSourceSet {
     this.resDirectories = resDirectories;
     this.resourceDirectories = resourceDirectories;
     this.shaderDirectories = shaderDirectories;
-    this.compileClasspath = compileClasspath;
   }
 
   public String getName() {

@@ -99,6 +99,7 @@ class GradleApiConnectorTest {
     preferenceManager.setPreferences(new Preferences());
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
+    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
     // TODO: Verify if complete source sets were retrieved
   }
 
