@@ -1,6 +1,7 @@
 package com.microsoft.java.bs.gradle.plugin.utils;
 
-import com.microsoft.java.bs.gradle.plugin.model.AndroidVariant;
+import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.provider.Provider;
@@ -9,28 +10,28 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
-public class SourceSetUtils {
+public class AndroidUtils {
 
-  private SourceSetUtils() {
+  private AndroidUtils() {
   }
 
   public static boolean isAndroidProject(Project project) {
-    return getProjectExtension(project, "android") != null;
+    return getAndroidExtension(project) != null;
   }
 
   @SuppressWarnings("unchecked")
-  public static List<AndroidVariant> getAndroidBuildVariants(Project project) {
+  public static List<GradleSourceSet> getBuildVariantsAsGradleSourceSets(Project project) {
 
-    List<AndroidVariant> androidBuildVariants = new LinkedList<>();
+    List<GradleSourceSet> sourceSets = new LinkedList<>();
 
-    Object androidExtension = getProjectExtension(project, "android");
+    Object androidExtension = getAndroidExtension(project);
     if (androidExtension == null) {
-      return androidBuildVariants;
+      return sourceSets;
     }
 
     AndroidProjectType type = getProjectType(project);
     if (type == null) {
-      return androidBuildVariants;
+      return sourceSets;
     }
 
     String methodName = "";
@@ -53,41 +54,54 @@ public class SourceSetUtils {
     try {
       Set<Object> variants = (Set<Object>) androidExtension.getClass().getMethod(methodName).invoke(androidExtension);
       for (Object variant : variants) {
-        AndroidVariant androidVariant = convertToAndroidVariant(project, variant);
-        if (androidVariant == null) {
+        GradleSourceSet sourceSet = convertVariantToGradleSourceSet(project, variant);
+        if (sourceSet == null) {
           continue;
         }
-        androidBuildVariants.add(androidVariant);
+        sourceSets.add(sourceSet);
       }
     } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | ClassCastException e) {
       // do nothing
     }
 
-    return androidBuildVariants;
+    return sourceSets;
 
   }
 
   @SuppressWarnings("unchecked")
-  public static AndroidVariant convertToAndroidVariant(Project project, Object variant) {
+  private static GradleSourceSet convertVariantToGradleSourceSet(Project project, Object variant) {
 
     try {
 
-      AndroidVariant androidVariant = new AndroidVariant();
+      DefaultGradleSourceSet gradleSourceSet = new DefaultGradleSourceSet();
+      gradleSourceSet.setBuildTargetDependencies(new HashSet<>());
 
-      androidVariant.setGradleVersion(project.getGradle().getGradleVersion());
-      androidVariant.setProjectName(project.getName());
-      androidVariant.setDisplayName(project.getDisplayName());
-      androidVariant.setProjectPath(project.getPath());
-      androidVariant.setProjectDir(project.getProjectDir());
-      androidVariant.setRootDir(project.getRootDir());
+      gradleSourceSet.setGradleVersion(project.getGradle().getGradleVersion());
+      gradleSourceSet.setProjectName(project.getName());
+      String projectPath = project.getPath();
+      gradleSourceSet.setProjectPath(projectPath);
+      gradleSourceSet.setProjectDir(project.getProjectDir());
+      gradleSourceSet.setRootDir(project.getRootDir());
 
       String variantName = (String) variant.getClass().getMethod("getName").invoke(variant);
-      androidVariant.setVariantName(variantName);
+      gradleSourceSet.setSourceSetName(variantName);
 
-      // classpath
-      Object compileConfig = variant.getClass().getMethod("getCompileConfiguration").invoke(variant);
-      Set<File> classpathFiles = (Set<File>) compileConfig.getClass().getMethod("getFiles").invoke(compileConfig);
-      androidVariant.setCompileClasspath(classpathFiles);
+      // TODO: Get classes task equivalent in android build variant
+
+      // TODO: Get clean task equivalent in android build variant
+
+      // TODO: Set task names
+
+      String projectName = stripPathPrefix(projectPath);
+      if (projectName.isEmpty()) {
+        projectName = project.getName();
+      }
+      String displayName = projectName + " [" + variantName + ']';
+      gradleSourceSet.setDisplayName(displayName);
+
+      // TODO: Set Module dependencies
+
+      // TODO: Extensions, SourceOutputDirs
 
       // source
       Object sourceSets = getProperty(variant, "sourceSets");
@@ -98,21 +112,28 @@ public class SourceSetUtils {
           sourceDirs.addAll(javaDirs);
         }
       }
-      androidVariant.setSourceDirs(sourceDirs);
+      gradleSourceSet.setSourceDirs(sourceDirs);
 
-      // generated source
+      // generated source TODO: Not complete
       Set<File> generatedOutputs = new HashSet<>();
-
       Provider<Task> javaCompileTask = (Provider<Task>) getProperty(variant, "javaCompileProvider");
       if (javaCompileTask != null) {
         generatedOutputs.addAll(javaCompileTask.get().getOutputs().getFiles().getFiles());
       }
+      gradleSourceSet.setGeneratedSourceDirs(generatedOutputs);
 
-      androidVariant.setGeneratedSourceDirs(generatedOutputs);
+      // classpath
+      Object compileConfig = variant.getClass().getMethod("getCompileConfiguration").invoke(variant);
+      Set<File> classpathFiles = (Set<File>) compileConfig.getClass().getMethod("getFiles").invoke(compileConfig);
+      gradleSourceSet.setCompileClasspath(new LinkedList<>(classpathFiles));
 
-      // source output
+      // resource dirs TODO: Needed?
 
-      return androidVariant;
+      // TODO: Set Archive output dirs
+
+      // TODO: Set if has Tests
+
+      return gradleSourceSet;
 
     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       return null;
@@ -120,14 +141,14 @@ public class SourceSetUtils {
 
   }
 
-  public static Object getProjectExtension(Project project, String extensionName) {
+  private static Object getAndroidExtension(Project project) {
 
     Object extension = null;
 
     try {
       Object convention = project.getClass().getMethod("getConvention").invoke(project);
       Object extensionMap = convention.getClass().getMethod("getAsMap").invoke(convention);
-      extension = extensionMap.getClass().getMethod("get", Object.class).invoke(extensionMap, extensionName);
+      extension = extensionMap.getClass().getMethod("get", Object.class).invoke(extensionMap, "android");
     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       // do nothing
     }
@@ -136,9 +157,9 @@ public class SourceSetUtils {
 
   }
 
-  public static AndroidProjectType getProjectType(Project project) {
+  private static AndroidProjectType getProjectType(Project project) {
 
-    if (getProjectExtension(project, "android") == null) {
+    if (getAndroidExtension(project) == null) {
       return null;
     }
 
@@ -165,12 +186,19 @@ public class SourceSetUtils {
     return obj.getClass().getMethod("getProperty", String.class).invoke(obj, propertyName);
   }
 
-  public enum AndroidProjectType {
+  private enum AndroidProjectType {
     APPLICATION,
     LIBRARY,
     DYNAMIC_FEATURE,
     INSTANT_APP_FEATURE,
     ANDROID_TEST
+  }
+
+  private static String stripPathPrefix(String projectPath) {
+    if (projectPath.startsWith(":")) {
+      return projectPath.substring(1);
+    }
+    return projectPath;
   }
 
 }

@@ -16,8 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.microsoft.java.bs.gradle.plugin.model.AndroidSourceSet;
-import com.microsoft.java.bs.gradle.plugin.utils.SourceSetUtils;
+import com.microsoft.java.bs.gradle.plugin.utils.AndroidUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -52,8 +51,14 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   @Override
   public Object buildAll(String modelName, Project project) {
     // mapping Gradle source set to our customized model.
-    List<GradleSourceSet> sourceSets = getSourceSetContainer(project).stream()
-        .map(ss -> getSourceSet(project, ss)).collect(Collectors.toList());
+    List<GradleSourceSet> sourceSets;
+
+    if (AndroidUtils.isAndroidProject(project)) {
+      sourceSets = AndroidUtils.getBuildVariantsAsGradleSourceSets(project);
+    } else {
+      sourceSets = getSourceSetContainer(project).stream()
+          .map(ss -> getSourceSet(project, ss)).collect(Collectors.toList());
+    }
 
     excludeSourceDirsFromModules(sourceSets);
 
@@ -135,7 +140,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     gradleSourceSet.setArchiveOutputFiles(archiveOutputFiles);
 
     // tests
-    if (sourceOutputDirs != null) {
+    if (!sourceOutputDirs.isEmpty()) {
       Set<Test> testTasks = tasksWithType(project, Test.class);
       for (Test testTask : testTasks) {
         if (GradleVersion.current().compareTo(GradleVersion.version("4.0")) >= 0) {
@@ -163,7 +168,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
               break;
             }
           } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-                    | IllegalArgumentException | InvocationTargetException  e) {
+                   | IllegalArgumentException | InvocationTargetException e) {
             // ignore
           }
         }
@@ -215,8 +220,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
           } else {
             archiveFile = archiveTask.getArchivePath();
           }
-          List<File> sourceSetOutputs = new LinkedList<>();
-          sourceSetOutputs.addAll(sourceSet.getOutput().getFiles());
+          List<File> sourceSetOutputs = new LinkedList<>(sourceSet.getOutput().getFiles());
           archiveOutputFiles.put(archiveFile, sourceSetOutputs);
         }
       }
@@ -258,7 +262,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     for (GradleSourceSet sourceSet : sourceSets) {
       Set<GradleModuleDependency> filteredModuleDependencies = sourceSet.getModuleDependencies()
           .stream().filter(mod -> mod.getArtifacts()
-            .stream().anyMatch(art -> !exclusionUris.contains(art.getUri())))
+              .stream().anyMatch(art -> !exclusionUris.contains(art.getUri())))
           .collect(Collectors.toSet());
       if (sourceSet instanceof DefaultGradleSourceSet) {
         ((DefaultGradleSourceSet) sourceSet).setModuleDependencies(filteredModuleDependencies);
@@ -269,7 +273,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   private Collection<SourceSet> getSourceSetContainer(Project project) {
     if (GradleVersion.current().compareTo(GradleVersion.version("5.0")) >= 0) {
       SourceSetContainer sourceSetContainer = project.getExtensions()
-              .findByType(SourceSetContainer.class);
+          .findByType(SourceSetContainer.class);
       if (sourceSetContainer != null) {
         return sourceSetContainer;
       }
@@ -289,7 +293,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         return (SourceSetContainer) getSourceSetsMethod.invoke(pluginConvention);
       }
     } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-             | IllegalArgumentException | InvocationTargetException  e) {
+             | IllegalArgumentException | InvocationTargetException e) {
       // ignore
     }
     return new LinkedList<>();
@@ -342,7 +346,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
             }
           }
         } catch (NoSuchMethodException | IllegalAccessException
-          | IllegalArgumentException | InvocationTargetException e) {
+                 | IllegalArgumentException | InvocationTargetException e) {
           // cannot get archive information
         }
       }
