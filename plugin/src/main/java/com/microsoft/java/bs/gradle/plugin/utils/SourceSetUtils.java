@@ -1,14 +1,12 @@
 package com.microsoft.java.bs.gradle.plugin.utils;
 
-import com.microsoft.java.bs.gradle.plugin.model.AndroidSourceSet;
 import com.microsoft.java.bs.gradle.plugin.model.AndroidVariant;
 import org.gradle.api.Project;
-import org.gradle.api.UnknownDomainObjectException;
-import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.Task;
+import org.gradle.api.provider.Provider;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
 
 public class SourceSetUtils {
@@ -20,6 +18,7 @@ public class SourceSetUtils {
     return getProjectExtension(project, "android") != null;
   }
 
+  @SuppressWarnings("unchecked")
   public static List<AndroidVariant> getAndroidBuildVariants(Project project) {
 
     List<AndroidVariant> androidBuildVariants = new LinkedList<>();
@@ -62,13 +61,13 @@ public class SourceSetUtils {
       }
     } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | ClassCastException e) {
       // do nothing
-      androidBuildVariants.size();
     }
 
     return androidBuildVariants;
 
   }
 
+  @SuppressWarnings("unchecked")
   public static AndroidVariant convertToAndroidVariant(Project project, Object variant) {
 
     try {
@@ -85,87 +84,39 @@ public class SourceSetUtils {
       String variantName = (String) variant.getClass().getMethod("getName").invoke(variant);
       androidVariant.setVariantName(variantName);
 
+      // classpath
       Object compileConfig = variant.getClass().getMethod("getCompileConfiguration").invoke(variant);
       Set<File> classpathFiles = (Set<File>) compileConfig.getClass().getMethod("getFiles").invoke(compileConfig);
       androidVariant.setCompileClasspath(classpathFiles);
+
+      // source
+      Object sourceSets = getProperty(variant, "sourceSets");
+      Set<File> sourceDirs = new HashSet<>();
+      if (sourceSets instanceof Iterable) {
+        for (Object sourceSet : (Iterable<?>) sourceSets) {
+          Set<File> javaDirs = (Set<File>) getProperty(sourceSet, "javaDirectories");
+          sourceDirs.addAll(javaDirs);
+        }
+      }
+      androidVariant.setSourceDirs(sourceDirs);
+
+      // generated source
+      Set<File> generatedOutputs = new HashSet<>();
+
+      Provider<Task> javaCompileTask = (Provider<Task>) getProperty(variant, "javaCompileProvider");
+      if (javaCompileTask != null) {
+        generatedOutputs.addAll(javaCompileTask.get().getOutputs().getFiles().getFiles());
+      }
+
+      androidVariant.setGeneratedSourceDirs(generatedOutputs);
+
+      // source output
 
       return androidVariant;
 
     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       return null;
     }
-
-  }
-
-  public static List<AndroidSourceSet> getAndroidSourceSets(Project project) {
-
-    List<AndroidSourceSet> androidSourceSets = new LinkedList<>();
-
-    Object androidExtension = getProjectExtension(project, "android");
-    if (androidExtension == null) {
-      return androidSourceSets;
-    }
-
-    try {
-
-      Method getSourceSets = androidExtension.getClass().getMethod("getSourceSets");
-      List<Object> sourceSets = new ArrayList<>(((Collection<Object>) getSourceSets.invoke(androidExtension)));
-
-      for (Object sourceSet : sourceSets) {
-        AndroidSourceSet androidSourceSet = convertToAndroidSourceSet(project, sourceSet);
-        if (androidSourceSet != null) {
-          androidSourceSets.add(androidSourceSet);
-        }
-      }
-
-    } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException |
-             UnknownDomainObjectException e) {
-      // do nothing
-    }
-
-    return androidSourceSets;
-
-  }
-
-  public static AndroidSourceSet convertToAndroidSourceSet(Project project, Object object) {
-
-    try {
-
-      Class<?> clazz = object.getClass();
-
-      String name = (String) clazz.getMethod("getName").invoke(object);
-      Set<File> aidlDirs = (Set<File>) clazz.getMethod("getAidlDirectories").invoke(object);
-      Set<File> assetsDirs = (Set<File>) clazz.getMethod("getAssetsDirectories").invoke(object);
-      Set<File> cDirs = (Set<File>) clazz.getMethod("getCDirectories").invoke(object);
-      Set<File> cppDirs = (Set<File>) clazz.getMethod("getCppDirectories").invoke(object);
-      List<File> customDirs = (List<File>) clazz.getMethod("getCustomDirectories").invoke(object);
-      Set<File> javaDirs = (Set<File>) clazz.getMethod("getJavaDirectories").invoke(object);
-      Set<File> kotlinDirs = (Set<File>) clazz.getMethod("getKotlinDirectories").invoke(object);
-      File manifestFile = (File) clazz.getMethod("getManifestFile").invoke(object);
-      Set<File> mlModelsDirs = (Set<File>) clazz.getMethod("getMlModelsDirectories").invoke(object);
-      Set<File> renderScriptDirs = (Set<File>) clazz.getMethod("getRenderscriptDirectories").invoke(object);
-      Set<File> resDirs = (Set<File>) clazz.getMethod("getResDirectories").invoke(object);
-      Set<File> resourceDirs = (Set<File>) clazz.getMethod("getResourcesDirectories").invoke(object);
-      Set<File> shaderDirs = (Set<File>) clazz.getMethod("getShadersDirectories").invoke(object);
-
-      Set<File> classpath = new HashSet<>();
-      String compileConfigName = (String) clazz.getMethod("getCompileConfigurationName").invoke(object);
-
-      Configuration compileConfig = project.getConfigurations().findByName(compileConfigName);
-      if (compileConfig != null) {
-        classpath.addAll(compileConfig.getFiles());
-      }
-
-      return new AndroidSourceSet(
-          name, aidlDirs, assetsDirs, cDirs, cppDirs, customDirs, javaDirs, kotlinDirs, manifestFile,
-          mlModelsDirs, renderScriptDirs, resDirs, resourceDirs, shaderDirs, classpath
-      );
-
-    } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
-      // do nothing
-    }
-
-    return null;
 
   }
 
@@ -207,6 +158,11 @@ public class SourceSetUtils {
 
     return projectType;
 
+  }
+
+  private static Object getProperty(Object obj, String propertyName)
+      throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    return obj.getClass().getMethod("getProperty", String.class).invoke(obj, propertyName);
   }
 
   public enum AndroidProjectType {

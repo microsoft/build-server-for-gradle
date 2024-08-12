@@ -488,68 +488,23 @@ public class BuildTargetService {
     TestResult testResult = new TestResult(StatusCode.OK);
     testResult.setOriginId(params.getOriginId());
     // running tests can trigger compilation that must be reported on
-    CompileProgressReporter compileProgressReporter = new CompileProgressReporter(client,
-            params.getOriginId(), getFullTaskPathMap());
-    Map<URI, Set<BuildTargetIdentifier>> groupedTargets =
-        groupBuildTargetsByRootDir(params.getTargets());
+    CompileProgressReporter compileProgressReporter = new CompileProgressReporter(client, params.getOriginId(), getFullTaskPathMap());
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(params.getTargets());
+
     for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
       // TODO ideally BSP would have a jvmTestEnv style testkind for executing tests, not scala.
       StatusCode statusCode;
-      if (TestParamsDataKind.SCALA_TEST.equals(params.getDataKind())) {
-        // ScalaTestParams is for a list of classes only
-        ScalaTestParams testParams = JsonUtils.toModel(params.getData(), ScalaTestParams.class);
-        Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
-        for (ScalaTestClassesItem testClassesItem : testParams.getTestClasses()) {
-          Map<String, Set<String>> classesMethods = new HashMap<>();
-          for (String classNames : testClassesItem.getClasses()) {
-            classesMethods.put(classNames, null);
-          }
-          testClasses.put(testClassesItem.getTarget(), classesMethods);
-        }
-        statusCode = connector.runTests(entry.getKey(), testClasses, testParams.getJvmOptions(),
-            params.getArguments(), null, client, params.getOriginId(),
-            compileProgressReporter);
+
+      // check if targets are android
+      boolean isAndroid = checkIfAndroidProject(entry.getValue());
+
+      if (isAndroid) {
+        statusCode = runAndroidTests(entry, params, compileProgressReporter);
+      } else if (TestParamsDataKind.SCALA_TEST.equals(params.getDataKind())) {
+        // existing logic for scala test (class level)
+        statusCode = runScalaTests(entry, params, compileProgressReporter);
       } else if ("scala-test-suites-selection".equals(params.getDataKind())) {
-        // ScalaTestSuites is for a list of classes + methods
-        // Since it doesn't supply the specific BuildTarget we require a single
-        // build target in the params and reject any request that doesn't match this
-        if (params.getTargets().size() != 1) {
-          LOGGER.warning("Test params with Test Data Kind " + params.getDataKind()
-              + " must contain only 1 build target");
-          statusCode = StatusCode.ERROR;
-        } else {
-          ScalaTestSuites testSuites = JsonUtils.toModel(params.getData(), ScalaTestSuites.class);
-          Map<String, String> envVars = null;
-          boolean argsValid = true;
-          if (testSuites.getEnvironmentVariables() != null) {
-            // arg is of the form KEY=VALUE
-            List<String[]> splitArgs = testSuites.getEnvironmentVariables()
-                .stream()
-                .map(arg -> arg.split("="))
-                .collect(Collectors.toList());
-            argsValid = splitArgs.stream().allMatch(arg -> arg.length == 2);
-            if (argsValid) {
-              envVars = splitArgs.stream().collect(Collectors.toMap(arg -> arg[0], arg -> arg[1]));
-            }
-          }
-          if (!argsValid) {
-            LOGGER.warning("Test params arguments must each be in the form KEY=VALUE. "
-                + testSuites.getEnvironmentVariables());
-            statusCode = StatusCode.ERROR;
-          } else {
-            Map<String, Set<String>> classesMethods = new HashMap<>();
-            for (ScalaTestSuiteSelection testSuiteSelection : testSuites.getSuites()) {
-              Set<String> methods = classesMethods
-                  .computeIfAbsent(testSuiteSelection.getClassName(), k -> new HashSet<>());
-              methods.addAll(testSuiteSelection.getTests());
-            }
-            Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
-            testClasses.put(params.getTargets().get(0), classesMethods);
-            statusCode = connector.runTests(entry.getKey(), testClasses, testSuites.getJvmOptions(),
-              params.getArguments(), envVars, client, params.getOriginId(),
-              compileProgressReporter);
-          }
-        }
+        statusCode = runScalaTestSuitesSelection(entry, params, compileProgressReporter);
       } else {
         LOGGER.warning("Test Data Kind " + params.getDataKind() + " not supported");
         statusCode = StatusCode.ERROR;
@@ -559,7 +514,103 @@ public class BuildTargetService {
         testResult.setStatusCode(statusCode);
       }
     }
+
     return testResult;
+  }
+
+  private boolean checkIfAndroidProject(Set<BuildTargetIdentifier> targets) {
+    // Logic to determine if the given targets are part of an Android Project
+    // This might involve checking the project type, build configuration, or specific Android build targets.
+    return targets.stream().anyMatch(this::isAndroidProject);
+  }
+
+  private boolean isAndroidProject(BuildTargetIdentifier target) {
+    // TODO: Have GradleBuildTarget or the source set store type of project - java, scala, android, etc.
+    return false;
+  }
+
+  private StatusCode runAndroidTests(Map.Entry<URI, Set<BuildTargetIdentifier>> entry, TestParams params, CompileProgressReporter compileProgressReporter) {
+    // Logic to run tests:
+    // - Determine if unit tests or instrumentation tests are to be run.
+    // - If instrumentation tests, ensure an emulator/device is available and handle APK installation and execution.
+    // - Execute the tests and capture results.
+
+    if (isUnitTest(entry)) {
+      // Run Android unit tests (similar to JVM tests)
+      return runScalaTests(entry, params, compileProgressReporter);
+    } else {
+      // Run instrumentation tests
+      return runInstrumentationTests(entry, params, compileProgressReporter);
+    }
+  }
+
+  private boolean isUnitTest(Map.Entry<URI, Set<BuildTargetIdentifier>> entry) {
+    // TODO: Check if the android test is a JVM unit test
+    return false;
+  }
+
+  private StatusCode runInstrumentationTests(Map.Entry<URI, Set<BuildTargetIdentifier>> targets, TestParams params, CompileProgressReporter compileProgressReporter) {
+    // Invoke AGP to run instrumentation test
+    return StatusCode.OK;
+  }
+
+  private StatusCode runScalaTests(Map.Entry<URI, Set<BuildTargetIdentifier>> entry, TestParams params, CompileProgressReporter compileProgressReporter) {
+    // ScalaTestParams is for a list of classes only
+    ScalaTestParams testParams = JsonUtils.toModel(params.getData(), ScalaTestParams.class);
+    Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
+    for (ScalaTestClassesItem testClassesItem : testParams.getTestClasses()) {
+      Map<String, Set<String>> classesMethods = new HashMap<>();
+      for (String classNames : testClassesItem.getClasses()) {
+        classesMethods.put(classNames, null);
+      }
+      testClasses.put(testClassesItem.getTarget(), classesMethods);
+    }
+    return connector.runTests(entry.getKey(), testClasses, testParams.getJvmOptions(),
+        params.getArguments(), null, client, params.getOriginId(),
+        compileProgressReporter);
+  }
+
+  private StatusCode runScalaTestSuitesSelection(Map.Entry<URI, Set<BuildTargetIdentifier>> entry, TestParams params, CompileProgressReporter compileProgressReporter) {
+    // ScalaTestSuites is for a list of classes + methods
+    // Since it doesn't supply the specific BuildTarget we require a single
+    // build target in the params and reject any request that doesn't match this
+    if (params.getTargets().size() != 1) {
+      LOGGER.warning("Test params with Test Data Kind " + params.getDataKind()
+          + " must contain only 1 build target");
+      return StatusCode.ERROR;
+    } else {
+      ScalaTestSuites testSuites = JsonUtils.toModel(params.getData(), ScalaTestSuites.class);
+      Map<String, String> envVars = null;
+      boolean argsValid = true;
+      if (testSuites.getEnvironmentVariables() != null) {
+        // arg is of the form KEY=VALUE
+        List<String[]> splitArgs = testSuites.getEnvironmentVariables()
+            .stream()
+            .map(arg -> arg.split("="))
+            .collect(Collectors.toList());
+        argsValid = splitArgs.stream().allMatch(arg -> arg.length == 2);
+        if (argsValid) {
+          envVars = splitArgs.stream().collect(Collectors.toMap(arg -> arg[0], arg -> arg[1]));
+        }
+      }
+      if (!argsValid) {
+        LOGGER.warning("Test params arguments must each be in the form KEY=VALUE. "
+            + testSuites.getEnvironmentVariables());
+        return StatusCode.ERROR;
+      } else {
+        Map<String, Set<String>> classesMethods = new HashMap<>();
+        for (ScalaTestSuiteSelection testSuiteSelection : testSuites.getSuites()) {
+          Set<String> methods = classesMethods
+              .computeIfAbsent(testSuiteSelection.getClassName(), k -> new HashSet<>());
+          methods.addAll(testSuiteSelection.getTests());
+        }
+        Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
+        testClasses.put(params.getTargets().get(0), classesMethods);
+        return connector.runTests(entry.getKey(), testClasses, testSuites.getJvmOptions(),
+            params.getArguments(), envVars, client, params.getOriginId(),
+            compileProgressReporter);
+      }
+    }
   }
 
   /**
