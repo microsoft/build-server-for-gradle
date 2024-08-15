@@ -17,3 +17,17 @@ pipelines:
           lastModifiedDate: 2024-08-13
         binskim:
           lastModifiedDate: 2024-08-13
+  16492:
+    retail:
+      source:
+        credscan:
+          lastModifiedDate: 2024-08-15
+        eslint:
+          lastModifiedDate: 2024-08-15
+        armory:
+          lastModifiedDate: 2024-08-15
+      binary:
+        credscan:
+          lastModifiedDate: 2024-08-15
+        binskim:
+          lastModifiedDate: 2024-08-15
