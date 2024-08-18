@@ -53,6 +53,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     // mapping Gradle source set to our customized model.
     List<GradleSourceSet> sourceSets;
 
+    // Fetch source sets depending on the project type
     if (AndroidUtils.isAndroidProject(project)) {
       sourceSets = AndroidUtils.getBuildVariantsAsGradleSourceSets(project);
     } else {
@@ -131,9 +132,11 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
 
     // resource output dir
     File resourceOutputDir = sourceSet.getOutput().getResourcesDir();
+    Set<File> resourceOutputDirs = new HashSet<>();
     if (resourceOutputDir != null) {
-      gradleSourceSet.setResourceOutputDir(resourceOutputDir);
+      resourceOutputDirs.add(resourceOutputDir);
     }
+    gradleSourceSet.setResourceOutputDirs(resourceOutputDirs);
 
     // archive output dirs
     Map<File, List<File>> archiveOutputFiles = getArchiveOutputFiles(project, sourceSet);
@@ -249,8 +252,8 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       if (sourceSet.getSourceOutputDirs() != null) {
         exclusions.addAll(sourceSet.getSourceOutputDirs());
       }
-      if (sourceSet.getResourceOutputDir() != null) {
-        exclusions.add(sourceSet.getResourceOutputDir());
+      if (sourceSet.getResourceOutputDirs() != null) {
+        exclusions.addAll(sourceSet.getResourceOutputDirs());
       }
       if (sourceSet.getArchiveOutputFiles() != null) {
         exclusions.addAll(sourceSet.getArchiveOutputFiles().keySet());

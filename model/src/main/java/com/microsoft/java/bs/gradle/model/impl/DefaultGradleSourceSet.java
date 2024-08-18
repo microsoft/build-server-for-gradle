@@ -49,7 +49,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private Set<File> resourceDirs;
 
-  private File resourceOutputDir;
+  private Set<File> resourceOutputDirs;
 
   private Map<File, List<File>> archiveOutputFiles;
 
@@ -85,7 +85,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.generatedSourceDirs = gradleSourceSet.getGeneratedSourceDirs();
     this.sourceOutputDirs = gradleSourceSet.getSourceOutputDirs();
     this.resourceDirs = gradleSourceSet.getResourceDirs();
-    this.resourceOutputDir = gradleSourceSet.getResourceOutputDir();
+    this.resourceOutputDirs = gradleSourceSet.getResourceOutputDirs();
     this.archiveOutputFiles = gradleSourceSet.getArchiveOutputFiles();
     this.compileClasspath = gradleSourceSet.getCompileClasspath();
     this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
@@ -234,12 +234,12 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   }
 
   @Override
-  public File getResourceOutputDir() {
-    return resourceOutputDir;
+  public Set<File> getResourceOutputDirs() {
+    return resourceOutputDirs;
   }
 
-  public void setResourceOutputDir(File resourceOutputDir) {
-    this.resourceOutputDir = resourceOutputDir;
+  public void setResourceOutputDirs(Set<File> resourceOutputDirs) {
+    this.resourceOutputDirs = resourceOutputDirs;
   }
 
   @Override
@@ -300,7 +300,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   public int hashCode() {
     return Objects.hash(gradleVersion, displayName, projectName, projectPath,
         projectDir, rootDir, sourceSetName, classesTaskName, cleanTaskName, taskNames, sourceDirs,
-        generatedSourceDirs, sourceOutputDirs, resourceDirs, resourceOutputDir, archiveOutputFiles,
+        generatedSourceDirs, sourceOutputDirs, resourceDirs, resourceOutputDirs, archiveOutputFiles,
         compileClasspath, moduleDependencies, buildTargetDependencies,
         hasTests, extensions);
   }
@@ -331,7 +331,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(generatedSourceDirs, other.generatedSourceDirs)
         && Objects.equals(sourceOutputDirs, other.sourceOutputDirs)
         && Objects.equals(resourceDirs, other.resourceDirs)
-        && Objects.equals(resourceOutputDir, other.resourceOutputDir)
+        && Objects.equals(resourceOutputDirs, other.resourceOutputDirs)
         && Objects.equals(archiveOutputFiles, other.archiveOutputFiles)
         && Objects.equals(compileClasspath, other.compileClasspath)
         && Objects.equals(moduleDependencies, other.moduleDependencies)

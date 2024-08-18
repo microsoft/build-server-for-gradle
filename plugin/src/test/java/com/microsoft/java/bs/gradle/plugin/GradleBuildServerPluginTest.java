@@ -185,7 +185,7 @@ class GradleBuildServerPluginTest {
         }
         assertEquals(1, gradleSourceSet.getResourceDirs().size());
         assertNotNull(gradleSourceSet.getSourceOutputDirs());
-        assertNotNull(gradleSourceSet.getResourceOutputDir());
+        assertNotNull(gradleSourceSet.getResourceOutputDirs());
 
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
@@ -486,7 +486,7 @@ class GradleBuildServerPluginTest {
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
         assertNotNull(gradleSourceSet.getSourceOutputDirs());
-        assertNotNull(gradleSourceSet.getResourceOutputDir());
+        assertNotNull(gradleSourceSet.getResourceOutputDirs());
 
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
         assertNotNull(javaExtension);
@@ -573,7 +573,7 @@ class GradleBuildServerPluginTest {
         }
         assertEquals(1, gradleSourceSet.getResourceDirs().size());
         assertNotNull(gradleSourceSet.getSourceOutputDirs());
-        assertNotNull(gradleSourceSet.getResourceOutputDir());
+        assertNotNull(gradleSourceSet.getResourceOutputDirs());
         assertNotNull(gradleSourceSet.getBuildTargetDependencies());
         assertNotNull(gradleSourceSet.getModuleDependencies());
         JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);

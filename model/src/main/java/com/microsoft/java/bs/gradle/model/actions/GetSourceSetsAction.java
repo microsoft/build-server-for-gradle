@@ -46,12 +46,12 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
     Map<String, GradleBuild> builds = new HashMap<>();
     GradleBuild build = buildController.getBuildModel();
     String rootProjectName = build.getRootProject().getName();
-    fetchIncludedBuilds(buildController, build, builds, rootProjectName);
+    fetchIncludedBuilds(build, builds, rootProjectName);
     return builds.values();
   }
 
-  private void fetchIncludedBuilds(BuildController buildController, GradleBuild build,
-      Map<String, GradleBuild> builds, String rootProjectName) {
+  private void fetchIncludedBuilds(GradleBuild build, Map<String,
+      GradleBuild> builds, String rootProjectName) {
     if (builds.containsKey(rootProjectName)) {
       return;
     }
@@ -75,7 +75,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
     if (moreBuilds != null) {
       for (GradleBuild includedBuild : moreBuilds) {
         String includedBuildName = includedBuild.getRootProject().getName();
-        fetchIncludedBuilds(buildController, includedBuild, builds, includedBuildName);
+        fetchIncludedBuilds(includedBuild, builds, includedBuildName);
       }
     }
   }
@@ -87,7 +87,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
    * @param builds The Gradle build models representing the build and included builds.
    */
   private List<GradleSourceSet> fetchModels(BuildController buildController,
-      Collection<GradleBuild> builds) {
+                                            Collection<GradleBuild> builds) {
 
     List<GetSourceSetAction> projectActions = new ArrayList<>();
     for (GradleBuild build : builds) {
@@ -101,7 +101,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
     // populate source set dependencies.
     List<GradleSourceSet> sourceSets = buildController.run(projectActions).stream()
         .flatMap(ss -> ss.getGradleSourceSets().stream())
-        .map(ss -> new DefaultGradleSourceSet(ss))
+        .map(DefaultGradleSourceSet::new)
         .collect(Collectors.toList());
 
     populateInterProjectInfo(sourceSets);
@@ -140,8 +140,10 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
           outputsToSourceSet.put(file, sourceSet);
         }
       }
-      if (sourceSet.getResourceOutputDir() != null) {
-        outputsToSourceSet.put(sourceSet.getResourceOutputDir(), sourceSet);
+      if (sourceSet.getResourceOutputDirs() != null) {
+        for (File file : sourceSet.getResourceOutputDirs()) {
+          outputsToSourceSet.put(file, sourceSet);
+        }
       }
       if (sourceSet.getArchiveOutputFiles() != null) {
         for (Map.Entry<File, List<File>> archive : sourceSet.getArchiveOutputFiles().entrySet()) {

@@ -190,7 +190,9 @@ class BuildTargetServiceTest {
     sourceOutputDirs.add(sourceOutputDir);
     when(gradleSourceSet.getSourceOutputDirs()).thenReturn(sourceOutputDirs);
     File resourceOutputDir = new File(("resourceOutputDir"));
-    when(gradleSourceSet.getResourceOutputDir()).thenReturn(resourceOutputDir);
+    Set<File> resourceOutputDirs = new HashSet<>();
+    resourceOutputDirs.add(resourceOutputDir);
+    when(gradleSourceSet.getResourceOutputDirs()).thenReturn(resourceOutputDirs);
 
     BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
         connector, preferenceManager);

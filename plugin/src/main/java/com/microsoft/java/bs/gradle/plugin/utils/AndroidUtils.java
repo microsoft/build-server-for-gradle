@@ -1,24 +1,40 @@
 package com.microsoft.java.bs.gradle.plugin.utils;
 
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
+import com.microsoft.java.bs.gradle.plugin.dependency.AndroidDependencyCollector;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Set;
 
+/**
+ * TODO: JavaDoc.
+ */
 public class AndroidUtils {
 
   private AndroidUtils() {
   }
 
+  /**
+   * TODO: JavaDoc.
+   */
   public static boolean isAndroidProject(Project project) {
     return getAndroidExtension(project) != null;
   }
 
+  /**
+   * TODO: JavaDoc.
+   */
   @SuppressWarnings("unchecked")
   public static List<GradleSourceSet> getBuildVariantsAsGradleSourceSets(Project project) {
 
@@ -34,7 +50,7 @@ public class AndroidUtils {
       return sourceSets;
     }
 
-    String methodName = "";
+    String methodName;
     switch (type) {
       case APPLICATION:
       case DYNAMIC_FEATURE:
@@ -49,10 +65,13 @@ public class AndroidUtils {
       case ANDROID_TEST:
         methodName = "getTestVariants";
         break;
+      default:
+        methodName = "";
     }
 
     try {
-      Set<Object> variants = (Set<Object>) androidExtension.getClass().getMethod(methodName).invoke(androidExtension);
+      Set<Object> variants =
+          (Set<Object>) androidExtension.getClass().getMethod(methodName).invoke(androidExtension);
       for (Object variant : variants) {
         GradleSourceSet sourceSet = convertVariantToGradleSourceSet(project, variant);
         if (sourceSet == null) {
@@ -60,7 +79,8 @@ public class AndroidUtils {
         }
         sourceSets.add(sourceSet);
       }
-    } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | ClassCastException e) {
+    } catch (IllegalAccessException | NoSuchMethodException
+             | InvocationTargetException | ClassCastException e) {
       // do nothing
     }
 
@@ -86,11 +106,17 @@ public class AndroidUtils {
       String variantName = (String) variant.getClass().getMethod("getName").invoke(variant);
       gradleSourceSet.setSourceSetName(variantName);
 
-      // TODO: Get classes task equivalent in android build variant
+      // classes task equivalent in android (assembleRelease)
+      gradleSourceSet.setClassesTaskName(
+          getFullTaskName(projectPath, "assemble" + capitalize(variantName))
+      );
 
-      // TODO: Get clean task equivalent in android build variant
+      gradleSourceSet.setCleanTaskName(getFullTaskName(projectPath, "clean"));
 
-      // TODO: Set task names
+      // compile task in android (compileReleaseJavaWithJavac)
+      HashSet<String> tasks = new HashSet<>();
+      tasks.add("compile" + capitalize(variantName) + "JavaWithJavac");
+      gradleSourceSet.setTaskNames(tasks);
 
       String projectName = stripPathPrefix(projectPath);
       if (projectName.isEmpty()) {
@@ -100,38 +126,112 @@ public class AndroidUtils {
       gradleSourceSet.setDisplayName(displayName);
 
       // TODO: Set Module dependencies
+      Set<GradleModuleDependency> moduleDependencies =
+          AndroidDependencyCollector.getModuleDependencies(project, variant);
+      gradleSourceSet.setModuleDependencies(moduleDependencies);
 
-      // TODO: Extensions, SourceOutputDirs
+      // extensions
+      gradleSourceSet.setExtensions(new HashMap<>());
 
-      // source
+      // source and resource
       Object sourceSets = getProperty(variant, "sourceSets");
       Set<File> sourceDirs = new HashSet<>();
+      Set<File> resourceDirs = new HashSet<>();
       if (sourceSets instanceof Iterable) {
         for (Object sourceSet : (Iterable<?>) sourceSets) {
-          Set<File> javaDirs = (Set<File>) getProperty(sourceSet, "javaDirectories");
-          sourceDirs.addAll(javaDirs);
+          Set<File> javaDirectories =
+              (Set<File>) getProperty(sourceSet, "javaDirectories");
+          Set<File> resDirectories =
+              (Set<File>) getProperty(sourceSet, "resDirectories");
+          Set<File> resourceDirectories =
+              (Set<File>) getProperty(sourceSet, "resourcesDirectories");
+          sourceDirs.addAll(javaDirectories);
+          resourceDirs.addAll(resDirectories);
+          resourceDirs.addAll(resourceDirectories);
         }
       }
       gradleSourceSet.setSourceDirs(sourceDirs);
+      gradleSourceSet.setResourceDirs(resourceDirs);
 
-      // generated source TODO: Not complete
-      Set<File> generatedOutputs = new HashSet<>();
-      Provider<Task> javaCompileTask = (Provider<Task>) getProperty(variant, "javaCompileProvider");
-      if (javaCompileTask != null) {
-        generatedOutputs.addAll(javaCompileTask.get().getOutputs().getFiles().getFiles());
+      // resource outputs
+      Set<File> resourceOutputs = new HashSet<>();
+      Provider<Task> resourceProvider =
+          (Provider<Task>) getProperty(variant, "processJavaResourcesProvider");
+      if (resourceProvider != null) {
+        Task resTask = resourceProvider.get();
+        File outputDir =
+            (File) resTask.getClass().getMethod("getDestinationDir").invoke(resTask);
+        resourceOutputs.add(outputDir);
       }
-      gradleSourceSet.setGeneratedSourceDirs(generatedOutputs);
+      Provider<Task> resProvider =
+          (Provider<Task>) getProperty(variant, "mergeResourcesProvider");
+      if (resProvider != null) {
+        Task resTask = resProvider.get();
+        Object outputDir =
+            resTask.getClass().getMethod("getOutputDir").invoke(resTask);
+        File output =
+            ((Provider<File>) outputDir.getClass().getMethod("getAsFile").invoke(outputDir)).get();
+        resourceOutputs.add(output);
+      }
+      gradleSourceSet.setResourceOutputDirs(resourceOutputs);
+
+      // generated sources and source outputs
+      Set<File> generatedSources = new HashSet<>();
+      Set<File> sourceOutputs = new HashSet<>();
+      Provider<Task> javaCompileProvider =
+          (Provider<Task>) getProperty(variant, "javaCompileProvider");
+      if (javaCompileProvider != null) {
+        Task javaCompileTask = javaCompileProvider.get();
+
+        File outputDir = (File) javaCompileTask.getClass().getMethod("getDestinationDir")
+            .invoke(javaCompileTask);
+        sourceOutputs.add(outputDir);
+
+        Object source = javaCompileTask.getClass().getMethod("getSource").invoke(javaCompileTask);
+        Set<File> compileSources =
+            (Set<File>) source.getClass().getMethod("getFiles").invoke(source);
+
+        // generated = compile source - source
+        for (File compileSource : compileSources) {
+          boolean inSourceDir = sourceDirs.stream()
+              .anyMatch(dir -> compileSource.getAbsolutePath().startsWith(dir.getAbsolutePath()));
+          if (inSourceDir) {
+            continue;
+          }
+          boolean inGeneratedSourceDir = generatedSources.stream()
+              .anyMatch(dir -> compileSource.getAbsolutePath().startsWith(dir.getAbsolutePath()));
+          if (inGeneratedSourceDir) {
+            continue;
+          }
+          generatedSources.add(compileSource);
+        }
+      }
+      gradleSourceSet.setGeneratedSourceDirs(generatedSources);
+      gradleSourceSet.setSourceOutputDirs(sourceOutputs);
 
       // classpath
-      Object compileConfig = variant.getClass().getMethod("getCompileConfiguration").invoke(variant);
-      Set<File> classpathFiles = (Set<File>) compileConfig.getClass().getMethod("getFiles").invoke(compileConfig);
+      Object compileConfig = variant.getClass()
+          .getMethod("getCompileConfiguration").invoke(variant);
+      Set<File> classpathFiles = (Set<File>) compileConfig.getClass()
+          .getMethod("getFiles").invoke(compileConfig);
+      // add R.jar file
+      String taskName = "process" + capitalize(variantName) + "Resources";
+      Task processResourcesTask = project.getTasks().findByName(taskName);
+      if (processResourcesTask != null) {
+        Object output = processResourcesTask.getClass()
+            .getMethod("getRClassOutputJar").invoke(processResourcesTask);
+        RegularFile file = (RegularFile) output.getClass()
+            .getMethod("get").invoke(output);
+        classpathFiles.add(file.getAsFile());
+      }
       gradleSourceSet.setCompileClasspath(new LinkedList<>(classpathFiles));
-
-      // resource dirs TODO: Needed?
 
       // TODO: Set Archive output dirs
 
-      // TODO: Set if has Tests
+      // has tests
+      Object unitTestVariant = variant.getClass().getMethod("getUnitTestVariant").invoke(variant);
+      Object testVariant = variant.getClass().getMethod("getTestVariant").invoke(variant);
+      gradleSourceSet.setHasTests(unitTestVariant != null || testVariant != null);
 
       return gradleSourceSet;
 
@@ -148,7 +248,8 @@ public class AndroidUtils {
     try {
       Object convention = project.getClass().getMethod("getConvention").invoke(project);
       Object extensionMap = convention.getClass().getMethod("getAsMap").invoke(convention);
-      extension = extensionMap.getClass().getMethod("get", Object.class).invoke(extensionMap, "android");
+      extension = extensionMap.getClass()
+          .getMethod("get", Object.class).invoke(extensionMap, "android");
     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       // do nothing
     }
@@ -181,7 +282,7 @@ public class AndroidUtils {
 
   }
 
-  private static Object getProperty(Object obj, String propertyName)
+  public static Object getProperty(Object obj, String propertyName)
       throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     return obj.getClass().getMethod("getProperty", String.class).invoke(obj, propertyName);
   }
@@ -199,6 +300,28 @@ public class AndroidUtils {
       return projectPath.substring(1);
     }
     return projectPath;
+  }
+
+  /**
+   * Return a project task name - [project path]:[task].
+   */
+  private static String getFullTaskName(String modulePath, String taskName) {
+    if (taskName == null) {
+      return null;
+    }
+    if (taskName.isEmpty()) {
+      return taskName;
+    }
+
+    if (modulePath == null || modulePath.equals(":")) {
+      // must be prefixed with ":" as taskPaths are reported back like that in progress messages
+      return ":" + taskName;
+    }
+    return modulePath + ":" + taskName;
+  }
+
+  private static String capitalize(String s) {
+    return s.substring(0, 1).toUpperCase() + s.substring(1);
   }
 
 }

@@ -247,18 +247,20 @@ public class BuildTargetService {
       if (sourceOutputDirs != null) {
         for (File sourceOutputDir : sourceOutputDirs) {
           outputPaths.add(new OutputPathItem(
-              sourceOutputDir.toURI().toString() + "?kind=source",
+              sourceOutputDir.toURI() + "?kind=source",
               OutputPathItemKind.DIRECTORY
           ));
         }
       }
 
-      File resourceOutputDir = sourceSet.getResourceOutputDir();
-      if (resourceOutputDir != null) {
-        outputPaths.add(new OutputPathItem(
-            resourceOutputDir.toURI().toString() + "?kind=resource",
-            OutputPathItemKind.DIRECTORY
-        ));
+      Set<File> resourceOutputDirs = sourceSet.getResourceOutputDirs();
+      if (resourceOutputDirs != null) {
+        for (File resourceOutputDir : resourceOutputDirs) {
+          outputPaths.add(new OutputPathItem(
+              resourceOutputDir.toURI() + "?kind=resource",
+              OutputPathItemKind.DIRECTORY
+          ));
+        }
       }
 
       OutputPathsItem item = new OutputPathsItem(btId, outputPaths);
@@ -286,7 +288,7 @@ public class BuildTargetService {
         List<String> artifacts = dep.getArtifacts().stream()
                 .filter(a -> "sources".equals(a.getClassifier()))
                 .map(a -> a.getUri().toString())
-                .collect(Collectors.toList());
+                .toList();
         sources.addAll(artifacts);
       }
 
@@ -488,19 +490,15 @@ public class BuildTargetService {
     TestResult testResult = new TestResult(StatusCode.OK);
     testResult.setOriginId(params.getOriginId());
     // running tests can trigger compilation that must be reported on
-    CompileProgressReporter compileProgressReporter = new CompileProgressReporter(client, params.getOriginId(), getFullTaskPathMap());
-    Map<URI, Set<BuildTargetIdentifier>> groupedTargets = groupBuildTargetsByRootDir(params.getTargets());
+    CompileProgressReporter compileProgressReporter =
+        new CompileProgressReporter(client, params.getOriginId(), getFullTaskPathMap());
+    Map<URI, Set<BuildTargetIdentifier>> groupedTargets =
+        groupBuildTargetsByRootDir(params.getTargets());
 
     for (Map.Entry<URI, Set<BuildTargetIdentifier>> entry : groupedTargets.entrySet()) {
       // TODO ideally BSP would have a jvmTestEnv style testkind for executing tests, not scala.
       StatusCode statusCode;
-
-      // check if targets are android
-      boolean isAndroid = checkIfAndroidProject(entry.getValue());
-
-      if (isAndroid) {
-        statusCode = runAndroidTests(entry, params, compileProgressReporter);
-      } else if (TestParamsDataKind.SCALA_TEST.equals(params.getDataKind())) {
+      if (TestParamsDataKind.SCALA_TEST.equals(params.getDataKind())) {
         // existing logic for scala test (class level)
         statusCode = runScalaTests(entry, params, compileProgressReporter);
       } else if ("scala-test-suites-selection".equals(params.getDataKind())) {
@@ -518,43 +516,11 @@ public class BuildTargetService {
     return testResult;
   }
 
-  private boolean checkIfAndroidProject(Set<BuildTargetIdentifier> targets) {
-    // Logic to determine if the given targets are part of an Android Project
-    // This might involve checking the project type, build configuration, or specific Android build targets.
-    return targets.stream().anyMatch(this::isAndroidProject);
-  }
-
-  private boolean isAndroidProject(BuildTargetIdentifier target) {
-    // TODO: Have GradleBuildTarget or the source set store type of project - java, scala, android, etc.
-    return false;
-  }
-
-  private StatusCode runAndroidTests(Map.Entry<URI, Set<BuildTargetIdentifier>> entry, TestParams params, CompileProgressReporter compileProgressReporter) {
-    // Logic to run tests:
-    // - Determine if unit tests or instrumentation tests are to be run.
-    // - If instrumentation tests, ensure an emulator/device is available and handle APK installation and execution.
-    // - Execute the tests and capture results.
-
-    if (isUnitTest(entry)) {
-      // Run Android unit tests (similar to JVM tests)
-      return runScalaTests(entry, params, compileProgressReporter);
-    } else {
-      // Run instrumentation tests
-      return runInstrumentationTests(entry, params, compileProgressReporter);
-    }
-  }
-
-  private boolean isUnitTest(Map.Entry<URI, Set<BuildTargetIdentifier>> entry) {
-    // TODO: Check if the android test is a JVM unit test
-    return false;
-  }
-
-  private StatusCode runInstrumentationTests(Map.Entry<URI, Set<BuildTargetIdentifier>> targets, TestParams params, CompileProgressReporter compileProgressReporter) {
-    // Invoke AGP to run instrumentation test
-    return StatusCode.OK;
-  }
-
-  private StatusCode runScalaTests(Map.Entry<URI, Set<BuildTargetIdentifier>> entry, TestParams params, CompileProgressReporter compileProgressReporter) {
+  private StatusCode runScalaTests(
+      Map.Entry<URI, Set<BuildTargetIdentifier>> entry,
+      TestParams params,
+      CompileProgressReporter compileProgressReporter
+  ) {
     // ScalaTestParams is for a list of classes only
     ScalaTestParams testParams = JsonUtils.toModel(params.getData(), ScalaTestParams.class);
     Map<BuildTargetIdentifier, Map<String, Set<String>>> testClasses = new HashMap<>();
@@ -570,7 +536,11 @@ public class BuildTargetService {
         compileProgressReporter);
   }
 
-  private StatusCode runScalaTestSuitesSelection(Map.Entry<URI, Set<BuildTargetIdentifier>> entry, TestParams params, CompileProgressReporter compileProgressReporter) {
+  private StatusCode runScalaTestSuitesSelection(
+      Map.Entry<URI, Set<BuildTargetIdentifier>> entry,
+      TestParams params,
+      CompileProgressReporter compileProgressReporter
+  ) {
     // ScalaTestSuites is for a list of classes + methods
     // Since it doesn't supply the specific BuildTarget we require a single
     // build target in the params and reject any request that doesn't match this
@@ -587,7 +557,7 @@ public class BuildTargetService {
         List<String[]> splitArgs = testSuites.getEnvironmentVariables()
             .stream()
             .map(arg -> arg.split("="))
-            .collect(Collectors.toList());
+            .toList();
         argsValid = splitArgs.stream().allMatch(arg -> arg.length == 2);
         if (argsValid) {
           envVars = splitArgs.stream().collect(Collectors.toMap(arg -> arg[0], arg -> arg[1]));
