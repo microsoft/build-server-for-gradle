@@ -18,7 +18,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 /**
- * TODO: JavaDoc.
+ * Utility class for android related operations.
  */
 public class AndroidUtils {
 
@@ -26,14 +26,19 @@ public class AndroidUtils {
   }
 
   /**
-   * TODO: JavaDoc.
+   * Checks if the given project is an Android project.
+   *
+   * @param project Gradle project to check
    */
   public static boolean isAndroidProject(Project project) {
     return getAndroidExtension(project) != null;
   }
 
   /**
-   * TODO: JavaDoc.
+   * Extracts build variants from the given Android project and converts
+   * them into list of GradleSourceSets.
+   *
+   * @param project Gradle project for extracting the build variants
    */
   @SuppressWarnings("unchecked")
   public static List<GradleSourceSet> getBuildVariantsAsGradleSourceSets(Project project) {
@@ -88,6 +93,12 @@ public class AndroidUtils {
 
   }
 
+  /**
+   * Returns a GradleSourceSet populated with the given Android build variant data.
+   *
+   * @param project Gradle project to populate GradleSourceSet properties
+   * @param variant Android Build Variant object to populate GradleSourceSet properties
+   */
   @SuppressWarnings("unchecked")
   private static GradleSourceSet convertVariantToGradleSourceSet(Project project, Object variant) {
 
@@ -108,17 +119,17 @@ public class AndroidUtils {
 
       // classes task equivalent in android (assembleRelease)
       gradleSourceSet.setClassesTaskName(
-          getFullTaskName(projectPath, "assemble" + capitalize(variantName))
+          SourceSetUtils.getFullTaskName(projectPath, "assemble" + capitalize(variantName))
       );
 
-      gradleSourceSet.setCleanTaskName(getFullTaskName(projectPath, "clean"));
+      gradleSourceSet.setCleanTaskName(SourceSetUtils.getFullTaskName(projectPath, "clean"));
 
       // compile task in android (compileReleaseJavaWithJavac)
       HashSet<String> tasks = new HashSet<>();
       tasks.add("compile" + capitalize(variantName) + "JavaWithJavac");
       gradleSourceSet.setTaskNames(tasks);
 
-      String projectName = stripPathPrefix(projectPath);
+      String projectName = SourceSetUtils.stripPathPrefix(projectPath);
       if (projectName.isEmpty()) {
         projectName = project.getName();
       }
@@ -222,11 +233,15 @@ public class AndroidUtils {
             .getMethod("getRClassOutputJar").invoke(processResourcesTask);
         RegularFile file = (RegularFile) output.getClass()
             .getMethod("get").invoke(output);
-        classpathFiles.add(file.getAsFile());
+        File jarFile = file.getAsFile();
+        if (jarFile.exists()) {
+          classpathFiles.add(jarFile);
+        }
       }
       gradleSourceSet.setCompileClasspath(new LinkedList<>(classpathFiles));
 
-      // TODO: Set Archive output dirs
+      // Archive output dirs (not relevant in case of android build variants)
+      gradleSourceSet.setArchiveOutputFiles(new HashMap<>());
 
       // has tests
       Object unitTestVariant = variant.getClass().getMethod("getUnitTestVariant").invoke(variant);
@@ -241,6 +256,11 @@ public class AndroidUtils {
 
   }
 
+  /**
+   * Extracts the AndroidExtension from the given project.
+   *
+   * @param project Gradle project to extract the AndroidExtension object.
+   */
   private static Object getAndroidExtension(Project project) {
 
     Object extension = null;
@@ -258,6 +278,11 @@ public class AndroidUtils {
 
   }
 
+  /**
+   * Returns the AndroidProjectType based on the plugin applied to the given project.
+   *
+   * @param project Gradle project to check for plugin and return the corresponding project type.
+   */
   private static AndroidProjectType getProjectType(Project project) {
 
     if (getAndroidExtension(project) == null) {
@@ -282,11 +307,20 @@ public class AndroidUtils {
 
   }
 
+  /**
+   * Extracts the given property from the given object with {@code getProperty} method.
+   *
+   * @param obj object from which the property is to be extracted
+   * @param propertyName name of the property to be extracted
+   */
   public static Object getProperty(Object obj, String propertyName)
       throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     return obj.getClass().getMethod("getProperty", String.class).invoke(obj, propertyName);
   }
 
+  /**
+   * Enum class representing different types of Android projects.
+   */
   private enum AndroidProjectType {
     APPLICATION,
     LIBRARY,
@@ -295,31 +329,11 @@ public class AndroidUtils {
     ANDROID_TEST
   }
 
-  private static String stripPathPrefix(String projectPath) {
-    if (projectPath.startsWith(":")) {
-      return projectPath.substring(1);
-    }
-    return projectPath;
-  }
-
   /**
-   * Return a project task name - [project path]:[task].
+   * Returns the given string with its first letter capitalized.
+   *
+   * @param s String to capitalize
    */
-  private static String getFullTaskName(String modulePath, String taskName) {
-    if (taskName == null) {
-      return null;
-    }
-    if (taskName.isEmpty()) {
-      return taskName;
-    }
-
-    if (modulePath == null || modulePath.equals(":")) {
-      // must be prefixed with ":" as taskPaths are reported back like that in progress messages
-      return ":" + taskName;
-    }
-    return modulePath + ":" + taskName;
-  }
-
   private static String capitalize(String s) {
     return s.substring(0, 1).toUpperCase() + s.substring(1);
   }

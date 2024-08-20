@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.gradle.plugin.utils.AndroidUtils;
+import com.microsoft.java.bs.gradle.plugin.utils.SourceSetUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -38,6 +39,7 @@ import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * The model builder for Gradle source sets.
@@ -49,7 +51,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   }
 
   @Override
-  public Object buildAll(String modelName, Project project) {
+  public @NotNull Object buildAll(@NotNull String modelName, @NotNull Project project) {
     // mapping Gradle source set to our customized model.
     List<GradleSourceSet> sourceSets;
 
@@ -77,13 +79,14 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     gradleSourceSet.setProjectDir(project.getProjectDir());
     gradleSourceSet.setRootDir(project.getRootDir());
     gradleSourceSet.setSourceSetName(sourceSet.getName());
-    String classesTaskName = getFullTaskName(projectPath, sourceSet.getClassesTaskName());
+    String classesTaskName =
+        SourceSetUtils.getFullTaskName(projectPath, sourceSet.getClassesTaskName());
     gradleSourceSet.setClassesTaskName(classesTaskName);
-    String cleanTaskName = getFullTaskName(projectPath, "clean");
+    String cleanTaskName = SourceSetUtils.getFullTaskName(projectPath, "clean");
     gradleSourceSet.setCleanTaskName(cleanTaskName);
     Set<String> taskNames = new HashSet<>();
     gradleSourceSet.setTaskNames(taskNames);
-    String projectName = stripPathPrefix(projectPath);
+    String projectName = SourceSetUtils.stripPathPrefix(projectPath);
     if (projectName.isEmpty()) {
       projectName = project.getName();
     }
@@ -102,7 +105,8 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       LanguageExtension extension = languageModelBuilder.getExtensionFor(project, sourceSet,
           gradleSourceSet.getModuleDependencies());
       if (extension != null) {
-        String compileTaskName = getFullTaskName(projectPath, extension.getCompileTaskName());
+        String compileTaskName =
+            SourceSetUtils.getFullTaskName(projectPath, extension.getCompileTaskName());
         taskNames.add(compileTaskName);
 
         srcDirs.addAll(extension.getSourceDirs());
@@ -300,31 +304,6 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       // ignore
     }
     return new LinkedList<>();
-  }
-
-  /**
-   * Return a project task name - [project path]:[task].
-   */
-  private String getFullTaskName(String modulePath, String taskName) {
-    if (taskName == null) {
-      return null;
-    }
-    if (taskName.isEmpty()) {
-      return taskName;
-    }
-
-    if (modulePath == null || modulePath.equals(":")) {
-      // must be prefixed with ":" as taskPaths are reported back like that in progress messages
-      return ":" + taskName;
-    }
-    return modulePath + ":" + taskName;
-  }
-
-  private String stripPathPrefix(String projectPath) {
-    if (projectPath.startsWith(":")) {
-      return projectPath.substring(1);
-    }
-    return projectPath;
   }
 
   private Set<Object> getArchiveSourcePaths(CopySpec copySpec) {
