@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import com.microsoft.java.bs.core.Launcher;
 import com.microsoft.java.bs.core.internal.managers.PreferenceManager;
 import com.microsoft.java.bs.core.internal.model.Preferences;
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.ScalaExtension;
@@ -93,14 +94,29 @@ class GradleApiConnectorTest {
   }
 
   @Test
-  void testGetAndroidSourceSets() {
+  void testAndroidSourceSets() {
+    // NOTE: Create a `local.properties` file in the android-test project
+    // and configure the `sdk.dir` property
     File projectDir = projectPath.resolve("android-test").toFile();
     PreferenceManager preferenceManager = new PreferenceManager();
     preferenceManager.setPreferences(new Preferences());
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
     assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
-    // TODO: Verify if complete source sets were retrieved
+    findSourceSet(gradleSourceSets, "app [debug]");
+    findSourceSet(gradleSourceSets, "app [release]");
+    findSourceSet(gradleSourceSets, "mylibrary [debug]");
+    findSourceSet(gradleSourceSets, "mylibrary [release]");
+    Set<GradleModuleDependency> combinedModuleDependencies = new HashSet<>();
+    for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
+      assertEquals(2, sourceSet.getSourceDirs().size());
+      assertEquals(4, sourceSet.getResourceDirs().size());
+      assertEquals(0, sourceSet.getExtensions().size());
+      assertEquals(0, sourceSet.getArchiveOutputFiles().size());
+      assertTrue(sourceSet.hasTests());
+      combinedModuleDependencies.addAll(sourceSet.getModuleDependencies());
+    }
+    assertEquals(87, combinedModuleDependencies.size());
   }
 
   private GradleSourceSet findSourceSet(GradleSourceSets gradleSourceSets, String displayName) {

@@ -12,11 +12,11 @@ import org.gradle.api.artifacts.result.ArtifactResolutionResult;
 import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
-import org.gradle.api.component.Component;
 import org.gradle.api.specs.Specs;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.internal.component.local.model.ComponentFileArtifactIdentifier;
 import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifier;
+import org.gradle.jvm.JvmLibrary;
 import org.gradle.language.base.artifact.SourcesArtifact;
 import org.gradle.language.java.artifact.JavadocArtifact;
 
@@ -29,10 +29,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// WORK IN PROGRESS
-
 /**
- * TODO: JavaDoc.
+ * Collects dependencies from an Android build variant.
  */
 public class AndroidDependencyCollector {
 
@@ -43,7 +41,6 @@ public class AndroidDependencyCollector {
    */
   public static Set<GradleModuleDependency> getModuleDependencies(Project project, Object variant) {
     Set<GradleModuleDependency> dependencies = new HashSet<>();
-    ClassLoader agpClassLoader = variant.getClass().getClassLoader();
 
     try {
       // Retrieve and process compile configuration
@@ -51,8 +48,7 @@ public class AndroidDependencyCollector {
           (Configuration) AndroidUtils.getProperty(variant, "compileConfiguration");
       dependencies.addAll(resolveConfigurationDependencies(
           project,
-          compileConfiguration,
-          agpClassLoader)
+          compileConfiguration)
       );
 
       // Retrieve and process runtime configuration
@@ -60,8 +56,7 @@ public class AndroidDependencyCollector {
           (Configuration) AndroidUtils.getProperty(variant, "runtimeConfiguration");
       dependencies.addAll(resolveConfigurationDependencies(
           project,
-          runtimeConfiguration,
-          agpClassLoader)
+          runtimeConfiguration)
       );
     } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
       throw new RuntimeException(e);
@@ -75,8 +70,7 @@ public class AndroidDependencyCollector {
    */
   private static Set<GradleModuleDependency> resolveConfigurationDependencies(
       Project project,
-      Configuration configuration,
-      ClassLoader agpClassLoader
+      Configuration configuration
   ) {
     return configuration.getIncoming()
         .artifactView(viewConfiguration -> {
@@ -86,15 +80,14 @@ public class AndroidDependencyCollector {
         .getArtifacts()
         .getArtifacts()
         .stream()
-        .map(artifactResult -> getArtifact(project, artifactResult, agpClassLoader))
+        .map(artifactResult -> getArtifact(project, artifactResult))
         .filter(Objects::nonNull)
         .collect(Collectors.toSet());
   }
 
   private static DefaultGradleModuleDependency getArtifact(
       Project project,
-      ResolvedArtifactResult artifactResult,
-      ClassLoader agpClassLoader
+      ResolvedArtifactResult artifactResult
   ) {
     ComponentArtifactIdentifier id = artifactResult.getId();
     File artifactFile = artifactResult.getFile();
@@ -102,8 +95,7 @@ public class AndroidDependencyCollector {
       return getModuleArtifactDependency(
           project,
           (ModuleComponentArtifactIdentifier) id,
-          artifactFile,
-          agpClassLoader
+          artifactFile
       );
     }
     if (id instanceof OpaqueComponentArtifactIdentifier) {
@@ -115,53 +107,44 @@ public class AndroidDependencyCollector {
     return null;
   }
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"unchecked", "UnstableApiUsage"})
   private static DefaultGradleModuleDependency getModuleArtifactDependency(
       Project project,
       ModuleComponentArtifactIdentifier artifactIdentifier,
-      File resolvedArtifactFile,
-      ClassLoader agpClassLoader
+      File resolvedArtifactFile
   ) {
 
-    try {
-      Class<? extends Component> androidLibClazz =
-          (Class<? extends Component>) agpClassLoader
-              .loadClass("com.android.build.api.variant.LibraryVariant");
+    ArtifactResolutionResult resolutionResult = project.getDependencies()
+        .createArtifactResolutionQuery()
+        .forComponents(artifactIdentifier.getComponentIdentifier())
+        .withArtifacts(
+            JvmLibrary.class /* componentType */,
+            JavadocArtifact.class, SourcesArtifact.class /*artifactTypes*/
+        )
+        .execute();
 
-      ArtifactResolutionResult resolutionResult = project.getDependencies()
-          .createArtifactResolutionQuery()
-          .forComponents(artifactIdentifier.getComponentIdentifier())
-          .withArtifacts(
-              androidLibClazz /* componentType */,
-              JavadocArtifact.class, SourcesArtifact.class /*artifactTypes*/
-          )
-          .execute();
-
-      List<Artifact> artifacts = new LinkedList<>();
-      if (resolvedArtifactFile != null) {
-        artifacts.add(new DefaultArtifact(resolvedArtifactFile.toURI(), null));
-      }
-
-      Set<ComponentArtifactsResult> resolvedComponents = resolutionResult.getResolvedComponents();
-      File sourceJar = getNonClassesArtifact(resolvedComponents, SourcesArtifact.class);
-      if (sourceJar != null) {
-        artifacts.add(new DefaultArtifact(sourceJar.toURI(), "sources"));
-      }
-
-      File javaDocJar = getNonClassesArtifact(resolvedComponents, JavadocArtifact.class);
-      if (javaDocJar != null) {
-        artifacts.add(new DefaultArtifact(javaDocJar.toURI(), "javadoc"));
-      }
-
-      return new DefaultGradleModuleDependency(
-          artifactIdentifier.getComponentIdentifier().getGroup(),
-          artifactIdentifier.getComponentIdentifier().getModule(),
-          artifactIdentifier.getComponentIdentifier().getVersion(),
-          artifacts
-      );
-    } catch (ClassNotFoundException e) {
-      return null;
+    List<Artifact> artifacts = new LinkedList<>();
+    if (resolvedArtifactFile != null) {
+      artifacts.add(new DefaultArtifact(resolvedArtifactFile.toURI(), null));
     }
+
+    Set<ComponentArtifactsResult> resolvedComponents = resolutionResult.getResolvedComponents();
+    File sourceJar = getNonClassesArtifact(resolvedComponents, SourcesArtifact.class);
+    if (sourceJar != null) {
+      artifacts.add(new DefaultArtifact(sourceJar.toURI(), "sources"));
+    }
+
+    File javaDocJar = getNonClassesArtifact(resolvedComponents, JavadocArtifact.class);
+    if (javaDocJar != null) {
+      artifacts.add(new DefaultArtifact(javaDocJar.toURI(), "javadoc"));
+    }
+
+    return new DefaultGradleModuleDependency(
+        artifactIdentifier.getComponentIdentifier().getGroup(),
+        artifactIdentifier.getComponentIdentifier().getModule(),
+        artifactIdentifier.getComponentIdentifier().getVersion(),
+        artifacts
+    );
 
   }
 

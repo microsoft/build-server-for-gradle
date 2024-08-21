@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Utility class for android related operations.
@@ -126,7 +127,8 @@ public class AndroidUtils {
 
       // compile task in android (compileReleaseJavaWithJavac)
       HashSet<String> tasks = new HashSet<>();
-      tasks.add("compile" + capitalize(variantName) + "JavaWithJavac");
+      String compileTaskName = "compile" + capitalize(variantName) + "JavaWithJavac";
+      tasks.add(SourceSetUtils.getFullTaskName(projectPath, compileTaskName));
       gradleSourceSet.setTaskNames(tasks);
 
       String projectName = SourceSetUtils.stripPathPrefix(projectPath);
@@ -136,7 +138,7 @@ public class AndroidUtils {
       String displayName = projectName + " [" + variantName + ']';
       gradleSourceSet.setDisplayName(displayName);
 
-      // TODO: Set Module dependencies
+      // module dependencies
       Set<GradleModuleDependency> moduleDependencies =
           AndroidDependencyCollector.getModuleDependencies(project, variant);
       gradleSourceSet.setModuleDependencies(moduleDependencies);
@@ -225,6 +227,20 @@ public class AndroidUtils {
           .getMethod("getCompileConfiguration").invoke(variant);
       Set<File> classpathFiles = (Set<File>) compileConfig.getClass()
           .getMethod("getFiles").invoke(compileConfig);
+      // add Android SDK
+      Object androidComponents = getAndroidComponentExtension(project);
+      if (androidComponents != null) {
+        Object sdkComponents = getProperty(androidComponents, "sdkComponents");
+        Object bootClasspath = ((Provider<?>) getProperty(sdkComponents, "bootclasspathProvider")).get();
+        try {
+          List<RegularFile> bootClasspathFiles = (List<RegularFile>) bootClasspath.getClass().getMethod("get").invoke(bootClasspath);
+          List<File> sdkClasspath = bootClasspathFiles.stream().map(RegularFile::getAsFile).collect(Collectors.toList());
+          classpathFiles.addAll(sdkClasspath);
+        } catch (IllegalStateException | InvocationTargetException e) {
+          // failed to retrieve android sdk classpath
+          // do nothing
+        }
+      }
       // add R.jar file
       String taskName = "process" + capitalize(variantName) + "Resources";
       Task processResourcesTask = project.getTasks().findByName(taskName);
@@ -262,20 +278,37 @@ public class AndroidUtils {
    * @param project Gradle project to extract the AndroidExtension object.
    */
   private static Object getAndroidExtension(Project project) {
+    return getExtension(project, "android");
+  }
 
+  /**
+   * Extracts the AndroidComponentsExtension from the given project.
+   *
+   * @param project Gradle project to extract the AndroidComponentsExtension object.
+   */
+  private static Object getAndroidComponentExtension(Project project) {
+    return getExtension(project, "androidComponents");
+  }
+
+  /**
+   * Extracts the given extension from the given project.
+   *
+   * @param project Gradle project to extract the extension object.
+   * @param extensionName Name of the extension to extract.
+   */
+  private static Object getExtension(Project project, String extensionName) {
     Object extension = null;
 
     try {
       Object convention = project.getClass().getMethod("getConvention").invoke(project);
       Object extensionMap = convention.getClass().getMethod("getAsMap").invoke(convention);
       extension = extensionMap.getClass()
-          .getMethod("get", Object.class).invoke(extensionMap, "android");
+          .getMethod("get", Object.class).invoke(extensionMap, extensionName);
     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       // do nothing
     }
 
     return extension;
-
   }
 
   /**

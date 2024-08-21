@@ -39,7 +39,6 @@ import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * The model builder for Gradle source sets.
@@ -50,8 +49,9 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     return modelName.equals(GradleSourceSets.class.getName());
   }
 
+  @SuppressWarnings("NullableProblems")
   @Override
-  public @NotNull Object buildAll(@NotNull String modelName, @NotNull Project project) {
+  public Object buildAll(String modelName, Project project) {
     // mapping Gradle source set to our customized model.
     List<GradleSourceSet> sourceSets;
 
@@ -213,6 +213,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
    * get all archive tasks for this project and maintain the archive file
    * to source set mapping.
    */
+  @SuppressWarnings("deprecation")
   private Map<File, List<File>> getArchiveOutputFiles(Project project, SourceSet sourceSet) {
     // get all archive tasks for this project and find the dirs that are included in the archive
     Set<AbstractArchiveTask> archiveTasks = tasksWithType(project, AbstractArchiveTask.class);

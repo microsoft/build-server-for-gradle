@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.gradle.plugin.dependency;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,7 +19,6 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
-import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.result.ArtifactResolutionResult;
 import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
@@ -111,20 +111,18 @@ public class DependencyCollector {
   }
 
   private static List<ResolvedArtifactResult> getConfigurationArtifacts(Configuration config) {
-    return config.getIncoming()
-            .artifactView(viewConfiguration -> {
-              viewConfiguration.lenient(true);
-              viewConfiguration.componentFilter(Specs.<ComponentIdentifier>satisfyAll());
-            })
-            .getArtifacts() // get ArtifactCollection from ArtifactView.
-            .getArtifacts() // get a set of ResolvedArtifactResult from ArtifactCollection.
-           .stream()
-           .collect(Collectors.toList());
+    return new ArrayList<>(config.getIncoming()
+        .artifactView(viewConfiguration -> {
+          viewConfiguration.lenient(true);
+          viewConfiguration.componentFilter(Specs.satisfyAll());
+        })
+        .getArtifacts() // get ArtifactCollection from ArtifactView.
+        .getArtifacts());
   }
 
   private static DefaultGradleModuleDependency getModuleArtifactDependency(Project project,
       ModuleComponentArtifactIdentifier artifactIdentifier, File resolvedArtifactFile) {
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "UnstableApiUsage"})
     ArtifactResolutionResult resolutionResult = project.getDependencies()
         .createArtifactResolutionQuery()
         .forComponents(artifactIdentifier.getComponentIdentifier())
