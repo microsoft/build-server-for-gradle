@@ -7,6 +7,8 @@ import ch.epfl.scala.bsp4j.CleanCacheResult;
 import ch.epfl.scala.bsp4j.CompileParams;
 import ch.epfl.scala.bsp4j.CompileReport;
 import ch.epfl.scala.bsp4j.CompileResult;
+import ch.epfl.scala.bsp4j.DependencyModule;
+import ch.epfl.scala.bsp4j.DependencyModulesItem;
 import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.DependencySourcesParams;
@@ -29,6 +31,8 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 import ch.epfl.scala.bsp4j.extended.TestFinishEx;
 import ch.epfl.scala.bsp4j.extended.TestName;
 import ch.epfl.scala.bsp4j.extended.TestStartEx;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import org.junit.jupiter.api.Test;
 
@@ -128,7 +132,7 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
           .buildTargetDependencySources(dependencySourcesParams).join();
       assertEquals(2, dependencySourcesResult.getItems().size());
       List<String> allSources = dependencySourcesResult.getItems().stream()
-          .flatMap(item -> item.getSources().stream()).collect(Collectors.toList());
+          .flatMap(item -> item.getSources().stream()).toList();
       assertTrue(allSources.stream().anyMatch(source -> source.endsWith("-sources.jar")));
 
       // check dependency modules
@@ -143,7 +147,7 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               MavenDependencyModule.class))
           .flatMap(mavenDependencyModule -> mavenDependencyModule.getArtifacts().stream())
           .filter(artifact -> "sources".equals(artifact.getClassifier()))
-          .collect(Collectors.toList());
+          .toList();
       assertTrue(allArtifacts.stream()
           .anyMatch(artifact -> artifact.getUri().endsWith("-sources.jar")));
 
@@ -1743,6 +1747,44 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
               "ExtraTests")));
       client.clearMessages();
     });
+  }
+
+  @Test
+  void testAndroidBuildTargets() {
+
+    withNewTestServer("android-test", (buildServer, client) -> {
+
+      WorkspaceBuildTargetsResult buildTargetsResult = buildServer.workspaceBuildTargets().join();
+      List<BuildTargetIdentifier> btIds = buildTargetsResult.getTargets().stream()
+          .map(BuildTarget::getId)
+          .collect(Collectors.toList());
+
+      DependencyModulesResult dependencyModulesResultBefore = buildServer
+          .buildTargetDependencyModules(new DependencyModulesParams(btIds)).join();
+
+      for (DependencyModulesItem item : dependencyModulesResultBefore.getItems()) {
+        assertTrue(containsAndroidArtifactPath(item.getModules()));
+      }
+
+    });
+
+  }
+
+  private boolean containsAndroidArtifactPath(List<DependencyModule> modules) {
+
+    for (DependencyModule module : modules) {
+      Object data = module.getData();
+      if (data instanceof JsonObject) {
+        for (JsonElement artifact  : ((JsonObject) data).getAsJsonArray("artifacts")) {
+          if (artifact.getAsJsonObject().get("uri").getAsString().endsWith("android.jar")) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+
   }
 
 }

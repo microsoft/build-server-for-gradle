@@ -1,7 +1,10 @@
 package com.microsoft.java.bs.gradle.plugin.utils;
 
+import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.impl.DefaultArtifact;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.plugin.dependency.AndroidDependencyCollector;
 import org.gradle.api.Project;
@@ -11,6 +14,7 @@ import org.gradle.api.provider.Provider;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -141,6 +145,38 @@ public class AndroidUtils {
       // module dependencies
       Set<GradleModuleDependency> moduleDependencies =
           AndroidDependencyCollector.getModuleDependencies(project, variant);
+      // add Android SDK
+      Object androidComponents = getAndroidComponentExtension(project);
+      if (androidComponents != null) {
+        Object sdkComponents = getProperty(androidComponents, "sdkComponents");
+        Object bootClasspath =
+            ((Provider<?>) getProperty(sdkComponents, "bootclasspathProvider")).get();
+        try {
+          List<RegularFile> bootClasspathFiles =
+              (List<RegularFile>) bootClasspath.getClass().getMethod("get").invoke(bootClasspath);
+          List<File> sdkClasspath =
+              bootClasspathFiles.stream().map(RegularFile::getAsFile).collect(Collectors.toList());
+          for (File file : sdkClasspath) {
+            moduleDependencies.add(mockModuleDependency(file.toURI()));
+          }
+        } catch (IllegalStateException | InvocationTargetException e) {
+          // failed to retrieve android sdk classpath
+          // do nothing
+        }
+      }
+      // add R.jar file
+      String taskName = "process" + capitalize(variantName) + "Resources";
+      Task processResourcesTask = project.getTasks().findByName(taskName);
+      if (processResourcesTask != null) {
+        Object output = processResourcesTask.getClass()
+            .getMethod("getRClassOutputJar").invoke(processResourcesTask);
+        RegularFile file = (RegularFile) output.getClass()
+            .getMethod("get").invoke(output);
+        File jarFile = file.getAsFile();
+        if (jarFile.exists()) {
+          moduleDependencies.add(mockModuleDependency(jarFile.toURI()));
+        }
+      }
       gradleSourceSet.setModuleDependencies(moduleDependencies);
 
       // extensions
@@ -227,33 +263,6 @@ public class AndroidUtils {
           .getMethod("getCompileConfiguration").invoke(variant);
       Set<File> classpathFiles = (Set<File>) compileConfig.getClass()
           .getMethod("getFiles").invoke(compileConfig);
-      // add Android SDK
-      Object androidComponents = getAndroidComponentExtension(project);
-      if (androidComponents != null) {
-        Object sdkComponents = getProperty(androidComponents, "sdkComponents");
-        Object bootClasspath = ((Provider<?>) getProperty(sdkComponents, "bootclasspathProvider")).get();
-        try {
-          List<RegularFile> bootClasspathFiles = (List<RegularFile>) bootClasspath.getClass().getMethod("get").invoke(bootClasspath);
-          List<File> sdkClasspath = bootClasspathFiles.stream().map(RegularFile::getAsFile).collect(Collectors.toList());
-          classpathFiles.addAll(sdkClasspath);
-        } catch (IllegalStateException | InvocationTargetException e) {
-          // failed to retrieve android sdk classpath
-          // do nothing
-        }
-      }
-      // add R.jar file
-      String taskName = "process" + capitalize(variantName) + "Resources";
-      Task processResourcesTask = project.getTasks().findByName(taskName);
-      if (processResourcesTask != null) {
-        Object output = processResourcesTask.getClass()
-            .getMethod("getRClassOutputJar").invoke(processResourcesTask);
-        RegularFile file = (RegularFile) output.getClass()
-            .getMethod("get").invoke(output);
-        File jarFile = file.getAsFile();
-        if (jarFile.exists()) {
-          classpathFiles.add(jarFile);
-        }
-      }
       gradleSourceSet.setCompileClasspath(new LinkedList<>(classpathFiles));
 
       // Archive output dirs (not relevant in case of android build variants)
@@ -369,6 +378,27 @@ public class AndroidUtils {
    */
   private static String capitalize(String s) {
     return s.substring(0, 1).toUpperCase() + s.substring(1);
+  }
+
+  /**
+   * Mocks GradleModuleDependency with a single artifact.
+   *
+   * @param jarUri Uri for the artifact to include in the ModuleDependency object.
+   */
+  private static GradleModuleDependency mockModuleDependency(URI jarUri) {
+
+    final String unknown = "UNKNOWN";
+
+    List<Artifact> artifacts = new LinkedList<>();
+    artifacts.add(new DefaultArtifact(jarUri, null));
+
+    return new DefaultGradleModuleDependency(
+        unknown,
+        unknown,
+        unknown,
+        artifacts
+    );
+
   }
 
 }

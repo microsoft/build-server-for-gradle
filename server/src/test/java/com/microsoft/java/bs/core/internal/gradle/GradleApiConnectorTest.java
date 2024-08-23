@@ -116,7 +116,7 @@ class GradleApiConnectorTest {
       assertTrue(sourceSet.hasTests());
       combinedModuleDependencies.addAll(sourceSet.getModuleDependencies());
     }
-    assertEquals(87, combinedModuleDependencies.size());
+    assertEquals(91, combinedModuleDependencies.size());
   }
 
   private GradleSourceSet findSourceSet(GradleSourceSets gradleSourceSets, String displayName) {
