@@ -80,8 +80,7 @@ public class AndroidUtils {
     }
 
     try {
-      Set<Object> variants =
-          (Set<Object>) androidExtension.getClass().getMethod(methodName).invoke(androidExtension);
+      Set<Object> variants = (Set<Object>) invokeMethod(androidExtension, methodName);
       for (Object variant : variants) {
         GradleSourceSet sourceSet = convertVariantToGradleSourceSet(project, variant);
         if (sourceSet == null) {
@@ -119,7 +118,7 @@ public class AndroidUtils {
       gradleSourceSet.setProjectDir(project.getProjectDir());
       gradleSourceSet.setRootDir(project.getRootDir());
 
-      String variantName = (String) variant.getClass().getMethod("getName").invoke(variant);
+      String variantName = (String) invokeMethod(variant, "getName");
       gradleSourceSet.setSourceSetName(variantName);
 
       // classes task equivalent in android (assembleRelease)
@@ -153,7 +152,7 @@ public class AndroidUtils {
             ((Provider<?>) getProperty(sdkComponents, "bootclasspathProvider")).get();
         try {
           List<RegularFile> bootClasspathFiles =
-              (List<RegularFile>) bootClasspath.getClass().getMethod("get").invoke(bootClasspath);
+              (List<RegularFile>) invokeMethod(bootClasspath, "get");
           List<File> sdkClasspath =
               bootClasspathFiles.stream().map(RegularFile::getAsFile).collect(Collectors.toList());
           for (File file : sdkClasspath) {
@@ -168,10 +167,8 @@ public class AndroidUtils {
       String taskName = "process" + capitalize(variantName) + "Resources";
       Task processResourcesTask = project.getTasks().findByName(taskName);
       if (processResourcesTask != null) {
-        Object output = processResourcesTask.getClass()
-            .getMethod("getRClassOutputJar").invoke(processResourcesTask);
-        RegularFile file = (RegularFile) output.getClass()
-            .getMethod("get").invoke(output);
+        Object output = invokeMethod(processResourcesTask, "getRClassOutputJar");
+        RegularFile file = (RegularFile) invokeMethod(output, "get");
         File jarFile = file.getAsFile();
         if (jarFile.exists()) {
           moduleDependencies.add(mockModuleDependency(jarFile.toURI()));
@@ -208,18 +205,15 @@ public class AndroidUtils {
           (Provider<Task>) getProperty(variant, "processJavaResourcesProvider");
       if (resourceProvider != null) {
         Task resTask = resourceProvider.get();
-        File outputDir =
-            (File) resTask.getClass().getMethod("getDestinationDir").invoke(resTask);
+        File outputDir = (File) invokeMethod(resTask, "getDestinationDir");
         resourceOutputs.add(outputDir);
       }
       Provider<Task> resProvider =
           (Provider<Task>) getProperty(variant, "mergeResourcesProvider");
       if (resProvider != null) {
         Task resTask = resProvider.get();
-        Object outputDir =
-            resTask.getClass().getMethod("getOutputDir").invoke(resTask);
-        File output =
-            ((Provider<File>) outputDir.getClass().getMethod("getAsFile").invoke(outputDir)).get();
+        Object outputDir = invokeMethod(resTask, "getOutputDir");
+        File output = ((Provider<File>) invokeMethod(outputDir, "getAsFile")).get();
         resourceOutputs.add(output);
       }
       gradleSourceSet.setResourceOutputDirs(resourceOutputs);
@@ -232,13 +226,11 @@ public class AndroidUtils {
       if (javaCompileProvider != null) {
         Task javaCompileTask = javaCompileProvider.get();
 
-        File outputDir = (File) javaCompileTask.getClass().getMethod("getDestinationDir")
-            .invoke(javaCompileTask);
+        File outputDir = (File) invokeMethod(javaCompileTask, "getDestinationDir");
         sourceOutputs.add(outputDir);
 
-        Object source = javaCompileTask.getClass().getMethod("getSource").invoke(javaCompileTask);
-        Set<File> compileSources =
-            (Set<File>) source.getClass().getMethod("getFiles").invoke(source);
+        Object source = invokeMethod(javaCompileTask, "getSource");
+        Set<File> compileSources = (Set<File>) invokeMethod(source, "getFiles");
 
         // generated = compile source - source
         for (File compileSource : compileSources) {
@@ -259,18 +251,16 @@ public class AndroidUtils {
       gradleSourceSet.setSourceOutputDirs(sourceOutputs);
 
       // classpath
-      Object compileConfig = variant.getClass()
-          .getMethod("getCompileConfiguration").invoke(variant);
-      Set<File> classpathFiles = (Set<File>) compileConfig.getClass()
-          .getMethod("getFiles").invoke(compileConfig);
+      Object compileConfig = invokeMethod(variant, "getCompileConfiguration");
+      Set<File> classpathFiles = (Set<File>) invokeMethod(compileConfig, "getFiles");
       gradleSourceSet.setCompileClasspath(new LinkedList<>(classpathFiles));
 
       // Archive output dirs (not relevant in case of android build variants)
       gradleSourceSet.setArchiveOutputFiles(new HashMap<>());
 
       // has tests
-      Object unitTestVariant = variant.getClass().getMethod("getUnitTestVariant").invoke(variant);
-      Object testVariant = variant.getClass().getMethod("getTestVariant").invoke(variant);
+      Object unitTestVariant = invokeMethod(variant, "getUnitTestVariant");
+      Object testVariant = invokeMethod(variant, "getTestVariant");
       gradleSourceSet.setHasTests(unitTestVariant != null || testVariant != null);
 
       return gradleSourceSet;
@@ -309,8 +299,8 @@ public class AndroidUtils {
     Object extension = null;
 
     try {
-      Object convention = project.getClass().getMethod("getConvention").invoke(project);
-      Object extensionMap = convention.getClass().getMethod("getAsMap").invoke(convention);
+      Object convention = invokeMethod(project, "getConvention");
+      Object extensionMap = invokeMethod(convention, "getAsMap");
       extension = extensionMap.getClass()
           .getMethod("get", Object.class).invoke(extensionMap, extensionName);
     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
@@ -399,6 +389,11 @@ public class AndroidUtils {
         artifacts
     );
 
+  }
+
+  private static Object invokeMethod(Object object, String methodName)
+      throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    return object.getClass().getMethod(methodName).invoke(object);
   }
 
 }
