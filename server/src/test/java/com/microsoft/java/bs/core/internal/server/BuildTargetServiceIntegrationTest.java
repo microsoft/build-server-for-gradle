@@ -1752,6 +1752,8 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
   @Test
   void testAndroidBuildTargets() {
 
+    // NOTE: Requires Android SDK to be configured via ANDROID_HOME property
+
     withNewTestServer("android-test", (buildServer, client) -> {
 
       WorkspaceBuildTargetsResult buildTargetsResult = buildServer.workspaceBuildTargets().join();

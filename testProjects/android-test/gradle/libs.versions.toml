@@ -9,7 +9,6 @@ activity = "1.9.0"
 constraintlayout = "2.1.4"
 runner = "1.0.2"
 espressoCoreVersion = "3.0.2"
-appcompatV7 = "28.0.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -21,7 +20,6 @@ activity = { group = "androidx.activity", name = "activity", version.ref = "acti
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 runner = { group = "com.android.support.test", name = "runner", version.ref = "runner" }
 android-espresso-core = { group = "com.android.support.test.espresso", name = "espresso-core", version.ref = "espressoCoreVersion" }
-appcompat-v7 = { group = "com.android.support", name = "appcompat-v7", version.ref = "appcompatV7" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

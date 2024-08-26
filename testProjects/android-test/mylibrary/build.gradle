@@ -24,8 +24,6 @@ android {
 }
 
 dependencies {
-
-    implementation libs.appcompat.v7
     testImplementation libs.junit
     androidTestImplementation libs.runner
     androidTestImplementation libs.android.espresso.core
