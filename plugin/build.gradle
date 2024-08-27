@@ -26,6 +26,7 @@ jar {
       it.isDirectory() ? it : zipTree(it)
     }
   }
+  archiveFileName = "plugin-${version}.jar"
 }
 
 test {
@@ -39,6 +40,8 @@ test {
 
 task copyJar(type: Copy) {
   dependsOn(':plugin:jar')
-  from "build/libs/plugin.jar"
+  from ("build/libs") {
+    include "*.jar"
+  }
   into "../server/build/libs/plugins"
 }

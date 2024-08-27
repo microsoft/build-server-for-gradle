@@ -18,8 +18,9 @@ public class PluginHelper {
    * Returns the init script file.
    */
   public static File getInitScript() throws IOException {
-    File pluginJarFile = Paths.get(System.getProperty("user.dir"),
-        "build", "libs", "plugin.jar").toFile();
+    File pluginFolder = Paths.get(System.getProperty("user.dir"),
+        "build", "libs").toFile();
+    File pluginJarFile = pluginFolder.listFiles()[0];
     String pluginJarUnixPath = pluginJarFile.getAbsolutePath().replace("\\", "/");
     String initScriptContent =
         "initscript {\n"

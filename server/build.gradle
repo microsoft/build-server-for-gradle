@@ -22,8 +22,12 @@ application {
 }
 
 jar {
+  archiveFileName = "server.jar"
   metaInf {
     from 'src/main/resources/NOTICE.txt'
+  }
+  manifest {
+    attributes 'Implementation-Version': version
   }
 }
 
@@ -40,15 +44,15 @@ task generateInitScript() {
     def initScript = file("$buildDir/libs/plugins/init.gradle")
     initScript.parentFile.mkdirs()
     initScript.write """
-      initscript {
-        dependencies {
-          classpath files('plugin.jar')
-        }
-      }
-      allprojects {
-        apply plugin: com.microsoft.java.bs.gradle.plugin.GradleBuildServerPlugin
-      }
-      """
+initscript {
+  dependencies {
+    classpath files('plugin-${version}.jar')
+  }
+}
+  allprojects {
+    apply plugin: com.microsoft.java.bs.gradle.plugin.GradleBuildServerPlugin
+  }
+"""
   }
 }
 

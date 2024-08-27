@@ -61,7 +61,7 @@ extends:
                   AuthCertName: 'vscjava-esrprelease-auth'
                   AuthSignCertName: 'VSCJava-CodeSign'
                   FolderPath: server/build/libs
-                  Pattern: plugin.jar,server.jar
+                  Pattern: plugin-*.jar,server.jar
                   signConfigType: inlineSignParams
                   inlineOperation: |-
                     [

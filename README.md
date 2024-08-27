@@ -33,7 +33,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ## Launch the Build Server for Gradle
 ### Specify the Plugin Location
-The main class of the build server is `com.microsoft.java.bs.core.Launcher`. When you launch the server, you need to specify the location of the Gradle plugin via the system property `plugin.dir`. By default, you will find the plugin jar at `server/build/libs/plugins/plugin.jar` after building the project.
+The main class of the build server is `com.microsoft.java.bs.core.Launcher`. When you launch the server, you need to specify the location of the Gradle plugin via the system property `plugin.dir`. By default, you will find the plugin jar at `server/build/libs/plugins/plugin-${version}.jar` after building the project.
 ### Preferences
 
 A [Preferences](./server/src/main/java/com/microsoft/java/bs/core/internal/model/Preferences.java) object can be put into the data field of the `build/initialize` request for customization. Please check the comments in the code for the meaning of each preference.
