@@ -3,6 +3,9 @@ package com.microsoft.java.bs.gradle.plugin.utils;
 import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
+import com.microsoft.java.bs.gradle.model.LanguageExtension;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
 import com.microsoft.java.bs.gradle.model.impl.DefaultArtifact;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
@@ -10,17 +13,29 @@ import com.microsoft.java.bs.gradle.plugin.dependency.AndroidDependencyCollector
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
+import org.gradle.api.internal.tasks.compile.JavaCompilerArgumentsBuilder;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.compile.CompileOptions;
+import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
+import org.gradle.util.GradleVersion;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Utility class for android related operations.
@@ -176,9 +191,6 @@ public class AndroidUtils {
       }
       gradleSourceSet.setModuleDependencies(moduleDependencies);
 
-      // extensions
-      gradleSourceSet.setExtensions(new HashMap<>());
-
       // source and resource
       Object sourceSets = getProperty(variant, "sourceSets");
       Set<File> sourceDirs = new HashSet<>();
@@ -223,8 +235,11 @@ public class AndroidUtils {
       Set<File> sourceOutputs = new HashSet<>();
       Provider<Task> javaCompileProvider =
           (Provider<Task>) getProperty(variant, "javaCompileProvider");
+      List<String> compilerArgs = new ArrayList<>();
       if (javaCompileProvider != null) {
         Task javaCompileTask = javaCompileProvider.get();
+
+        compilerArgs.addAll(getCompilerArgs((JavaCompile) javaCompileTask));
 
         File outputDir = (File) invokeMethod(javaCompileTask, "getDestinationDir");
         sourceOutputs.add(outputDir);
@@ -262,6 +277,29 @@ public class AndroidUtils {
       Object unitTestVariant = invokeMethod(variant, "getUnitTestVariant");
       Object testVariant = invokeMethod(variant, "getTestVariant");
       gradleSourceSet.setHasTests(unitTestVariant != null || testVariant != null);
+
+      // extensions
+      Map<String, LanguageExtension> extensions = new HashMap<>();
+      boolean isJavaSupported = Arrays.stream(SourceSetUtils.getSupportedLanguages())
+          .anyMatch(l -> Objects.equals(l, SupportedLanguages.JAVA.getBspName()));
+      if (isJavaSupported) {
+        DefaultJavaExtension extension = new DefaultJavaExtension();
+
+        extension.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
+        extension.setJavaVersion(DefaultInstalledJdk.current().getJavaVersion().getMajorVersion());
+
+        extension.setSourceDirs(sourceDirs);
+        extension.setGeneratedSourceDirs(generatedSources);
+        extension.setClassesDir(sourceOutputs.iterator().next());
+        extension.setCompileTaskName(compileTaskName);
+
+        extension.setCompilerArgs(compilerArgs);
+        extension.setSourceCompatibility(getSourceCompatibility(compilerArgs));
+        extension.setTargetCompatibility(getTargetCompatibility(compilerArgs));
+
+        extensions.put(SupportedLanguages.JAVA.getBspName(), extension);
+      }
+      gradleSourceSet.setExtensions(extensions);
 
       return gradleSourceSet;
 
@@ -395,5 +433,107 @@ public class AndroidUtils {
       throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     return object.getClass().getMethod(methodName).invoke(object);
   }
+
+  // region TODO: Duplicate code from JavaLanguageModelBuilder
+  /**
+   * Get the compilation arguments of the build variant.
+   */
+  private static List<String> getCompilerArgs(JavaCompile javaCompile) {
+    CompileOptions options = javaCompile.getOptions();
+
+    try {
+      DefaultJavaCompileSpec specs = getJavaCompileSpec(javaCompile);
+
+      JavaCompilerArgumentsBuilder builder = new JavaCompilerArgumentsBuilder(specs)
+          .includeMainOptions(true)
+          .includeClasspath(false)
+          .includeSourceFiles(false)
+          .includeLauncherOptions(false);
+      return builder.build();
+    } catch (Exception e) {
+      // DefaultJavaCompileSpec and JavaCompilerArgumentsBuilder are internal so may not exist.
+      // Fallback to returning just the compiler arguments the build has specified.
+      // This will miss a lot of arguments derived from the CompileOptions e.g. sourceCompatibilty
+      // Arguments must be cast and converted to String because Groovy can use GStringImpl
+      // which then throws IllegalArgumentException when passed back over the tooling connection.
+      List<Object> compilerArgs = new LinkedList<>(options.getCompilerArgs());
+      return compilerArgs
+          .stream()
+          .map(Object::toString)
+          .collect(Collectors.toList());
+    }
+  }
+
+  private static DefaultJavaCompileSpec getJavaCompileSpec(JavaCompile javaCompile) {
+    CompileOptions options = javaCompile.getOptions();
+
+    DefaultJavaCompileSpec specs = new DefaultJavaCompileSpec();
+    specs.setCompileOptions(options);
+
+    // check the project hasn't already got the target or source defined in the
+    // compiler args so they're not overwritten below
+    List<String> originalArgs = options.getCompilerArgs();
+    String argsSourceCompatibility = getSourceCompatibility(originalArgs);
+    String argsTargetCompatibility = getTargetCompatibility(originalArgs);
+
+    if (!argsSourceCompatibility.isEmpty() && !argsTargetCompatibility.isEmpty()) {
+      return specs;
+    }
+
+    if (GradleVersion.current().compareTo(GradleVersion.version("6.6")) >= 0) {
+      if (options.getRelease().isPresent()) {
+        specs.setRelease(options.getRelease().get());
+        return specs;
+      }
+    }
+    if (argsSourceCompatibility.isEmpty() && specs.getSourceCompatibility() == null) {
+      String sourceCompatibility = javaCompile.getSourceCompatibility();
+      if (sourceCompatibility != null) {
+        specs.setSourceCompatibility(sourceCompatibility);
+      }
+    }
+    if (argsTargetCompatibility.isEmpty() && specs.getTargetCompatibility() == null) {
+      String targetCompatibility = javaCompile.getTargetCompatibility();
+      if (targetCompatibility != null) {
+        specs.setTargetCompatibility(targetCompatibility);
+      }
+    }
+    return specs;
+  }
+
+  /**
+   * Get the source compatibility level of the build variant.
+   */
+  private static String getSourceCompatibility(List<String> compilerArgs) {
+    return findFirstCompilerArgMatch(compilerArgs,
+        Stream.of("-source", "--source", "--release"))
+        .orElse("");
+  }
+
+  /**
+   * Get the target compatibility level of the build variant.
+   */
+  private static String getTargetCompatibility(List<String> compilerArgs) {
+    return findFirstCompilerArgMatch(compilerArgs,
+        Stream.of("-target", "--target", "--release"))
+        .orElse("");
+  }
+
+  private static Optional<String> findCompilerArg(List<String> compilerArgs, String arg) {
+    int idx = compilerArgs.indexOf(arg);
+    if (idx >= 0 && idx < compilerArgs.size() - 1) {
+      return Optional.of(compilerArgs.get(idx + 1));
+    }
+    return Optional.empty();
+  }
+
+  private static Optional<String> findFirstCompilerArgMatch(List<String> compilerArgs,
+                                                            Stream<String> args) {
+    return args.map(arg -> findCompilerArg(compilerArgs, arg))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .findFirst();
+  }
+  // endregion
 
 }

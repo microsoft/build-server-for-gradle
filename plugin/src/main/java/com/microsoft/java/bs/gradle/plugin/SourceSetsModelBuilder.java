@@ -35,7 +35,6 @@ import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.LanguageExtension;
-import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import com.microsoft.java.bs.gradle.plugin.dependency.DependencyCollector;
@@ -101,7 +100,8 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     Set<File> srcDirs = new HashSet<>();
     Set<File> generatedSrcDirs = new HashSet<>();
     Set<File> sourceOutputDirs = new HashSet<>();
-    for (LanguageModelBuilder languageModelBuilder : getSupportedLanguages()) {
+    for (LanguageModelBuilder languageModelBuilder
+        : SourceSetUtils.getSupportedLanguageModelBuilders()) {
       LanguageExtension extension = languageModelBuilder.getExtensionFor(project, sourceSet,
           gradleSourceSet.getModuleDependencies());
       if (extension != null) {
@@ -183,22 +183,6 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
 
     return gradleSourceSet;
-  }
-
-  private List<LanguageModelBuilder> getSupportedLanguages() {
-    List<LanguageModelBuilder> results = new LinkedList<>();
-    String supportedLanguagesProps = System.getProperty("bsp.gradle.supportedLanguages");
-    if (supportedLanguagesProps != null) {
-      String[] supportedLanguages = supportedLanguagesProps.split(",");
-      for (String language : supportedLanguages) {
-        if (language.equalsIgnoreCase(SupportedLanguages.JAVA.getBspName())) {
-          results.add(new JavaLanguageModelBuilder());
-        } else if (language.equalsIgnoreCase(SupportedLanguages.SCALA.getBspName())) {
-          results.add(new ScalaLanguageModelBuilder());
-        }
-      }
-    }
-    return results;
   }
 
   private <T extends Task> Set<T> tasksWithType(Project project, Class<T> clazz) {
