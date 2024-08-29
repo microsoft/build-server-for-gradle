@@ -103,7 +103,8 @@ similar to what we have for `JAVA_HOME` with https://github.com/microsoft/build-
 
 ## Troubleshooting
 
-If you encounter any issues with Android project support, please open an issue including the following information:
+If you face any issues with Android project support, please open a discussion for us to help. In case you find a bug in
+Android project support, please open an issue including the following information:
 
 - Steps to reproduce
 - Expected behaviour
