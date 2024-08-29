@@ -22,7 +22,7 @@ breakdown of the magic behind the scenes:
 Gradle Build Server detects if the Android plugin is applied to the project. It then uses the appropriate model
 builders to handle both Java and Android specifics.
 
-![SourceSet build logic](../../images/sourceset_build_logic.png)
+![SourceSet build logic](../images/sourceset_build_logic.png)
 
 ### 2. Extracting Information:
 
@@ -60,7 +60,7 @@ ensuring a familiar and efficient workflow.
 The following diagram showcasing Android build process has been abstracted down to only show the parts which is relevant
 to this project's implementation.
 
-![Android Build Process](../../images/android_build_process.png)
+![Android Build Process](../images/android_build_process.png)
 
 ## Known Limitations
 

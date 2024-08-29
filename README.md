@@ -67,8 +67,9 @@ Please check [CONTRIBUTING.md](./CONTRIBUTING.md) for more details about how to 
 
 ## Developer Documentation
 
-Assisting documents to explaining the working of Gradle Build Server can be found in [docs/README.md](./docs/README.md).
-This will be helpful for you if you're planning to integrate Gradle Build Server or contribute to the project.
+Assisting documents to explaining the working of Gradle Build Server can be found
+in [developer documentation](./docs/developer.md). This will be helpful for you if you're planning to integrate Gradle
+Build Server or contribute to the project.
 
 ## Trademarks
 

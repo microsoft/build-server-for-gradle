@@ -1,11 +1,16 @@
-# COMPOSITE BUILDS
+# Developer Documentation
 
-## Challenge
+This documentation will assist developers trying to understand the working of the Gradle Build Server for easier
+contribution or integration.
+
+## Composite Builds
+
+### Challenge
 
 When using a model builder to fetch the GradleSourceSet model, the complete hierarchical scope of the project is lost.
 This hinders the ability to fetch included builds and project dependencies, which is crucial for composite builds.
 
-## Our Solution: Using Build Actions
+### Our Solution: Using Build Actions
 
 To address this limitation we take the following approach:
 
@@ -15,9 +20,9 @@ To address this limitation we take the following approach:
 3. With te complete set of source sets for each included build we map the build target dependencies and return the list
    of `GradleSourceSets`.
 
-![Composite Build](../images/composite_build.png)
+![Composite Build](./images/composite_build.png)
 
-# JAVA HOME HANDLING
+## Java Home Handling
 
 The default `JAVA_HOME` configuration of a project maybe incompatible with Gradle Build Server. If this happens we
 implemented a fallback logic to find a compatible JDK to launch the Gradle Build Server.
@@ -33,8 +38,8 @@ implemented a fallback logic to find a compatible JDK to launch the Gradle Build
     - If we fail to find a compatible JDK we notify the client that we could not find a compatible `JAVA_HOME` to launch
       the Gradle Build Server.
 
-![Java Home Handling](../images/java_home_handling.png)
+![Java Home Handling](./images/java_home_handling.png)
 
-# ANDROID SUPPORT
+## Android Support
 
 See [docs/android/README.md](./android/README.md)
