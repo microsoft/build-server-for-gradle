@@ -18,7 +18,6 @@ import org.gradle.api.internal.tasks.compile.JavaCompilerArgumentsBuilder;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
-import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.util.GradleVersion;
 
 import java.io.File;
@@ -284,14 +283,6 @@ public class AndroidUtils {
           .anyMatch(l -> Objects.equals(l, SupportedLanguages.JAVA.getBspName()));
       if (isJavaSupported) {
         DefaultJavaExtension extension = new DefaultJavaExtension();
-
-        extension.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
-        extension.setJavaVersion(DefaultInstalledJdk.current().getJavaVersion().getMajorVersion());
-
-        extension.setSourceDirs(sourceDirs);
-        extension.setGeneratedSourceDirs(generatedSources);
-        extension.setClassesDir(sourceOutputs.iterator().next());
-        extension.setCompileTaskName(compileTaskName);
 
         extension.setCompilerArgs(compilerArgs);
         extension.setSourceCompatibility(getSourceCompatibility(compilerArgs));
