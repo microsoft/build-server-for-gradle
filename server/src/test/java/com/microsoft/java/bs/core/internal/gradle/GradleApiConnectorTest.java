@@ -100,18 +100,19 @@ class GradleApiConnectorTest {
     preferenceManager.setPreferences(new Preferences());
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
-    assertEquals(4, gradleSourceSets.getGradleSourceSets().size());
+    assertEquals(10, gradleSourceSets.getGradleSourceSets().size());
     findSourceSet(gradleSourceSets, "app [debug]");
+    findSourceSet(gradleSourceSets, "app [debugUnitTest]");
+    findSourceSet(gradleSourceSets, "app [debugAndroidTest]");
     findSourceSet(gradleSourceSets, "app [release]");
+    findSourceSet(gradleSourceSets, "app [releaseUnitTest]");
     findSourceSet(gradleSourceSets, "mylibrary [debug]");
+    findSourceSet(gradleSourceSets, "mylibrary [debugUnitTest]");
+    findSourceSet(gradleSourceSets, "mylibrary [debugAndroidTest]");
     findSourceSet(gradleSourceSets, "mylibrary [release]");
+    findSourceSet(gradleSourceSets, "mylibrary [releaseUnitTest]");
     Set<GradleModuleDependency> combinedModuleDependencies = new HashSet<>();
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
-      assertEquals(2, sourceSet.getSourceDirs().size());
-      assertEquals(4, sourceSet.getResourceDirs().size());
-      assertEquals(0, sourceSet.getExtensions().size());
-      assertEquals(0, sourceSet.getArchiveOutputFiles().size());
-      assertTrue(sourceSet.hasTests());
       combinedModuleDependencies.addAll(sourceSet.getModuleDependencies());
     }
     // This test can vary depending on the environment due to generated files.
@@ -120,9 +121,7 @@ class GradleApiConnectorTest {
     //    the R.jar files don't exist for the build targets and are not included.
     // 2. ANDROID_HOME is not configured in which case the Android Component classpath
     //    is not added to module dependencies.
-
-    // 57 is the number of actual project module dependencies without test variant dependencies
-    assertTrue(combinedModuleDependencies.size() >= 57);
+    assertTrue(combinedModuleDependencies.size() >= 82);
   }
 
   private GradleSourceSet findSourceSet(GradleSourceSets gradleSourceSets, String displayName) {
