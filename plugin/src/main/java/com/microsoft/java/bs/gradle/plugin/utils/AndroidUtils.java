@@ -96,12 +96,7 @@ public class AndroidUtils {
     try {
       Set<Object> variants = (Set<Object>) invokeMethod(androidExtension, methodName);
       for (Object variant : variants) {
-        GradleSourceSet sourceSet =
-            convertVariantToGradleSourceSet(project, variant, sourceSets, false);
-        if (sourceSet == null) {
-          continue;
-        }
-        sourceSets.add(sourceSet);
+        sourceSets.addAll(convertVariantToGradleSourceSet(project, variant, false));
       }
     } catch (IllegalAccessException | NoSuchMethodException
              | InvocationTargetException | ClassCastException e) {
@@ -113,19 +108,20 @@ public class AndroidUtils {
   }
 
   /**
-   * Returns a GradleSourceSet populated with the given Android build variant data.
+   * Returns a list of GradleSourceSet which have been populated with respective
+   * Android build variant data.
    *
    * @param project Gradle project to populate GradleSourceSet properties
    * @param variant Android Build Variant object to populate GradleSourceSet properties
-   * @param sourceSets List of source sets to which test variants will be added
    * @param isUnitTest Indicates if the given variant is a unit test variant
    */
-  private static GradleSourceSet convertVariantToGradleSourceSet(
+  private static List<GradleSourceSet> convertVariantToGradleSourceSet(
       Project project,
       Object variant,
-      List<GradleSourceSet> sourceSets,
       boolean isUnitTest
   ) {
+
+    List<GradleSourceSet> sourceSets = new LinkedList<>();
 
     try {
 
@@ -183,16 +179,18 @@ public class AndroidUtils {
       gradleSourceSet.setArchiveOutputFiles(new HashMap<>());
 
       // has tests
-      addTests(gradleSourceSet, project, variant, sourceSets);
+      sourceSets.addAll(addTests(gradleSourceSet, project, variant));
 
       // extensions
       addExtensions(gradleSourceSet, compilerArgs);
 
-      return gradleSourceSet;
+      sourceSets.add(gradleSourceSet);
 
-    } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-      return null;
+    } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException ignored) {
+      // do nothing
     }
+
+    return sourceSets;
 
   }
 
@@ -412,42 +410,43 @@ public class AndroidUtils {
   }
 
   /**
-   * Add classpath files to the given GradleSourceSet.
+   * Set if the given GradleSourceSet contains test variants and returns them after converting
+   * to GradleSourceSet.
    *
    * @param gradleSourceSet Instance of DefaultGradleSourceSet
    * @param project Instance of Project
    * @param variant Instance of Build Variant
-   * @param sourceSets List of source sets to which test variants will be added
    */
-  private static void addTests(
+  private static List<GradleSourceSet> addTests(
       DefaultGradleSourceSet gradleSourceSet,
       Project project,
-      Object variant,
-      List<GradleSourceSet> sourceSets
+      Object variant
   ) {
+
+    List<GradleSourceSet> testSourceSets = new LinkedList<>();
+
     try {
       Object unitTestVariant = invokeMethod(variant, "getUnitTestVariant");
       Object testVariant = invokeMethod(variant, "getTestVariant");
       gradleSourceSet.setHasTests(unitTestVariant != null || testVariant != null);
 
       if (unitTestVariant != null) {
-        GradleSourceSet unitTestSourceSet =
-            convertVariantToGradleSourceSet(project, unitTestVariant, sourceSets, true);
-        if (unitTestSourceSet != null) {
-          sourceSets.add(unitTestSourceSet);
-        }
+        List<GradleSourceSet> sourceSets =
+            convertVariantToGradleSourceSet(project, unitTestVariant, true);
+        testSourceSets.addAll(sourceSets);
       }
 
       if (testVariant != null) {
-        GradleSourceSet androidTestSourceSet =
-            convertVariantToGradleSourceSet(project, testVariant, sourceSets, false);
-        if (androidTestSourceSet != null) {
-          sourceSets.add(androidTestSourceSet);
-        }
+        List<GradleSourceSet> sourceSets =
+            convertVariantToGradleSourceSet(project, testVariant, false);
+        testSourceSets.addAll(sourceSets);
       }
     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
       // do nothing
     }
+
+    return testSourceSets;
+
   }
 
   /**
