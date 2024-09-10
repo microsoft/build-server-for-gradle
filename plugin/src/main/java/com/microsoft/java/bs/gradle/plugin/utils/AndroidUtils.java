@@ -26,6 +26,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.LinkedList;
@@ -59,7 +60,6 @@ public class AndroidUtils {
    *
    * @param project Gradle project for extracting the build variants
    */
-  @SuppressWarnings("unchecked")
   public static List<GradleSourceSet> getBuildVariantsAsGradleSourceSets(Project project) {
 
     List<GradleSourceSet> sourceSets = new LinkedList<>();
@@ -69,38 +69,43 @@ public class AndroidUtils {
       return sourceSets;
     }
 
-    AndroidProjectType type = getProjectType(project);
-    if (type == null) {
+    AndroidProjectType androidProjectType = getProjectType(project);
+    if (androidProjectType == null) {
       return sourceSets;
     }
 
-    String methodName;
-    switch (type) {
+    List<Object> variants = new LinkedList<>();
+    switch (androidProjectType) {
       case APPLICATION:
       case DYNAMIC_FEATURE:
-        methodName = "getApplicationVariants";
+        variants = getVariants(androidExtension, "getApplicationVariants", "getTestVariants");
         break;
       case LIBRARY:
-        methodName = "getLibraryVariants";
+        variants = getVariants(androidExtension, "getLibraryVariants", "getTestVariants");
         break;
       case INSTANT_APP_FEATURE:
-        methodName = "getFeatureVariants";
+        variants = getVariants(androidExtension, "getFeatureVariants", "getTestVariants");
         break;
       case ANDROID_TEST:
-        methodName = "getTestVariants";
+        variants = getVariants(androidExtension, "getTestVariants");
         break;
       default:
-        methodName = "";
     }
 
-    try {
-      Set<Object> variants = (Set<Object>) invokeMethod(androidExtension, methodName);
-      for (Object variant : variants) {
-        sourceSets.addAll(convertVariantToGradleSourceSet(project, variant, false));
+    for (Object variant : variants) {
+      GradleSourceSet sourceSet = convertVariantToGradleSourceSet(project, variant, false);
+      if (sourceSet != null) {
+        sourceSets.add(sourceSet);
       }
-    } catch (IllegalAccessException | NoSuchMethodException
-             | InvocationTargetException | ClassCastException e) {
-      // do nothing
+    }
+
+    if (androidProjectType != AndroidProjectType.ANDROID_TEST) {
+      for (Object variant : getVariants(androidExtension, "getUnitTestVariants")) {
+        GradleSourceSet sourceSet = convertVariantToGradleSourceSet(project, variant, true);
+        if (sourceSet != null) {
+          sourceSets.add(sourceSet);
+        }
+      }
     }
 
     return sourceSets;
@@ -108,20 +113,38 @@ public class AndroidUtils {
   }
 
   /**
-   * Returns a list of GradleSourceSet which have been populated with respective
+   * Returns a list of variants extracted with the listed method names from the given
+   * android extension.
+   *
+   * @param androidExtension AndroidExtension object from which the variants are to be extracted.
+   * @param methodNames name of different methods to invoke to get all the variants.
+   */
+  @SuppressWarnings("unchecked")
+  private static List<Object> getVariants(Object androidExtension, String... methodNames) {
+    List<Object> variants = new LinkedList<>();
+    for (String methodName : methodNames) {
+      try {
+        variants.addAll((Collection<Object>) invokeMethod(androidExtension, methodName));
+      } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+        // do nothing
+      }
+    }
+    return variants;
+  }
+
+  /**
+   * Returns a GradleSourceSet which has been populated with respective
    * Android build variant data.
    *
    * @param project Gradle project to populate GradleSourceSet properties
    * @param variant Android Build Variant object to populate GradleSourceSet properties
    * @param isUnitTest Indicates if the given variant is a unit test variant
    */
-  private static List<GradleSourceSet> convertVariantToGradleSourceSet(
+  private static GradleSourceSet convertVariantToGradleSourceSet(
       Project project,
       Object variant,
       boolean isUnitTest
   ) {
-
-    List<GradleSourceSet> sourceSets = new LinkedList<>();
 
     try {
 
@@ -179,18 +202,18 @@ public class AndroidUtils {
       gradleSourceSet.setArchiveOutputFiles(new HashMap<>());
 
       // has tests
-      sourceSets.addAll(addTests(gradleSourceSet, project, variant));
+      gradleSourceSet.setHasTests((boolean) hasProperty(variant, "testedVariant"));
 
       // extensions
       addExtensions(gradleSourceSet, compilerArgs);
 
-      sourceSets.add(gradleSourceSet);
+      return gradleSourceSet;
 
     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException ignored) {
       // do nothing
     }
 
-    return sourceSets;
+    return null;
 
   }
 
@@ -410,46 +433,6 @@ public class AndroidUtils {
   }
 
   /**
-   * Set if the given GradleSourceSet contains test variants and returns them after converting
-   * to GradleSourceSet.
-   *
-   * @param gradleSourceSet Instance of DefaultGradleSourceSet
-   * @param project Instance of Project
-   * @param variant Instance of Build Variant
-   */
-  private static List<GradleSourceSet> addTests(
-      DefaultGradleSourceSet gradleSourceSet,
-      Project project,
-      Object variant
-  ) {
-
-    List<GradleSourceSet> testSourceSets = new LinkedList<>();
-
-    try {
-      Object unitTestVariant = invokeMethod(variant, "getUnitTestVariant");
-      Object testVariant = invokeMethod(variant, "getTestVariant");
-      gradleSourceSet.setHasTests(unitTestVariant != null || testVariant != null);
-
-      if (unitTestVariant != null) {
-        List<GradleSourceSet> sourceSets =
-            convertVariantToGradleSourceSet(project, unitTestVariant, true);
-        testSourceSets.addAll(sourceSets);
-      }
-
-      if (testVariant != null) {
-        List<GradleSourceSet> sourceSets =
-            convertVariantToGradleSourceSet(project, testVariant, false);
-        testSourceSets.addAll(sourceSets);
-      }
-    } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-      // do nothing
-    }
-
-    return testSourceSets;
-
-  }
-
-  /**
    * Add language extension to the given GradleSourceSet.
    *
    * @param gradleSourceSet Instance of DefaultGradleSourceSet
@@ -551,6 +534,17 @@ public class AndroidUtils {
   public static Object getProperty(Object obj, String propertyName)
       throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     return obj.getClass().getMethod("getProperty", String.class).invoke(obj, propertyName);
+  }
+
+  /**
+   * Checks if the given property exists in the given object with {@code hasProperty} method.
+   *
+   * @param obj object from which the property is to be extracted
+   * @param propertyName name of the property to be extracted
+   */
+  public static Object hasProperty(Object obj, String propertyName)
+      throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    return obj.getClass().getMethod("hasProperty", String.class).invoke(obj, propertyName);
   }
 
   /**
