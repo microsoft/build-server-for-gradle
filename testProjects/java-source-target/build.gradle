@@ -1,0 +1,12 @@
+plugins {
+  id 'java'
+}
+
+java {
+  targetCompatibility = JavaVersion.VERSION_1_8
+  sourceCompatibility = JavaVersion.VERSION_1_9
+}
+
+tasks.withType(JavaCompile) {
+  options.compilerArgs.addAll(['--release', '11'])
+}

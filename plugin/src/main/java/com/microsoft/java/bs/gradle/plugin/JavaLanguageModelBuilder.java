@@ -20,6 +20,8 @@ import java.util.stream.Stream;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.JavaExtension;
 import com.microsoft.java.bs.gradle.model.SupportedLanguage;
+import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
@@ -31,9 +33,6 @@ import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.util.GradleVersion;
-
-import com.microsoft.java.bs.gradle.model.SupportedLanguages;
-import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
 
 /**
  * The language model builder for Java language.
@@ -67,8 +66,10 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
 
       List<String> compilerArgs = getCompilerArgs(javaCompile);
       extension.setCompilerArgs(compilerArgs);
-      extension.setSourceCompatibility(getSourceCompatibility(compilerArgs));
-      extension.setTargetCompatibility(getTargetCompatibility(compilerArgs));
+      // Ignore options and get source/target compatibility directly from javaCompile.
+      extension.setSourceCompatibility(javaCompile.getSourceCompatibility());
+      extension.setTargetCompatibility(javaCompile.getTargetCompatibility());
+
       return extension;
     }
     return null;

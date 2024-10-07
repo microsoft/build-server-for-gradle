@@ -16,7 +16,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import java.util.ArrayList;
 
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -57,8 +56,8 @@ class GradleBuildServerPluginTest {
         .addArguments("-Dorg.gradle.logging.level=quiet")
         .addJvmArguments("-Dbsp.gradle.supportedLanguages="
             + String.join(",", SupportedLanguages.allBspNames));
-    GradleSourceSets sourceSets = action.run();
-    return new DefaultGradleSourceSets(new ArrayList<>(sourceSets.getGradleSourceSets()));
+
+    return new DefaultGradleSourceSets(action.run());
   }
 
   private interface ConnectionConsumer {
@@ -161,7 +160,7 @@ class GradleBuildServerPluginTest {
       // JDK source/target options changed from 1.9 -> 9 in 8.0
       new GradleJreVersion("8.0", 19),
       // highest supported version
-      new GradleJreVersion("8.8", 22)
+      new GradleJreVersion("8.10.2", 22)
     ).filter(version -> version.jreVersion >= javaVersion)
      .map(GradleJreVersion::getGradleVersion);
   }
@@ -340,9 +339,10 @@ class GradleBuildServerPluginTest {
         assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
         assertTrue(args.contains("|--release|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("9", javaExtension.getSourceCompatibility(),
-            () -> "Available args: " + args);
-        assertEquals("9", javaExtension.getTargetCompatibility(),
+        String version9 = gradleVersion.compareTo(GradleVersion.version("8.0")) >= 0 ? "9" : "1.9";
+        assertEquals(version9, javaExtension.getSourceCompatibility(),
+                () -> "Available args: " + args);
+        assertEquals(version9, javaExtension.getTargetCompatibility(),
             () -> "Available args: " + args);
       }
     });
@@ -363,10 +363,10 @@ class GradleBuildServerPluginTest {
         assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
         assertTrue(args.contains("|--release|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("9", javaExtension.getSourceCompatibility(),
-            () -> "Available args: " + args);
-        assertEquals("9", javaExtension.getTargetCompatibility(),
-            () -> "Available args: " + args);
+        assertFalse(javaExtension.getSourceCompatibility().isEmpty(),
+                () -> "Available args: " + args);
+        assertFalse(javaExtension.getTargetCompatibility().isEmpty(),
+                () -> "Available args: " + args);
       }
     });
   }
@@ -386,10 +386,10 @@ class GradleBuildServerPluginTest {
         assertTrue(args.contains("|--source|1.8"), () -> "Available args: " + args);
         assertTrue(args.contains("|--target|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("1.8", javaExtension.getSourceCompatibility(),
-            () -> "Available args: " + args);
-        assertEquals("9", javaExtension.getTargetCompatibility(),
-            () -> "Available args: " + args);
+        assertFalse(javaExtension.getSourceCompatibility().isEmpty(),
+                () -> "Available args: " + args);
+        assertFalse(javaExtension.getTargetCompatibility().isEmpty(),
+                () -> "Available args: " + args);
       }
     });
   }
@@ -409,10 +409,10 @@ class GradleBuildServerPluginTest {
         assertTrue(args.contains("|-source|1.8"), () -> "Available args: " + args);
         assertTrue(args.contains("|-target|9"), () -> "Available args: " + args);
         assertTrue(args.contains("|-Xlint:all"), () -> "Available args: " + args);
-        assertEquals("1.8", javaExtension.getSourceCompatibility(),
-            () -> "Available args: " + args);
-        assertEquals("9", javaExtension.getTargetCompatibility(),
-            () -> "Available args: " + args);
+        assertFalse(javaExtension.getSourceCompatibility().isEmpty(),
+                () -> "Available args: " + args);
+        assertFalse(javaExtension.getTargetCompatibility().isEmpty(),
+                () -> "Available args: " + args);
       }
     });
   }
@@ -461,6 +461,31 @@ class GradleBuildServerPluginTest {
             () -> "Available args: " + args);
         assertFalse(javaExtension.getTargetCompatibility().isEmpty(),
             () -> "Available args: " + args);
+      }
+    });
+  }
+
+  @ParameterizedTest(name = "testJavaSourceTarget {0}")
+  @MethodSource("versionProvider")
+  void testJavaSourceTarget(GradleVersion gradleVersion) throws IOException {
+    // `java` cannot be used before 5.0
+    assumeTrue(gradleVersion.compareTo(GradleVersion.version("5.0")) >= 0);
+    withSourceSets("java-source-target", gradleVersion, gradleSourceSets -> {
+      assertEquals(2, gradleSourceSets.getGradleSourceSets().size());
+      for (GradleSourceSet gradleSourceSet : gradleSourceSets.getGradleSourceSets()) {
+        JavaExtension javaExtension = SupportedLanguages.JAVA.getExtension(gradleSourceSet);
+        assertNotNull(javaExtension);
+        String args = "|" + String.join("|", javaExtension.getCompilerArgs());
+        assertFalse(args.contains("|--source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|--target|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|-source|"), () -> "Available args: " + args);
+        assertFalse(args.contains("|-target|"), () -> "Available args: " + args);
+        assertTrue(args.contains("|--release|11"), () -> "Available args: " + args);
+        String version9 = gradleVersion.compareTo(GradleVersion.version("8.0")) >= 0 ? "9" : "1.9";
+        assertEquals(version9, javaExtension.getSourceCompatibility(),
+                () -> "Available args: " + args);
+        assertEquals("1.8", javaExtension.getTargetCompatibility(),
+                () -> "Available args: " + args);
       }
     });
   }
