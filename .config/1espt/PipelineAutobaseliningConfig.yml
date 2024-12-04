@@ -17,6 +17,8 @@ pipelines:
           lastModifiedDate: 2024-08-13
         binskim:
           lastModifiedDate: 2024-11-14
+        spotbugs:
+          lastModifiedDate: 2024-12-04
   16492:
     retail:
       source:
