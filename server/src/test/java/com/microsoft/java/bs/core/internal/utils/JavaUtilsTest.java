@@ -55,7 +55,10 @@ class JavaUtilsTest {
 
     Path tempDirectory = Files.createTempDirectory("test-jdk");
     ProcessBuilder processBuilder =
-        new ProcessBuilder(tempDirectory.toString() + "/bin/java", "-version");
+        new ProcessBuilder(new String[] {
+          tempDirectory.resolve("bin").resolve("java").toString(),
+          "-version"
+        });
 
     assertThrows(IOException.class, () -> getJavaVersionFromFile(processBuilder));
     Files.deleteIfExists(tempDirectory);
