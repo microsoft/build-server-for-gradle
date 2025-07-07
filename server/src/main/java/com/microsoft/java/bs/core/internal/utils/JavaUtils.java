@@ -26,7 +26,7 @@ public class JavaUtils {
 
     ProcessBuilder processBuilder =
         new ProcessBuilder(new String[] {
-          jdkFile.getAbsolutePath().resolve("bin").resolve("java").toString(),
+          jdkFile.toPath().resolve("bin").resolve("java").toString(),
           "-version"
         });
 
