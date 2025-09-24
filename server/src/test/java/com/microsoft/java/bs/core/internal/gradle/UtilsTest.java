@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.io.File;
 import java.nio.file.Paths;
 
+import org.eclipse.xtend.lib.DataProcessor.Util;
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.java.bs.core.internal.model.Preferences;
@@ -32,6 +33,9 @@ class UtilsTest {
 
   @Test
   void testGetLatestCompatibleJavaVersion() {
+    assertEquals("25", Utils.getLatestCompatibleJavaVersion("9.1"));
+    assertEquals("24", Utils.getLatestCompatibleJavaVersion("8.14"));
+    assertEquals("23", Utils.getLatestCompatibleJavaVersion("8.10"));
     assertEquals("22", Utils.getLatestCompatibleJavaVersion("8.8"));
     assertEquals("21", Utils.getLatestCompatibleJavaVersion("8.5"));
     assertEquals("20", Utils.getLatestCompatibleJavaVersion("8.3"));
