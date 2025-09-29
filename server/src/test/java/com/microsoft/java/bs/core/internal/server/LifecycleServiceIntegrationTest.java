@@ -140,7 +140,7 @@ class LifecycleServiceIntegrationTest extends IntegrationTest {
         InitializeBuildParams initParams =
             getInitializedBuildParamsWithJdk(
                 "Non-Existent Project",
-                "23.0.1",
+                "25.0.1",
                 "file:///tmp/nonexistent_file.txt"
             );
 
