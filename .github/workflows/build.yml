@@ -38,9 +38,9 @@ jobs:
       with:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
-    - name: Setup Gradle 8.7
+    - name: Setup Gradle 8.14
       uses: gradle/actions/setup-gradle@v4
       with:
-        gradle-version: '8.7' # Quotes required to prevent YAML converting to number
+        gradle-version: '8.14' # Quotes required to prevent YAML converting to number
     - name: Execute Gradle build
       run: ${{ matrix.build-command }}
