@@ -87,9 +87,16 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
         generatedSrcDirs.add(generatedDir.getAsFile());
       }
     } else if (GradleVersion.current().compareTo(GradleVersion.version("4.3")) >= 0) {
-      File generatedDir = options.getAnnotationProcessorGeneratedSourcesDirectory();
-      if (generatedDir != null) {
-        generatedSrcDirs.add(generatedDir);
+      // Use reflection for Gradle 4.3 to 6.2
+      try {
+        java.lang.reflect.Method method = CompileOptions.class
+            .getMethod("getAnnotationProcessorGeneratedSourcesDirectory");
+        File generatedDir = (File) method.invoke(options);
+        if (generatedDir != null) {
+          generatedSrcDirs.add(generatedDir);
+        }
+      } catch (Exception e) {
+        // Method not available, skip
       }
     }
   }
@@ -269,7 +276,14 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
     if (GradleVersion.current().compareTo(GradleVersion.version("6.1")) >= 0) {
       return compile.getDestinationDirectory().get().getAsFile();
     } else {
-      return compile.getDestinationDir();
+      // Use reflection for Gradle before 6.1
+      try {
+        java.lang.reflect.Method method = AbstractCompile.class.getMethod("getDestinationDir");
+        return (File) method.invoke(compile);
+      } catch (Exception e) {
+        // Fallback to newer API if reflection fails
+        return compile.getDestinationDirectory().get().getAsFile();
+      }
     }
   }
 }

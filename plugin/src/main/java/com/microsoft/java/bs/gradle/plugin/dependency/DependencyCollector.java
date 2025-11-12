@@ -5,19 +5,14 @@ package com.microsoft.java.bs.gradle.plugin.dependency;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.ResolvedArtifact;
-import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
 import org.gradle.api.artifacts.result.ArtifactResolutionResult;
 import org.gradle.api.artifacts.result.ArtifactResult;
@@ -38,6 +33,10 @@ import com.microsoft.java.bs.gradle.model.impl.DefaultArtifact;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleModuleDependency;
 import org.gradle.util.GradleVersion;
 
+import java.lang.reflect.Method;
+import java.util.HashSet;
+import java.util.stream.Stream;
+
 /**
  * Collects dependencies from a {@link SourceSet}.
  */
@@ -51,26 +50,7 @@ public class DependencyCollector {
   public static Set<GradleModuleDependency> getModuleDependencies(Project project,
       Set<String> configurationNames) {
     if (GradleVersion.current().compareTo(GradleVersion.version("4.0")) < 0) {
-      try {
-        List<ResolvedConfiguration> configs = project.getConfigurations().stream()
-            .filter(configuration -> configurationNames.contains(configuration.getName()))
-              .map(Configuration::getResolvedConfiguration)
-            .collect(Collectors.toList());
-        Stream<DefaultGradleModuleDependency> dependencies = configs.stream()
-            .flatMap(config -> config.getResolvedArtifacts().stream())
-            .map(artifact -> getArtifact(project, artifact));
-
-        // add as individual files for direct dependencies on jars
-        Stream<DefaultGradleModuleDependency> directDependencies = configs.stream()
-            .flatMap(config -> config.getFiles(Specs.satisfyAll()).stream())
-            .map(DependencyCollector::getFileDependency);
-        return Stream.concat(dependencies, directDependencies)
-          .filter(Objects::nonNull)
-          .collect(Collectors.toSet());
-      } catch (GradleException ex) {
-        // handle build with unresolvable dependencies e.g. missing repository
-        return new HashSet<>();
-      }
+      return getModuleDependenciesForOldGradle(project, configurationNames);
     } else {
       return project.getConfigurations()
         .stream()
@@ -83,16 +63,86 @@ public class DependencyCollector {
     }
   }
 
+  /**
+   * Support for Gradle versions before 4.0 using reflection.
+   */
+  @SuppressWarnings("unchecked")
+  private static Set<GradleModuleDependency> getModuleDependenciesForOldGradle(Project project,
+      Set<String> configurationNames) {
+    try {
+      List<Object> configs = project.getConfigurations().stream()
+          .filter(configuration -> configurationNames.contains(configuration.getName()))
+          .map(configuration -> {
+            try {
+              Method getResolvedConfiguration = Configuration.class
+                  .getMethod("getResolvedConfiguration");
+              return getResolvedConfiguration.invoke(configuration);
+            } catch (Exception e) {
+              return null;
+            }
+          })
+          .filter(Objects::nonNull)
+          .collect(Collectors.toList());
+
+      Stream<DefaultGradleModuleDependency> dependencies = configs.stream()
+          .flatMap(config -> {
+            try {
+              Method getResolvedArtifacts = config.getClass()
+                  .getMethod("getResolvedArtifacts");
+              Set<?> artifacts = (Set<?>) getResolvedArtifacts.invoke(config);
+              return artifacts.stream().map(artifact -> {
+                try {
+                  Method getId = artifact.getClass().getMethod("getId");
+                  Method getFile = artifact.getClass().getMethod("getFile");
+                  ComponentArtifactIdentifier id = 
+                      (ComponentArtifactIdentifier) getId.invoke(artifact);
+                  File file = (File) getFile.invoke(artifact);
+                  return getArtifact(project, id, file);
+                } catch (Exception e) {
+                  return null;
+                }
+              });
+            } catch (Exception e) {
+              return Stream.empty();
+            }
+          })
+          .filter(Objects::nonNull);
+
+      // add as individual files for direct dependencies on jars
+      Stream<DefaultGradleModuleDependency> directDependencies = configs.stream()
+          .flatMap(config -> {
+            try {
+              Method getFiles = config.getClass().getMethod("getFiles", 
+                  Class.forName("org.gradle.api.specs.Spec"));
+              Object filesObj = getFiles.invoke(config, Specs.satisfyAll());
+              Set<File> files = (Set<File>) filesObj;
+              return files.stream().map(DependencyCollector::getFileDependency);
+            } catch (Exception e) {
+              return Stream.empty();
+            }
+          })
+          .filter(Objects::nonNull);
+
+      return Stream.concat(dependencies, directDependencies)
+          .filter(Objects::nonNull)
+          .collect(Collectors.toSet());
+    } catch (Exception ex) {
+      // handle build with unresolvable dependencies e.g. missing repository
+      return new HashSet<>();
+    }
+  }
+
+  private static DefaultGradleModuleDependency getFileDependency(File resolvedArtifactFile) {
+    return getFileArtifactDependency(
+        resolvedArtifactFile.getName(),
+        resolvedArtifactFile
+    );
+  }
+
   private static DefaultGradleModuleDependency getArtifact(Project project,
       ResolvedArtifactResult artifactResult) {
     ComponentArtifactIdentifier id = artifactResult.getId();
     return getArtifact(project, id, artifactResult.getFile());
-  }
-
-  private static DefaultGradleModuleDependency getArtifact(Project project,
-      ResolvedArtifact resolvedArtifact) {
-    ComponentArtifactIdentifier id = resolvedArtifact.getId();
-    return getArtifact(project, id, resolvedArtifact.getFile());
   }
 
   private static DefaultGradleModuleDependency getArtifact(Project project,
@@ -168,13 +218,6 @@ public class DependencyCollector {
       }
     }
     return null;
-  }
-
-  private static DefaultGradleModuleDependency getFileDependency(File resolvedArtifactFile) {
-    return getFileArtifactDependency(
-            resolvedArtifactFile.getName(),
-            resolvedArtifactFile
-    );
   }
 
   private static DefaultGradleModuleDependency getFileArtifactDependency(

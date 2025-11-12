@@ -180,7 +180,14 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
       if (GradleVersion.current().compareTo(GradleVersion.version("6.1")) >= 0) {
         return compile.getDestinationDirectory().get().getAsFile();
       } else {
-        return compile.getDestinationDir();
+        // Use reflection for Gradle before 6.1
+        try {
+          java.lang.reflect.Method method = AbstractCompile.class.getMethod("getDestinationDir");
+          return (File) method.invoke(compile);
+        } catch (Exception e) {
+          // Fallback to newer API if reflection fails
+          return compile.getDestinationDirectory().get().getAsFile();
+        }
       }
     }
 
