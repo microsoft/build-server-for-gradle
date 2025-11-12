@@ -31,6 +31,8 @@ jobs:
             build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
           - java-version: 17
             build-command: ./gradlew clean build
+          - java-version: 21
+            build-command: ./gradlew clean build
           - java-version: 25
             build-command: ./gradlew cleann build
 
