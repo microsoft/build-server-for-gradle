@@ -31,6 +31,8 @@ jobs:
             build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
           - java-version: 17
             build-command: ./gradlew clean build
+          - java-version: 25
+            build-command: ./gradlew cleann build
 
     steps:
     - uses: actions/checkout@v3
@@ -38,9 +40,9 @@ jobs:
       with:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
-    - name: Setup Gradle 8.14
+    - name: Setup Gradle 9.2
       uses: gradle/actions/setup-gradle@v4
       with:
-        gradle-version: '8.14' # Quotes required to prevent YAML converting to number
+        gradle-version: '9.2.0' # Quotes required to prevent YAML converting to number
     - name: Execute Gradle build
       run: ${{ matrix.build-command }}
