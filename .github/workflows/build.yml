@@ -26,15 +26,20 @@ jobs:
         include:
           # Checkstyle and build for the module 'server' only enabled in Java 17.
           - java-version: 8
+            gradle-version: 8.14
             build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
           - java-version: 11
+            gradle-version: 8.14
             build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
           - java-version: 17
+            gradle-version: 9.2
             build-command: ./gradlew clean build
           - java-version: 21
+            gradle-version: 9.2
             build-command: ./gradlew clean build
           - java-version: 25
-            build-command: ./gradlew cleann build
+            gradle-version: 9.2
+            build-command: ./gradlew clean build
 
     steps:
     - uses: actions/checkout@v3
@@ -42,9 +47,9 @@ jobs:
       with:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
-    - name: Setup Gradle 9.2
+    - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
       with:
-        gradle-version: '9.2.0' # Quotes required to prevent YAML converting to number
+        gradle-version: ${{ matrix.gradle-version}} # Quotes required to prevent YAML converting to number
     - name: Execute Gradle build
       run: ${{ matrix.build-command }}
