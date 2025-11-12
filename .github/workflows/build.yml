@@ -24,6 +24,10 @@ jobs:
     strategy:
       matrix:
         include:
+          - java-versoin: 8
+            build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:Build
+          - java-versoin: 11
+            build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
           - java-version: 17
             build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
           - java-version: 21

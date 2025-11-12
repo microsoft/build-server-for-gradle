@@ -106,11 +106,27 @@ class GradleBuildServerPluginTest {
 
   private static class GradleJreVersion {
     final String gradleVersion;
-    final int jreVersion;
+    final int minJreVersion;
+    final int maxJreVersion; // -1 means no upper limit
 
-    GradleJreVersion(String gradleVersion, int jreVersion) {
+    GradleJreVersion(String gradleVersion, int minJreVersion) {
+      this(gradleVersion, minJreVersion, -1);
+    }
+
+    GradleJreVersion(String gradleVersion, int minJreVersion, int maxJreVersion) {
       this.gradleVersion = gradleVersion;
-      this.jreVersion = jreVersion;
+      this.minJreVersion = minJreVersion;
+      this.maxJreVersion = maxJreVersion;
+    }
+
+    boolean isCompatibleWith(int javaVersion) {
+      if (javaVersion < minJreVersion) {
+        return false;
+      }
+      if (maxJreVersion != -1 && javaVersion > maxJreVersion) {
+        return false;
+      }
+      return true;
     }
 
     GradleVersion getGradleVersion() {
@@ -126,34 +142,36 @@ class GradleBuildServerPluginTest {
     // change the last version in the below list to point to the highest Gradle version supported
     // if the Gradle API changes then keep that version forever and add a comment as to why
     return Stream.of(
-      // earliest supported version
-      new GradleJreVersion("2.12", 8),
+      // earliest supported version - Gradle < 5.0 has threading issues on JDK 16+
+      new GradleJreVersion("2.12", 8, 15),
       // java source/target options specified in 2.14
       // tooling api jar name changed from gradle-tooling-api to gradle-api in 3.0
-      new GradleJreVersion("3.0", 8),
+      new GradleJreVersion("3.0", 8, 15),
       // artifacts view added in 4.0
       // RuntimeClasspathConfigurationName added to sourceset in 3.4
       // Test#getTestClassesDir -> Test#getTestClassesDirs in 4.0
       // sourceSet#getJava#getOutputDir added in 4.0
-      new GradleJreVersion("4.2.1", 8),
+      new GradleJreVersion("4.2.1", 8, 15),
       // CompileOptions#getAnnotationProcessorGeneratedSourcesDirectory added in 4.3
-      new GradleJreVersion("4.3.1", 9),
+      new GradleJreVersion("4.3.1", 9, 15),
       // SourceSetContainer added to project#getExtensions in 5.0
-      new GradleJreVersion("5.0", 11),
+      new GradleJreVersion("5.0", 11, 16),
       // AbstractArchiveTask#getArchiveFile -> AbstractArchiveTask#getArchiveFile in 5.1
       // annotation processor dirs auto created in 5.2
-      new GradleJreVersion("5.2", 11),
+      new GradleJreVersion("5.2", 11, 16),
       // sourceSet#getJava#getOutputDir -> sourceSet#getJava#getClassesDirectory in 6.1
-      new GradleJreVersion("6.1", 13),
+      new GradleJreVersion("6.1", 13, 16),
       // DefaultCopySpec#getChildren changed from Iterable to Collection in 6.2
-      new GradleJreVersion("6.2", 13),
+      new GradleJreVersion("6.2", 13, 16),
       // CompileOptions#getGeneratedSourceOutputDirectory added in 6.3
-      new GradleJreVersion("6.3", 14),
+      new GradleJreVersion("6.3", 14, 16),
       // CompileOptions#getRelease added in 6.6
-      new GradleJreVersion("6.6", 13),
+      new GradleJreVersion("6.6", 13, 16),
       // ScalaSourceDirectorySet added to project#getExtensions in 7.1
-      new GradleJreVersion("7.1", 16),
+      // Gradle < 7.0 cannot run on JDK 17+ (sealed classes, record types)
+      new GradleJreVersion("7.1", 16, 17),
       // Scala 3 support added in 7.3
+      // Gradle < 7.3 has issues with JDK 18+
       new GradleJreVersion("7.3", 17),
       // FoojayToolchainsPlugin requires >= 7.6
       new GradleJreVersion("7.6.1", 19),
@@ -163,7 +181,7 @@ class GradleBuildServerPluginTest {
       new GradleJreVersion("8.8", 22),
       new GradleJreVersion("8.14", 24),
       new GradleJreVersion("9.1", 25)
-    ).filter(version -> version.jreVersion <= javaVersion)
+    ).filter(version -> version.isCompatibleWith(javaVersion))
      .map(GradleJreVersion::getGradleVersion);
   }
 
