@@ -24,9 +24,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - java-version: 8
-            gradle-version: 8.14
-            build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
           - java-version: 11
             gradle-version: 8.14
             build-command: ./gradlew clean build -x checkstyleMain -x checkstyleTest -x :server:build
