@@ -160,8 +160,10 @@ class GradleBuildServerPluginTest {
       // JDK source/target options changed from 1.9 -> 9 in 8.0
       new GradleJreVersion("8.0", 19),
       // highest supported version
-      new GradleJreVersion("8.10.2", 22)
-    ).filter(version -> version.jreVersion >= javaVersion)
+      new GradleJreVersion("8.8", 22),
+      new GradleJreVersion("8.14", 24),
+      new GradleJreVersion("9.1", 25)
+    ).filter(version -> version.jreVersion <= javaVersion)
      .map(GradleJreVersion::getGradleVersion);
   }
 
