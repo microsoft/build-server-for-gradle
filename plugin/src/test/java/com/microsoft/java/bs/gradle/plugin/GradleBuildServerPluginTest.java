@@ -162,8 +162,9 @@ class GradleBuildServerPluginTest {
       new GradleJreVersion("8.10.2", 22),
       // Gradle 9.2.0 requires Java 17 minimum
       // highest supported version
-      new GradleJreVersion("9.2.0", 17)
-    ).filter(version -> javaVersion >= version.jreVersion)
+      new GradleJreVersion("9.0.0", 24),
+      new GradleJreVersion("9.2.0", 26)
+    ).filter(version -> version.jreVersion >= javaVersion)
      .map(GradleJreVersion::getGradleVersion);
   }
 
