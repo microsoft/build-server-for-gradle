@@ -137,33 +137,33 @@ class GradleBuildServerPluginTest {
       // sourceSet#getJava#getOutputDir added in 4.0
       new GradleJreVersion("4.2.1", 8),
       // CompileOptions#getAnnotationProcessorGeneratedSourcesDirectory added in 4.3
-      new GradleJreVersion("4.3.1", 9),
+      new GradleJreVersion("4.3.1", 8),
       // SourceSetContainer added to project#getExtensions in 5.0
-      new GradleJreVersion("5.0", 11),
+      new GradleJreVersion("5.0", 8),
       // AbstractArchiveTask#getArchiveFile -> AbstractArchiveTask#getArchiveFile in 5.1
       // annotation processor dirs auto created in 5.2
-      new GradleJreVersion("5.2", 11),
+      new GradleJreVersion("5.2", 8),
       // sourceSet#getJava#getOutputDir -> sourceSet#getJava#getClassesDirectory in 6.1
-      new GradleJreVersion("6.1", 13),
+      new GradleJreVersion("6.1", 8),
       // DefaultCopySpec#getChildren changed from Iterable to Collection in 6.2
-      new GradleJreVersion("6.2", 13),
+      new GradleJreVersion("6.2", 8),
       // CompileOptions#getGeneratedSourceOutputDirectory added in 6.3
-      new GradleJreVersion("6.3", 14),
+      new GradleJreVersion("6.3", 8),
       // CompileOptions#getRelease added in 6.6
-      new GradleJreVersion("6.6", 13),
+      new GradleJreVersion("6.6", 8),
       // ScalaSourceDirectorySet added to project#getExtensions in 7.1
-      new GradleJreVersion("7.1", 16),
+      new GradleJreVersion("7.1", 8),
       // Scala 3 support added in 7.3
-      new GradleJreVersion("7.3", 17),
+      new GradleJreVersion("7.3", 8),
       // FoojayToolchainsPlugin requires >= 7.6
-      new GradleJreVersion("7.6.1", 19),
+      new GradleJreVersion("7.6.1", 8),
       // JDK source/target options changed from 1.9 -> 9 in 8.0
-      new GradleJreVersion("8.0", 19),
-      new GradleJreVersion("8.10.2", 22),
-      // JDK 25 support added in 9.1
+      new GradleJreVersion("8.0", 8),
+      new GradleJreVersion("8.10.2", 8),
+      // Gradle 9.2.0 requires Java 17 minimum
       // highest supported version
-      new GradleJreVersion("9.2.0", 25)
-    ).filter(version -> version.jreVersion >= javaVersion)
+      new GradleJreVersion("9.2.0", 17)
+    ).filter(version -> javaVersion >= version.jreVersion)
      .map(GradleJreVersion::getGradleVersion);
   }
 
