@@ -162,7 +162,7 @@ class GradleBuildServerPluginTest {
       new GradleJreVersion("8.10.2", 22),
       // JDK 25 support added in 9.1
       // highest supported version
-      new GradleJreVersion("9.2", 25)
+      new GradleJreVersion("9.2.0", 25)
     ).filter(version -> version.jreVersion >= javaVersion)
      .map(GradleJreVersion::getGradleVersion);
   }
