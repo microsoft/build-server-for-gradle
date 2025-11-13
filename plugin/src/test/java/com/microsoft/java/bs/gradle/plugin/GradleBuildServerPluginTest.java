@@ -167,7 +167,7 @@ class GradleBuildServerPluginTest {
       new GradleJreVersion("8.0", 19),
       new GradleJreVersion("8.10.2", 22),
       // Gradle 8.15+ requires Java 17 minimum, supports up to Java 24
-      new GradleJreVersion("8.15", 17, 24),
+      new GradleJreVersion("9.0.0", 17, 24),
       // Gradle 9.0+ requires Java 17 minimum, supports up to Java 25
       new GradleJreVersion("9.1.0", 17, 25)
     ).filter(version -> {
