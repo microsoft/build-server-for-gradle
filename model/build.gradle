@@ -7,5 +7,5 @@ java {
 }
 
 dependencies {
-    api 'org.gradle:gradle-tooling-api:8.8'
+    api 'org.gradle:gradle-tooling-api:9.2.0'
 }
