@@ -106,11 +106,17 @@ class GradleBuildServerPluginTest {
 
   private static class GradleJreVersion {
     final String gradleVersion;
-    final int jreVersion;
+    final int minJreVersion;
+    final int maxJreVersion;
 
-    GradleJreVersion(String gradleVersion, int jreVersion) {
+    GradleJreVersion(String gradleVersion, int maxJreVersion) {
+      this(gradleVersion, 0, maxJreVersion);
+    }
+
+    GradleJreVersion(String gradleVersion, int minJreVersion, int maxJreVersion) {
       this.gradleVersion = gradleVersion;
-      this.jreVersion = jreVersion;
+      this.minJreVersion = minJreVersion;
+      this.maxJreVersion = maxJreVersion;
     }
 
     GradleVersion getGradleVersion() {
@@ -160,9 +166,17 @@ class GradleBuildServerPluginTest {
       // JDK source/target options changed from 1.9 -> 9 in 8.0
       new GradleJreVersion("8.0", 19),
       new GradleJreVersion("8.10.2", 22),
-      // JDK 25 requires gradle 9.1.0 minimum
-      new GradleJreVersion("9.0.0", 24)
-    ).filter(version -> version.jreVersion >= javaVersion)
+      // Gradle 8.15+ requires Java 17 minimum, supports up to Java 24
+      new GradleJreVersion("8.15", 17, 24),
+      // Gradle 9.0+ requires Java 17 minimum, supports up to Java 25
+      new GradleJreVersion("9.1.0", 17, 25)
+    ).filter(version -> {
+      // Check if current Java version is within the supported range
+      if (version.minJreVersion > 0 && javaVersion < version.minJreVersion) {
+        return false; // Java version too low
+      }
+      return javaVersion <= version.maxJreVersion; // Java version not too high
+    })
      .map(GradleJreVersion::getGradleVersion);
   }
 
