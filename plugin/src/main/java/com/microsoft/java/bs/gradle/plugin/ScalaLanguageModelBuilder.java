@@ -177,11 +177,7 @@ public class ScalaLanguageModelBuilder extends LanguageModelBuilder {
 
   private File getClassesDir(AbstractCompile compile) {
     if (compile != null) {
-      if (GradleVersion.current().compareTo(GradleVersion.version("6.1")) >= 0) {
-        return compile.getDestinationDirectory().get().getAsFile();
-      } else {
-        return compile.getDestinationDir();
-      }
+      return compile.getDestinationDirectory().get().getAsFile();
     }
 
     return null;

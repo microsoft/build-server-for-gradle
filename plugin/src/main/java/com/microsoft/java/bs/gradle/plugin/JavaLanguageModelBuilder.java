@@ -86,11 +86,6 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
       if (generatedDir != null) {
         generatedSrcDirs.add(generatedDir.getAsFile());
       }
-    } else if (GradleVersion.current().compareTo(GradleVersion.version("4.3")) >= 0) {
-      File generatedDir = options.getAnnotationProcessorGeneratedSourcesDirectory();
-      if (generatedDir != null) {
-        generatedSrcDirs.add(generatedDir);
-      }
     }
   }
 
@@ -266,10 +261,6 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
   }
 
   private File getClassesDir(AbstractCompile compile) {
-    if (GradleVersion.current().compareTo(GradleVersion.version("6.1")) >= 0) {
-      return compile.getDestinationDirectory().get().getAsFile();
-    } else {
-      return compile.getDestinationDir();
-    }
+    return compile.getDestinationDirectory().get().getAsFile();
   }
 }

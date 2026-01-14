@@ -206,12 +206,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
       Set<Object> archiveSourcePaths = getArchiveSourcePaths(archiveTask.getRootSpec());
       for (Object sourcePath : archiveSourcePaths) {
         if (sourceSet.getOutput().equals(sourcePath)) {
-          File archiveFile;
-          if (GradleVersion.current().compareTo(GradleVersion.version("5.1")) >= 0) {
-            archiveFile = archiveTask.getArchiveFile().get().getAsFile();
-          } else {
-            archiveFile = archiveTask.getArchivePath();
-          }
+          File archiveFile = archiveTask.getArchiveFile().get().getAsFile();
           List<File> sourceSetOutputs = new LinkedList<>(sourceSet.getOutput().getFiles());
           archiveOutputFiles.put(archiveFile, sourceSetOutputs);
         }

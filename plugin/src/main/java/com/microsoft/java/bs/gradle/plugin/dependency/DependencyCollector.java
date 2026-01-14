@@ -50,37 +50,14 @@ public class DependencyCollector {
    */
   public static Set<GradleModuleDependency> getModuleDependencies(Project project,
       Set<String> configurationNames) {
-    if (GradleVersion.current().compareTo(GradleVersion.version("4.0")) < 0) {
-      try {
-        List<ResolvedConfiguration> configs = project.getConfigurations().stream()
-            .filter(configuration -> configurationNames.contains(configuration.getName()))
-              .map(Configuration::getResolvedConfiguration)
-            .collect(Collectors.toList());
-        Stream<DefaultGradleModuleDependency> dependencies = configs.stream()
-            .flatMap(config -> config.getResolvedArtifacts().stream())
-            .map(artifact -> getArtifact(project, artifact));
-
-        // add as individual files for direct dependencies on jars
-        Stream<DefaultGradleModuleDependency> directDependencies = configs.stream()
-            .flatMap(config -> config.getFiles(Specs.satisfyAll()).stream())
-            .map(DependencyCollector::getFileDependency);
-        return Stream.concat(dependencies, directDependencies)
-          .filter(Objects::nonNull)
-          .collect(Collectors.toSet());
-      } catch (GradleException ex) {
-        // handle build with unresolvable dependencies e.g. missing repository
-        return new HashSet<>();
-      }
-    } else {
-      return project.getConfigurations()
-        .stream()
-        .filter(configuration -> configurationNames.contains(configuration.getName()))
-        .filter(Configuration::isCanBeResolved)
-        .flatMap(configuration -> getConfigurationArtifacts(configuration).stream())
-        .map(artifactResult -> getArtifact(project, artifactResult))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toSet());
-    }
+    return project.getConfigurations()
+      .stream()
+      .filter(configuration -> configurationNames.contains(configuration.getName()))
+      .filter(Configuration::isCanBeResolved)
+      .flatMap(configuration -> getConfigurationArtifacts(configuration).stream())
+      .map(artifactResult -> getArtifact(project, artifactResult))
+      .filter(Objects::nonNull)
+      .collect(Collectors.toSet());
   }
 
   private static DefaultGradleModuleDependency getArtifact(Project project,
