@@ -27,6 +27,11 @@ extends:
                   signWithProd: true
                   zipSources: false
                   feedSource: 'https://mseng.pkgs.visualstudio.com/DefaultCollection/_packaging/MicroBuildToolset/nuget/v3/index.json'
+              outputs:
+                - output: pipelineArtifact
+                  artifactName: build-server
+                  targetPath: $(Build.ArtifactStagingDirectory)
+                  displayName: "Publish Artifact: build-server"
             steps:
               - checkout: self
                 clean: true
@@ -98,8 +103,3 @@ extends:
                     server/build/libs/**/*.jar
                     server/build/libs/**/init.gradle
                   TargetFolder: $(Build.ArtifactStagingDirectory)
-              - task: PublishPipelineArtifact@1
-                displayName: "Publish Artifact: build-server"
-                inputs:
-                  targetPath: $(Build.ArtifactStagingDirectory)
-                  artifactName: build-server
