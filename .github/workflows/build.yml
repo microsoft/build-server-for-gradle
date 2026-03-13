@@ -37,9 +37,9 @@ jobs:
       with:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
-    - name: Setup Gradle 9.4
+    - name: Setup Gradle 9.4.0
       uses: gradle/actions/setup-gradle@v4
       with:
-        gradle-version: '9.4'
+        gradle-version: '9.4.0'
     - name: Execute Gradle build
       run: ${{ matrix.build-command }}
