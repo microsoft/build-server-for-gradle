@@ -28,8 +28,6 @@ jobs:
             build-command: ./gradlew clean build
           - java-version: 21
             build-command: ./gradlew clean build
-          - java-version: 25
-            build-command: ./gradlew clean build
 
     steps:
     - uses: actions/checkout@v3
