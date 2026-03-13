@@ -5,12 +5,12 @@ subprojects {
     repositories {
         mavenCentral()
         maven {
-            url 'https://repo.gradle.org/gradle/libs-releases'
+            url = 'https://repo.gradle.org/gradle/libs-releases'
         }
     }
 
     checkstyle {
-        toolVersion '10.9.3'
+        toolVersion = '10.9.3'
         maxWarnings = 0
     }
 }
