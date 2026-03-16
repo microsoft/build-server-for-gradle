@@ -35,6 +35,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIf;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -48,6 +49,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class BuildTargetServiceIntegrationTest extends IntegrationTest {
+
+  static boolean isJava25OrLater() {
+    return Runtime.version().feature() >= 25;
+  }
 
   private CompileReport findCompileReport(TestClient client, BuildTargetIdentifier btId) {
     CompileReport compileReport = client.compileReports.stream()
@@ -1560,6 +1565,9 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
   }
 
   @Test
+  @DisabledIf(value = "isJava25OrLater",
+      disabledReason = "Spock 2.4 Groovy 4.0"
+          + " does not support Java 25+ class files")
   void testSpock() {
     withNewTestServer("spock", (gradleBuildServer, client) -> {
       // get targets
@@ -1750,6 +1758,9 @@ class BuildTargetServiceIntegrationTest extends IntegrationTest {
   }
 
   @Test
+  @DisabledIf(value = "isJava25OrLater",
+      disabledReason = "Android test uses Gradle 8.7"
+          + " whose Groovy does not support Java 25+")
   void testAndroidBuildTargets() {
 
     // NOTE: Requires Android SDK to be configured via ANDROID_HOME property
