@@ -319,7 +319,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
         }
       }
     } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException
-             | IllegalArgumentException | InvocationTargetException e) {
+             | IllegalArgumentException | InvocationTargetException | SecurityException e) {
       // cannot get archive information from internal API
     }
     return sourcePaths;
