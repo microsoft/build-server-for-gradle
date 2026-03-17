@@ -33,6 +33,7 @@ import ch.epfl.scala.bsp4j.StatusCode;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIf;
 
 class GradleApiConnectorTest {
 
@@ -48,6 +49,10 @@ class GradleApiConnectorTest {
     String pluginDir = Paths.get(System.getProperty("user.dir"),
         "build", "libs", "plugins").toString();
     System.setProperty(Launcher.PROP_PLUGIN_DIR, pluginDir);
+  }
+
+  static boolean isJava25OrLater() {
+    return Runtime.version().feature() >= 25;
   }
 
   private <A> A withConnector(Function<GradleApiConnector, A> function) {
@@ -94,6 +99,9 @@ class GradleApiConnectorTest {
   }
 
   @Test
+  @DisabledIf(value = "isJava25OrLater",
+      disabledReason = "Android test project uses Gradle 8.7"
+          + " whose Groovy does not support Java 25+")
   void testAndroidSourceSets() {
     File projectDir = projectPath.resolve("android-test").toFile();
     PreferenceManager preferenceManager = new PreferenceManager();

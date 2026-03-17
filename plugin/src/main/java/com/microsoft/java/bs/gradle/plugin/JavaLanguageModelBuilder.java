@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,6 +24,7 @@ import com.microsoft.java.bs.gradle.model.SupportedLanguage;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
 import com.microsoft.java.bs.gradle.model.impl.DefaultJavaExtension;
 
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
@@ -31,7 +33,6 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.compile.AbstractCompile;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
-import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.util.GradleVersion;
 
 /**
@@ -51,9 +52,27 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
     if (javaCompile != null) {
       DefaultJavaExtension extension = new DefaultJavaExtension();
 
-      // jdk
-      extension.setJavaHome(DefaultInstalledJdk.current().getJavaHome());
-      extension.setJavaVersion(DefaultInstalledJdk.current().getJavaVersion().getMajorVersion());
+      // jdk - use reflection for DefaultInstalledJdk which is an internal API
+      // that may not exist in all Gradle versions
+      File javaHome;
+      String javaVersion;
+      try {
+        Class<?> jdkClass = Class.forName(
+            "org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk");
+        Method currentMethod = jdkClass.getMethod("current");
+        Object jdk = currentMethod.invoke(null);
+        Method getJavaHome = jdk.getClass().getMethod("getJavaHome");
+        javaHome = (File) getJavaHome.invoke(jdk);
+        Method getJavaVersion = jdk.getClass().getMethod("getJavaVersion");
+        Object version = getJavaVersion.invoke(jdk);
+        Method getMajorVersion = version.getClass().getMethod("getMajorVersion");
+        javaVersion = (String) getMajorVersion.invoke(version);
+      } catch (Exception e) {
+        javaHome = new File(System.getProperty("java.home"));
+        javaVersion = JavaVersion.current().getMajorVersion();
+      }
+      extension.setJavaHome(javaHome);
+      extension.setJavaVersion(javaVersion);
 
       extension.setCompileTaskName(javaCompile.getName());
 
@@ -87,9 +106,17 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
         generatedSrcDirs.add(generatedDir.getAsFile());
       }
     } else if (GradleVersion.current().compareTo(GradleVersion.version("4.3")) >= 0) {
-      File generatedDir = options.getAnnotationProcessorGeneratedSourcesDirectory();
-      if (generatedDir != null) {
-        generatedSrcDirs.add(generatedDir);
+      // getAnnotationProcessorGeneratedSourcesDirectory() was removed in Gradle 9.0
+      // use reflection for compatibility with Gradle 4.3 - 6.2
+      try {
+        Method getApDir = CompileOptions.class
+            .getMethod("getAnnotationProcessorGeneratedSourcesDirectory");
+        File generatedDir = (File) getApDir.invoke(options);
+        if (generatedDir != null) {
+          generatedSrcDirs.add(generatedDir);
+        }
+      } catch (Exception e) {
+        // method not available in this Gradle version
       }
     }
   }
@@ -269,7 +296,14 @@ public class JavaLanguageModelBuilder extends LanguageModelBuilder {
     if (GradleVersion.current().compareTo(GradleVersion.version("6.1")) >= 0) {
       return compile.getDestinationDirectory().get().getAsFile();
     } else {
-      return compile.getDestinationDir();
+      // getDestinationDir() was removed in Gradle 9.0
+      // use reflection for compatibility with Gradle < 6.1
+      try {
+        Method getDestDir = AbstractCompile.class.getMethod("getDestinationDir");
+        return (File) getDestDir.invoke(compile);
+      } catch (Exception e) {
+        return null;
+      }
     }
   }
 }
