@@ -344,17 +344,23 @@ public class BuildTargetService {
     if (params.getTargets().isEmpty()) {
       return new CompileResult(StatusCode.OK);
     } else {
-      ProgressReporter reporter = new CompileProgressReporter(client,
+      CompileProgressReporter reporter = new CompileProgressReporter(client,
           params.getOriginId(), getFullTaskPathMap());
       StatusCode code = runTasks(params.getTargets(), this::getBuildTaskName, reporter);
       CompileResult result = new CompileResult(code);
       result.setOriginId(params.getOriginId());
 
-      // Schedule a task to refetch the build targets after compilation, this is to
-      // auto detect the source roots changes for those code generation framework,
-      // such as Protocol Buffer.
-      if (!Boolean.getBoolean("bsp.plugin.reloadworkspace.disabled")) {
+      // Refetch the build targets after compilation to auto-detect source root
+      // changes from code generation frameworks (e.g., Protocol Buffers).
+      // Skip the reload if all tasks were UP-TO-DATE/skipped, since no new files
+      // were produced and the model cannot have changed.
+      if (!Boolean.getBoolean("bsp.plugin.reloadworkspace.disabled")
+          && reporter.hasExecutedWork()) {
+        LOGGER.fine("Scheduling workspace reload after compile (tasks executed work).");
         CompletableFuture.runAsync(this::reloadWorkspace);
+      } else if (!Boolean.getBoolean("bsp.plugin.reloadworkspace.disabled")
+          && !reporter.hasExecutedWork()) {
+        LOGGER.fine("Skipping workspace reload after compile (all tasks UP-TO-DATE).");
       }
       return result;
     }
