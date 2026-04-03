@@ -35,6 +35,7 @@ public class CompileProgressReporter extends ProgressReporter {
 
   private final Map<String, Set<BuildTargetIdentifier>> taskPathMap;
   private final Map<String, Long> startTimes;
+  private volatile boolean hasExecutedWork = false;
 
   /**
    * Instantiates a {@link CompileProgressReporter}.
@@ -69,6 +70,9 @@ public class CompileProgressReporter extends ProgressReporter {
           boolean skipped = result instanceof TaskSkippedResult;
           boolean upToDate = result instanceof TaskSuccessResult
               && ((TaskSuccessResult) result).isUpToDate();
+          if (!skipped && !upToDate) {
+            hasExecutedWork = true;
+          }
           taskFinished(taskId, targets, event.getDisplayName(), compileTimeDuration, status,
               skipped || upToDate);
         } else {
@@ -118,6 +122,14 @@ public class CompileProgressReporter extends ProgressReporter {
       endParam.setData(compileReport);
       client.onBuildTaskFinish(endParam);
     });
+  }
+
+  /**
+   * Returns true if any task in this compile session performed actual work
+   * (i.e., was not skipped or UP-TO-DATE).
+   */
+  public boolean hasExecutedWork() {
+    return hasExecutedWork;
   }
 }
 
