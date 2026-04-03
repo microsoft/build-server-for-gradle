@@ -9,6 +9,13 @@ resources:
       name: 1ESPipelineTemplates/MicroBuildTemplate
 trigger: none
 pr: none
+schedules:
+  - cron: '0 1 * * 1-5'
+    displayName: 'Weekday 9AM Shanghai (1AM UTC)'
+    branches:
+      include:
+        - develop
+    always: true
 extends:
   template: azure-pipelines/MicroBuild.1ES.Official.yml@MicroBuildTemplate
   parameters:
