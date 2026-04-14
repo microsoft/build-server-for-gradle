@@ -29,7 +29,7 @@
         "Maven": {
           "GroupId": "org.apache.commons",
           "ArtifactId": "commons-lang3",
-          "Version": "3.13.0"
+          "Version": "3.18.0"
         }
       },
       "DevelopmentDependency": false
@@ -84,7 +84,7 @@
         "Maven": {
           "GroupId": "com.google.guava",
           "ArtifactId": "guava",
-          "Version": "30.1-jre"
+          "Version": "32.0.1-jre"
         }
       },
       "DevelopmentDependency": false
