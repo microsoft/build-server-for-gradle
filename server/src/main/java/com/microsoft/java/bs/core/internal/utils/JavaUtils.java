@@ -25,7 +25,10 @@ public class JavaUtils {
   public static String getJavaVersionFromFile(File jdkFile) throws IOException {
 
     ProcessBuilder processBuilder =
-        new ProcessBuilder(jdkFile.getAbsolutePath() + "/bin/java", "-version");
+        new ProcessBuilder(new String[] {
+          jdkFile.toPath().resolve("bin").resolve("java").toString(),
+          "-version"
+        });
 
     return getJavaVersionFromFile(processBuilder);
 
@@ -81,3 +84,4 @@ public class JavaUtils {
   }
 
 }
+

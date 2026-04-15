@@ -5,12 +5,14 @@ plugins {
 dependencies {
     implementation project(':model')
     implementation 'ch.epfl.scala:bsp4j:2.1.0-M4'
-    implementation 'org.apache.commons:commons-lang3:3.13.0'
+    implementation 'org.apache.commons:commons-lang3:3.18.0'
+    implementation 'com.google.guava:guava:32.0.1-jre'
 
     testImplementation(platform('org.junit:junit-bom:5.9.2'))
     testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.mockito:mockito-core:5.3.0'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.3.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.mockito:mockito-core:5.23.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.23.0'
 }
 
 java {
@@ -35,7 +37,7 @@ test {
     useJUnitPlatform()
     testLogging {
         events "passed", "skipped", "failed"
-        exceptionFormat "full"
+        exceptionFormat = "full"
     }
 }
 

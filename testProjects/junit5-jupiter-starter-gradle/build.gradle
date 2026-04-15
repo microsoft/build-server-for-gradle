@@ -13,6 +13,7 @@ if (org.gradle.util.GradleVersion.current().compareTo(org.gradle.util.GradleVers
 		implementation files('libs/a.jar')
 		testImplementation(platform('org.junit:junit-bom:5.9.2'))
 		testImplementation('org.junit.jupiter:junit-jupiter')
+		testRuntimeOnly('org.junit.platform:junit-platform-launcher')
 	}
 
 	test {

@@ -19,15 +19,13 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.result.ArtifactResolutionResult;
 import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
-import org.gradle.internal.component.local.model.ComponentFileArtifactIdentifier;
-import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifier;
 import org.gradle.jvm.JvmLibrary;
 import org.gradle.language.base.artifact.SourcesArtifact;
 import org.gradle.language.java.artifact.JavadocArtifact;
@@ -61,8 +59,20 @@ public class DependencyCollector {
             .map(artifact -> getArtifact(project, artifact));
 
         // add as individual files for direct dependencies on jars
+        // ResolvedConfiguration.getFiles(Spec) was removed in Gradle 9.0,
+        // use reflection for compatibility with older Gradle versions
         Stream<DefaultGradleModuleDependency> directDependencies = configs.stream()
-            .flatMap(config -> config.getFiles(Specs.satisfyAll()).stream())
+            .flatMap(config -> {
+              try {
+                java.lang.reflect.Method getFiles = config.getClass()
+                    .getMethod("getFiles", org.gradle.api.specs.Spec.class);
+                @SuppressWarnings("unchecked")
+                Set<File> files = (Set<File>) getFiles.invoke(config, Specs.satisfyAll());
+                return files.stream();
+              } catch (Exception e) {
+                return Stream.<File>empty();
+              }
+            })
             .map(DependencyCollector::getFileDependency);
         return Stream.concat(dependencies, directDependencies)
           .filter(Objects::nonNull)
@@ -97,17 +107,14 @@ public class DependencyCollector {
 
   private static DefaultGradleModuleDependency getArtifact(Project project,
       ComponentArtifactIdentifier id, File artifactFile) {
-    if (id instanceof ModuleComponentArtifactIdentifier) {
-      return getModuleArtifactDependency(project, (ModuleComponentArtifactIdentifier) id,
-        artifactFile);
+    // Use public API types instead of internal Gradle classes
+    // (ModuleComponentArtifactIdentifier, OpaqueComponentArtifactIdentifier,
+    // ComponentFileArtifactIdentifier) which may be relocated across versions
+    if (id.getComponentIdentifier() instanceof ModuleComponentIdentifier) {
+      return getModuleArtifactDependency(project,
+          (ModuleComponentIdentifier) id.getComponentIdentifier(), artifactFile);
     }
-    if (id instanceof OpaqueComponentArtifactIdentifier) {
-      return getFileArtifactDependency((OpaqueComponentArtifactIdentifier) id, artifactFile);
-    }
-    if (id instanceof ComponentFileArtifactIdentifier) {
-      return getFileArtifactDependency((ComponentFileArtifactIdentifier) id, artifactFile);
-    }
-    return null;
+    return getFileArtifactDependency(id.getDisplayName(), artifactFile);
   }
 
   private static List<ResolvedArtifactResult> getConfigurationArtifacts(Configuration config) {
@@ -121,11 +128,11 @@ public class DependencyCollector {
   }
 
   private static DefaultGradleModuleDependency getModuleArtifactDependency(Project project,
-      ModuleComponentArtifactIdentifier artifactIdentifier, File resolvedArtifactFile) {
+      ModuleComponentIdentifier componentId, File resolvedArtifactFile) {
     @SuppressWarnings({"unchecked", "UnstableApiUsage"})
     ArtifactResolutionResult resolutionResult = project.getDependencies()
         .createArtifactResolutionQuery()
-        .forComponents(artifactIdentifier.getComponentIdentifier())
+        .forComponents(componentId)
         .withArtifacts(
           JvmLibrary.class /* componentType */,
           JavadocArtifact.class, SourcesArtifact.class /*artifactTypes*/
@@ -149,9 +156,9 @@ public class DependencyCollector {
     }
 
     return new DefaultGradleModuleDependency(
-        artifactIdentifier.getComponentIdentifier().getGroup(),
-        artifactIdentifier.getComponentIdentifier().getModule(),
-        artifactIdentifier.getComponentIdentifier().getVersion(),
+        componentId.getGroup(),
+        componentId.getModule(),
+        componentId.getVersion(),
         artifacts
     );
   }
@@ -174,22 +181,6 @@ public class DependencyCollector {
     return getFileArtifactDependency(
             resolvedArtifactFile.getName(),
             resolvedArtifactFile
-    );
-  }
-
-  private static DefaultGradleModuleDependency getFileArtifactDependency(
-      ComponentFileArtifactIdentifier artifactIdentifier, File resolvedArtifactFile) {
-    return getFileArtifactDependency(
-        artifactIdentifier.getCapitalizedDisplayName(),
-        resolvedArtifactFile
-    );
-  }
-
-  private static DefaultGradleModuleDependency getFileArtifactDependency(
-      OpaqueComponentArtifactIdentifier artifactIdentifier, File resolvedArtifactFile) {
-    return getFileArtifactDependency(
-        artifactIdentifier.getCapitalizedDisplayName(),
-        resolvedArtifactFile
     );
   }
 

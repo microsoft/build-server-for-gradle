@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import org.gradle.internal.impldep.org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.gradle.tooling.BuildAction;
 import org.gradle.tooling.BuildActionExecuter;
 import org.gradle.tooling.BuildLauncher;
@@ -154,7 +154,13 @@ public class Utils {
    */
   public static String getLatestCompatibleJavaVersion(String gradleVersion) {
     GradleVersion version = GradleVersion.version(gradleVersion);
-    if (version.compareTo(GradleVersion.version("8.8")) >= 0) {
+    if (version.compareTo(GradleVersion.version("9.1")) >= 0) {
+      return "25";
+    } else if (version.compareTo(GradleVersion.version("8.14")) >= 0) {
+      return "24";
+    } else if (version.compareTo(GradleVersion.version("8.10")) >= 0) {
+      return "23";
+    } else if (version.compareTo(GradleVersion.version("8.8")) >= 0) {
       return "22";
     } else if (version.compareTo(GradleVersion.version("8.5")) >= 0) {
       return "21";

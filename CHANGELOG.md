@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0
+## What's Changed
+* enhancement - Add JDK 25 compatibility support in https://github.com/microsoft/build-server-for-gradle/pull/208
+* enhancement - Parallelize source set retrieval by @Arthurm1 in https://github.com/microsoft/build-server-for-gradle/pull/168
+* enhancement - Handle java source/target defined at extension level by @Arthurm1 in https://github.com/microsoft/build-server-for-gradle/pull/188
+* enhancement - Android test variant support by @Tanish-Ranjan in https://github.com/microsoft/build-server-for-gradle/pull/194
+* enhancement - Support resolving variant from Android Java project by @Tanish-Ranjan in https://github.com/microsoft/build-server-for-gradle/pull/173
+* enhancement - Support launch by using named pipe by @Jiaaming in https://github.com/microsoft/build-server-for-gradle/pull/162
+* fix - Apache lang3 for stringUtils in https://github.com/microsoft/build-server-for-gradle/pull/205
+* fix - Command line with string concatenation in https://github.com/microsoft/build-server-for-gradle/pull/204
+* fix - Add project version information in https://github.com/microsoft/build-server-for-gradle/pull/186
+* fix - Find compatible GradleJavaHome by @Tanish-Ranjan in https://github.com/microsoft/build-server-for-gradle/pull/165
+
 ## 0.3.0
 ## What's Changed
 * enhancement - Add support for running tests by @Arthurm1 in https://github.com/microsoft/build-server-for-gradle/pull/144

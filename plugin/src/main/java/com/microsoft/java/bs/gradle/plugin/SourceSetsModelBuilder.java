@@ -23,7 +23,6 @@ import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.file.CopySpec;
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.internal.file.copy.DefaultCopySpec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
@@ -210,7 +209,14 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
           if (GradleVersion.current().compareTo(GradleVersion.version("5.1")) >= 0) {
             archiveFile = archiveTask.getArchiveFile().get().getAsFile();
           } else {
-            archiveFile = archiveTask.getArchivePath();
+            // getArchivePath() was removed in Gradle 9.0
+            // use reflection for compatibility with Gradle < 5.1
+            try {
+              Method getArchivePath = archiveTask.getClass().getMethod("getArchivePath");
+              archiveFile = (File) getArchivePath.invoke(archiveTask);
+            } catch (Exception e) {
+              continue;
+            }
           }
           List<File> sourceSetOutputs = new LinkedList<>(sourceSet.getOutput().getFiles());
           archiveOutputFiles.put(archiveFile, sourceSetOutputs);
@@ -293,30 +299,28 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
 
   private Set<Object> getArchiveSourcePaths(CopySpec copySpec) {
     Set<Object> sourcePaths = new HashSet<>();
-    if (copySpec instanceof DefaultCopySpec) {
-      DefaultCopySpec defaultCopySpec = (DefaultCopySpec) copySpec;
-      sourcePaths.addAll(defaultCopySpec.getSourcePaths());
-      // DefaultCopySpec#getChildren changed from Iterable to Collection
-      if (GradleVersion.current().compareTo(GradleVersion.version("6.2")) >= 0) {
-        for (CopySpec child : defaultCopySpec.getChildren()) {
-          sourcePaths.addAll(getArchiveSourcePaths(child));
-        }
-      } else {
-        try {
-          Method getChildren = defaultCopySpec.getClass().getMethod("getChildren");
-          Object children = getChildren.invoke(defaultCopySpec);
-          if (children instanceof Iterable) {
-            for (Object child : (Iterable<?>) children) {
-              if (child instanceof CopySpec) {
-                sourcePaths.addAll(getArchiveSourcePaths((CopySpec) child));
-              }
+    try {
+      // Use reflection for DefaultCopySpec which is an internal API
+      // that may be relocated or changed across Gradle versions
+      Class<?> defaultCopySpecClass = Class.forName(
+          "org.gradle.api.internal.file.copy.DefaultCopySpec");
+      if (defaultCopySpecClass.isInstance(copySpec)) {
+        Method getSourcePaths = defaultCopySpecClass.getMethod("getSourcePaths");
+        Collection<?> paths = (Collection<?>) getSourcePaths.invoke(copySpec);
+        sourcePaths.addAll(paths);
+        Method getChildren = defaultCopySpecClass.getMethod("getChildren");
+        Object children = getChildren.invoke(copySpec);
+        if (children instanceof Iterable) {
+          for (Object child : (Iterable<?>) children) {
+            if (child instanceof CopySpec) {
+              sourcePaths.addAll(getArchiveSourcePaths((CopySpec) child));
             }
           }
-        } catch (NoSuchMethodException | IllegalAccessException
-                 | IllegalArgumentException | InvocationTargetException e) {
-          // cannot get archive information
         }
       }
+    } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException
+             | IllegalArgumentException | InvocationTargetException | SecurityException e) {
+      // cannot get archive information from internal API
     }
     return sourcePaths;
   }

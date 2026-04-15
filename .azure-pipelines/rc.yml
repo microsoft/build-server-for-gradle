@@ -9,11 +9,18 @@ resources:
       name: 1ESPipelineTemplates/MicroBuildTemplate
 trigger: none
 pr: none
+schedules:
+  - cron: '0 1 * * 1-5'
+    displayName: 'Weekday 9AM Shanghai (1AM UTC)'
+    branches:
+      include:
+        - develop
+    always: true
 extends:
   template: azure-pipelines/MicroBuild.1ES.Official.yml@MicroBuildTemplate
   parameters:
     pool:
-      name: MSEngSS-MicroBuild2022-1ES
+      name: VSEng-MicroBuildVSStable
     stages:
       - stage: Build
         jobs:
@@ -24,6 +31,7 @@ extends:
                 signing:
                   enabled: true
                   signType: real
+                  signWithProd: true
                   zipSources: false
                   feedSource: 'https://mseng.pkgs.visualstudio.com/DefaultCollection/_packaging/MicroBuildToolset/nuget/v3/index.json'
               outputs:
