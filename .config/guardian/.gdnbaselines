@@ -20,9 +20,9 @@
       ],
       "tool": "spotbugs",
       "ruleId": "gdn.unknownFormatResult",
-      "createdDate": "2024-12-04 04:21:47Z",
-      "expirationDate": "2026-09-30 04:23:08Z",
-      "justification": "This error is baselined with an expiration date of 180 days from 2026-04-03. SpotBugs missing Gradle API classes is expected for this Gradle plugin project."
+      "createdDate": "2026-04-15 01:20:13Z",
+      "expirationDate": "2026-10-02 01:22:05Z",
+      "justification": "This error is baselined with an expiration date of 180 days from 2026-04-15 01:22:05Z"
     }
   }
 }
