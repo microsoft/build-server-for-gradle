@@ -10,6 +10,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +54,11 @@ import ch.epfl.scala.bsp4j.DependencySourcesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsItem;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.JvmEnvironmentItem;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentResult;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentResult;
 import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
@@ -449,7 +455,70 @@ public class BuildTargetService {
     }
     return new JavacOptionsResult(items);
   }
-  
+
+  /**
+   * Get the JVM test environment (classpath, JVM options, working directory and
+   * environment variables) for the requested build targets.
+   *
+   * <p>Implements the BSP standard {@code buildTarget/jvmTestEnvironment} request so
+   * clients (e.g. the VS Code Gradle extension) can reproduce a faithful test
+   * runtime - which is required to run tests with the same classpath the Gradle
+   * build uses, and to layer on capabilities such as code coverage.</p>
+   */
+  public JvmTestEnvironmentResult getBuildTargetJvmTestEnvironment(
+      JvmTestEnvironmentParams params) {
+    return new JvmTestEnvironmentResult(collectJvmEnvironmentItems(params.getTargets()));
+  }
+
+  /**
+   * Get the JVM run environment for the requested build targets.
+   *
+   * <p>Implements the BSP standard {@code buildTarget/jvmRunEnvironment} request. It
+   * currently mirrors {@link #getBuildTargetJvmTestEnvironment} since the Gradle model
+   * exposes the same classpath/output information for both cases.</p>
+   */
+  public JvmRunEnvironmentResult getBuildTargetJvmRunEnvironment(JvmRunEnvironmentParams params) {
+    return new JvmRunEnvironmentResult(collectJvmEnvironmentItems(params.getTargets()));
+  }
+
+  /**
+   * Build a {@link JvmEnvironmentItem} for each resolvable build target. The classpath
+   * is composed of the source set compile classpath plus its own compiled output and
+   * resource directories, so that the target's own classes are runnable/testable.
+   */
+  private List<JvmEnvironmentItem> collectJvmEnvironmentItems(List<BuildTargetIdentifier> targets) {
+    List<JvmEnvironmentItem> items = new ArrayList<>();
+    for (BuildTargetIdentifier btId : targets) {
+      GradleBuildTarget target = getGradleBuildTarget(btId);
+      if (target == null) {
+        LOGGER.warning("Skip JVM environment collection for the build target: " + btId.getUri()
+            + ". Because it cannot be found in the cache.");
+        continue;
+      }
+
+      GradleSourceSet sourceSet = target.getSourceSet();
+      Set<File> classpathEntries = new LinkedHashSet<>();
+      classpathEntries.addAll(sourceSet.getSourceOutputDirs());
+      classpathEntries.addAll(sourceSet.getResourceOutputDirs());
+      classpathEntries.addAll(sourceSet.getCompileClasspath());
+      List<String> classpath = classpathEntries.stream()
+          .map(file -> file.toURI().toString())
+          .collect(Collectors.toList());
+
+      File projectDir = sourceSet.getProjectDir();
+      String workingDirectory = projectDir == null ? "" : projectDir.toURI().toString();
+
+      items.add(new JvmEnvironmentItem(
+          btId,
+          classpath,
+          new ArrayList<>(),
+          workingDirectory,
+          new HashMap<>()
+      ));
+    }
+    return items;
+  }
+
   /**
    * Get the Scala compiler options.
    */
