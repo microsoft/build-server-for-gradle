@@ -467,18 +467,21 @@ public class BuildTargetService {
    */
   public JvmTestEnvironmentResult getBuildTargetJvmTestEnvironment(
       JvmTestEnvironmentParams params) {
-    return new JvmTestEnvironmentResult(collectJvmEnvironmentItems(params.getTargets()));
+    return new JvmTestEnvironmentResult(collectJvmEnvironmentItems(params.getTargets(), true));
   }
 
   /**
    * Get the JVM run environment for the requested build targets.
    *
    * <p>Implements the BSP standard {@code buildTarget/jvmRunEnvironment} request. It
-   * currently mirrors {@link #getBuildTargetJvmTestEnvironment} since the Gradle model
-   * exposes the same classpath/output information for both cases.</p>
+   * shares the classpath/output/working-directory collection with
+   * {@link #getBuildTargetJvmTestEnvironment} but deliberately does <em>not</em> carry
+   * the matching {@code Test} task's JVM arguments (e.g. {@code --add-opens}): those are
+   * test-specific and have no meaning for a run environment. Run/application JVM args and
+   * {@code mainClasses} are not modelled yet, so {@code jvmOptions} is left empty.</p>
    */
   public JvmRunEnvironmentResult getBuildTargetJvmRunEnvironment(JvmRunEnvironmentParams params) {
-    return new JvmRunEnvironmentResult(collectJvmEnvironmentItems(params.getTargets()));
+    return new JvmRunEnvironmentResult(collectJvmEnvironmentItems(params.getTargets(), false));
   }
 
   /**
@@ -486,10 +489,14 @@ public class BuildTargetService {
    * mirrors the test/run runtime: the source set's own compiled output and resource
    * directories plus its runtime classpath (for the test source set this is the Gradle
    * {@code Test} task's actual classpath, so {@code runtimeOnly} dependencies are
-   * included and {@code compileOnly} ones are excluded). JVM options are taken from the
-   * matching Gradle test task where available.
+   * included and {@code compileOnly} ones are excluded).
+   *
+   * @param isTestEnvironment when {@code true} the matching Gradle {@code Test} task's
+   *     JVM arguments are surfaced as {@code jvmOptions}; for a run environment they are
+   *     omitted because they are test-specific.
    */
-  private List<JvmEnvironmentItem> collectJvmEnvironmentItems(List<BuildTargetIdentifier> targets) {
+  private List<JvmEnvironmentItem> collectJvmEnvironmentItems(List<BuildTargetIdentifier> targets,
+      boolean isTestEnvironment) {
     List<JvmEnvironmentItem> items = new ArrayList<>();
     for (BuildTargetIdentifier btId : targets) {
       GradleBuildTarget target = getGradleBuildTarget(btId);
@@ -522,8 +529,15 @@ public class BuildTargetService {
       File projectDir = sourceSet.getProjectDir();
       String workingDirectory = projectDir == null ? "" : projectDir.toURI().toString();
 
-      List<String> jvmArgs = sourceSet.getJvmArgs();
-      List<String> jvmOptions = jvmArgs == null ? new ArrayList<>() : new ArrayList<>(jvmArgs);
+      // Only a test environment surfaces the Gradle Test task's JVM args; a run
+      // environment must not inherit test-specific options such as --add-opens.
+      List<String> jvmOptions = new ArrayList<>();
+      if (isTestEnvironment) {
+        List<String> jvmArgs = sourceSet.getJvmArgs();
+        if (jvmArgs != null) {
+          jvmOptions.addAll(jvmArgs);
+        }
+      }
 
       items.add(new JvmEnvironmentItem(
           btId,

@@ -51,6 +51,8 @@ import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
 import ch.epfl.scala.bsp4j.JvmEnvironmentItem;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentResult;
 import ch.epfl.scala.bsp4j.JvmTestEnvironmentParams;
 import ch.epfl.scala.bsp4j.JvmTestEnvironmentResult;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
@@ -334,6 +336,37 @@ class BuildTargetServiceTest {
     assertFalse(classpath.contains(new File("libs/compileOnly.jar").toURI().toString()));
 
     assertEquals(new File("projectDir").toURI().toString(), item.getWorkingDirectory());
+  }
+
+  @Test
+  void testGetBuildTargetJvmRunEnvironment() {
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+    when(gradleSourceSet.getProjectDir()).thenReturn(new File("projectDir"));
+    when(gradleSourceSet.getSourceOutputDirs())
+        .thenReturn(new HashSet<>(Arrays.asList(new File("out/classes"))));
+    when(gradleSourceSet.getRuntimeClasspath())
+        .thenReturn(Arrays.asList(new File("libs/runtime.jar")));
+    // Even when the source set carries test JVM args, the run environment must not
+    // surface them - they are test-specific.
+    when(gradleSourceSet.getJvmArgs())
+        .thenReturn(Arrays.asList("--add-opens=java.base/java.lang=ALL-UNNAMED"));
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        connector, preferenceManager);
+    JvmRunEnvironmentResult res = buildTargetService.getBuildTargetJvmRunEnvironment(
+        new JvmRunEnvironmentParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+
+    assertEquals(1, res.getItems().size());
+    JvmEnvironmentItem item = res.getItems().get(0);
+
+    // No test JVM args leak into the run environment.
+    assertTrue(item.getJvmOptions().isEmpty());
+    // The runtime classpath is still provided.
+    assertTrue(item.getClasspath().contains(new File("libs/runtime.jar").toURI().toString()));
   }
 
   @Test
