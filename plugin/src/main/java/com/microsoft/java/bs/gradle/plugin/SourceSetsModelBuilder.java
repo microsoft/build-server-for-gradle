@@ -206,13 +206,43 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   }
 
   /**
-   * Collect the JVM arguments configured on a test task (e.g. {@code --add-opens}
-   * or {@code -D} system properties) so clients can reproduce a faithful test JVM.
-   * Returns an empty list when none are configured.
+   * Collect the effective JVM arguments a client needs to reproduce the test JVM.
+   *
+   * <p>{@link Test#getJvmArgs()} only returns arguments set explicitly via
+   * {@code jvmArgs(...)}; it omits {@code systemProperty(...)} values (managed
+   * separately by {@link Test#getSystemProperties()}) and the heap settings
+   * ({@code minHeapSize}/{@code maxHeapSize}). We merge those in as
+   * {@code -Dkey=value}, {@code -Xms} and {@code -Xmx} so a very common
+   * {@code systemProperty(...)} configuration is not silently dropped (which could
+   * change test behaviour or make tests fail under a delegated coverage run). We
+   * avoid {@link Test#getAllJvmArgs()} because it is deprecated since Gradle 8.</p>
+   *
+   * <p>Note: {@code jvmArgumentProviders} are not captured here; that API is newer
+   * than the oldest Gradle versions this plugin still supports.</p>
+   *
+   * <p>Returns an empty list when nothing is configured.</p>
    */
   private List<String> getTestJvmArgs(Test testTask) {
+    List<String> args = new LinkedList<>();
     List<String> jvmArgs = testTask.getJvmArgs();
-    return jvmArgs == null ? new LinkedList<>() : new LinkedList<>(jvmArgs);
+    if (jvmArgs != null) {
+      args.addAll(jvmArgs);
+    }
+    Map<String, Object> sysProps = testTask.getSystemProperties();
+    if (sysProps != null) {
+      for (Map.Entry<String, Object> e : sysProps.entrySet()) {
+        args.add("-D" + e.getKey() + "=" + e.getValue());
+      }
+    }
+    String min = testTask.getMinHeapSize();
+    if (min != null) {
+      args.add("-Xms" + min);
+    }
+    String max = testTask.getMaxHeapSize();
+    if (max != null) {
+      args.add("-Xmx" + max);
+    }
+    return args;
   }
 
   /**

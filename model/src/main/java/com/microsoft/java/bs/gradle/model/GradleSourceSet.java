@@ -111,10 +111,11 @@ public interface GradleSourceSet extends Serializable {
   public List<File> getRuntimeClasspath();
 
   /**
-   * The JVM arguments configured on this source set's matching test task
-   * (e.g. {@code --add-opens} or {@code -D} system properties). Empty when the
-   * source set has no matching test task or no arguments were configured. This
-   * lets clients reproduce a faithful test JVM without re-deriving it.
+   * The effective JVM arguments needed to reproduce this source set's matching test
+   * task: its explicit {@code jvmArgs}, its {@code systemProperty} values (as
+   * {@code -Dkey=value}) and its heap settings ({@code -Xms}/{@code -Xmx}). Empty when
+   * the source set has no matching test task or nothing was configured. This lets
+   * clients launch a faithful test JVM without re-deriving it.
    */
   public List<String> getJvmArgs();
 
