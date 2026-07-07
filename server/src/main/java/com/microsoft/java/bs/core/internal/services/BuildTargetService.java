@@ -521,15 +521,15 @@ public class BuildTargetService {
       Set<String> classpath = new LinkedHashSet<>();
       Set<File> sourceOutputDirs = sourceSet.getSourceOutputDirs();
       if (sourceOutputDirs != null) {
-        for (File dir : sourceOutputDirs) {
-          classpath.add(dir.toURI().toString());
-        }
+        // Sort for a deterministic classpath order (the model builder stores these
+        // as an unordered HashSet).
+        sourceOutputDirs.stream().sorted()
+            .forEach(dir -> classpath.add(dir.toURI().toString()));
       }
       Set<File> resourceOutputDirs = sourceSet.getResourceOutputDirs();
       if (resourceOutputDirs != null) {
-        for (File dir : resourceOutputDirs) {
-          classpath.add(dir.toURI().toString());
-        }
+        resourceOutputDirs.stream().sorted()
+            .forEach(dir -> classpath.add(dir.toURI().toString()));
       }
       // Use the runtime classpath Gradle actually launches the test/run JVM with,
       // rather than the compile classpath: this includes runtime-only dependencies

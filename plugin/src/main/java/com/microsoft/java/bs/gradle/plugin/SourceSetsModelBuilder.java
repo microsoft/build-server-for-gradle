@@ -14,6 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.gradle.plugin.utils.AndroidUtils;
@@ -235,8 +236,11 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
     Map<String, Object> sysProps = testTask.getSystemProperties();
     if (sysProps != null) {
-      for (Map.Entry<String, Object> e : sysProps.entrySet()) {
-        args.add("-D" + e.getKey() + "=" + e.getValue());
+      // Sort by key for a deterministic order (getSystemProperties() may be a
+      // HashMap), so the serialized model and BSP response stay stable across runs.
+      for (Map.Entry<String, Object> e : new TreeMap<>(sysProps).entrySet()) {
+        Object value = e.getValue();
+        args.add("-D" + e.getKey() + "=" + (value == null ? "" : value));
       }
     }
     String min = testTask.getMinHeapSize();

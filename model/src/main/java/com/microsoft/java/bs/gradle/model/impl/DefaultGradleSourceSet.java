@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.gradle.model.impl;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -277,7 +278,9 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   @Override
   public List<String> getJvmArgs() {
-    return jvmArgs;
+    // Honour the interface contract: never null, even for a no-arg-constructed or
+    // deserialized instance whose field was not populated.
+    return jvmArgs == null ? new ArrayList<>() : jvmArgs;
   }
 
   public void setJvmArgs(List<String> jvmArgs) {
