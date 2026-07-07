@@ -491,6 +491,15 @@ public class BuildTargetService {
    * {@code Test} task's actual classpath, so {@code runtimeOnly} dependencies are
    * included and {@code compileOnly} ones are excluded).
    *
+   * <p><b>Android limitation:</b> Android build variants (produced by
+   * {@code AndroidUtils}) do not populate {@code runtimeClasspath} or {@code jvmArgs} on
+   * the source set. For such targets the returned classpath is therefore limited to the
+   * source set's output directories (runtime dependencies are missing) and
+   * {@code jvmOptions} is empty. This is currently acceptable because the VS Code Gradle
+   * client excludes Android projects from the build-server import path, so this endpoint
+   * is not exercised for them; populating a faithful Android test/run environment would
+   * require {@code AndroidUtils} to model the variant's runtime classpath and JVM args.</p>
+   *
    * @param isTestEnvironment when {@code true} the matching Gradle {@code Test} task's
    *     JVM arguments are surfaced as {@code jvmOptions}; for a run environment they are
    *     omitted because they are test-specific.
