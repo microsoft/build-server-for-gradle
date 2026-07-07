@@ -29,7 +29,6 @@ import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
-import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -485,10 +484,10 @@ public class BuildTargetService {
   /**
    * Build a {@link JvmEnvironmentItem} for each resolvable build target. The classpath
    * mirrors the test/run runtime: the source set's own compiled output and resource
-   * directories, its compile classpath, and its module dependency artifacts (which are
-   * resolved from both the compile and runtime configurations, so runtime-only
-   * dependencies are included). JVM options are taken from the matching Gradle test
-   * task where available.
+   * directories plus its runtime classpath (for the test source set this is the Gradle
+   * {@code Test} task's actual classpath, so {@code runtimeOnly} dependencies are
+   * included and {@code compileOnly} ones are excluded). JVM options are taken from the
+   * matching Gradle test task where available.
    */
   private List<JvmEnvironmentItem> collectJvmEnvironmentItems(List<BuildTargetIdentifier> targets) {
     List<JvmEnvironmentItem> items = new ArrayList<>();
@@ -502,7 +501,7 @@ public class BuildTargetService {
 
       GradleSourceSet sourceSet = target.getSourceSet();
       // Use a LinkedHashSet so the classpath keeps a stable order and duplicates
-      // (e.g. a compile-classpath entry that is also a module artifact) collapse.
+      // (e.g. an output dir that is also on the runtime classpath) collapse.
       Set<String> classpath = new LinkedHashSet<>();
       for (File dir : sourceSet.getSourceOutputDirs()) {
         classpath.add(dir.toURI().toString());
@@ -510,17 +509,13 @@ public class BuildTargetService {
       for (File dir : sourceSet.getResourceOutputDirs()) {
         classpath.add(dir.toURI().toString());
       }
-      for (File file : sourceSet.getCompileClasspath()) {
-        classpath.add(file.toURI().toString());
-      }
-      // Add module dependency artifacts to pick up runtime-only dependencies that
-      // are absent from the compile classpath. Skip sources/javadoc classifiers.
-      for (GradleModuleDependency dep : sourceSet.getModuleDependencies()) {
-        for (Artifact artifact : dep.getArtifacts()) {
-          String classifier = artifact.getClassifier();
-          if (!"sources".equals(classifier) && !"javadoc".equals(classifier)) {
-            classpath.add(artifact.getUri().toString());
-          }
+      // Use the runtime classpath Gradle actually launches the test/run JVM with,
+      // rather than the compile classpath: this includes runtime-only dependencies
+      // and excludes compile-only ones.
+      List<File> runtimeClasspath = sourceSet.getRuntimeClasspath();
+      if (runtimeClasspath != null) {
+        for (File file : runtimeClasspath) {
+          classpath.add(file.toURI().toString());
         }
       }
 

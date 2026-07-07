@@ -55,6 +55,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private List<File> compileClasspath;
 
+  private List<File> runtimeClasspath;
+
   private List<String> jvmArgs;
 
   private Set<GradleModuleDependency> moduleDependencies;
@@ -90,6 +92,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.resourceOutputDirs = gradleSourceSet.getResourceOutputDirs();
     this.archiveOutputFiles = gradleSourceSet.getArchiveOutputFiles();
     this.compileClasspath = gradleSourceSet.getCompileClasspath();
+    this.runtimeClasspath = gradleSourceSet.getRuntimeClasspath();
     this.jvmArgs = gradleSourceSet.getJvmArgs();
     this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
@@ -264,6 +267,15 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   }
 
   @Override
+  public List<File> getRuntimeClasspath() {
+    return runtimeClasspath;
+  }
+
+  public void setRuntimeClasspath(List<File> runtimeClasspath) {
+    this.runtimeClasspath = runtimeClasspath;
+  }
+
+  @Override
   public List<String> getJvmArgs() {
     return jvmArgs;
   }
@@ -313,7 +325,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     return Objects.hash(gradleVersion, displayName, projectName, projectPath,
         projectDir, rootDir, sourceSetName, classesTaskName, cleanTaskName, taskNames, sourceDirs,
         generatedSourceDirs, sourceOutputDirs, resourceDirs, resourceOutputDirs, archiveOutputFiles,
-        compileClasspath, moduleDependencies, buildTargetDependencies,
+        compileClasspath, runtimeClasspath, moduleDependencies, buildTargetDependencies,
         hasTests, extensions, jvmArgs);
   }
 
@@ -346,6 +358,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(resourceOutputDirs, other.resourceOutputDirs)
         && Objects.equals(archiveOutputFiles, other.archiveOutputFiles)
         && Objects.equals(compileClasspath, other.compileClasspath)
+        && Objects.equals(runtimeClasspath, other.runtimeClasspath)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(buildTargetDependencies, other.buildTargetDependencies)
         && hasTests == other.hasTests

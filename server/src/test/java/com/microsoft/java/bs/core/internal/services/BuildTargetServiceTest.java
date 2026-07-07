@@ -306,9 +306,10 @@ class BuildTargetServiceTest {
         .thenReturn(new HashSet<>(Arrays.asList(new File("out/classes"))));
     when(gradleSourceSet.getResourceOutputDirs())
         .thenReturn(new HashSet<>(Arrays.asList(new File("out/resources"))));
-    when(gradleSourceSet.getCompileClasspath())
-        .thenReturn(Arrays.asList(new File("libs/compile.jar")));
-    when(gradleSourceSet.getModuleDependencies()).thenReturn(getRuntimeModuleDependencies());
+    // Runtime classpath = the Gradle Test task's actual classpath: it carries the
+    // runtime-only artifact but not the compile-only one.
+    when(gradleSourceSet.getRuntimeClasspath())
+        .thenReturn(Arrays.asList(new File("libs/runtime.jar"), new File("out/classes")));
     when(gradleSourceSet.getJvmArgs())
         .thenReturn(Arrays.asList("--add-opens=java.base/java.lang=ALL-UNNAMED"));
 
@@ -324,65 +325,15 @@ class BuildTargetServiceTest {
     assertEquals(Arrays.asList("--add-opens=java.base/java.lang=ALL-UNNAMED"),
         item.getJvmOptions());
 
-    // The classpath includes outputs, the compile classpath and the runtime
-    // (non-sources) module artifact, but not the sources artifact.
+    // The classpath includes the outputs and the runtime classpath entries, but not
+    // a compile-only jar that is absent from the runtime classpath.
     List<String> classpath = item.getClasspath();
     assertTrue(classpath.contains(new File("out/classes").toURI().toString()));
     assertTrue(classpath.contains(new File("out/resources").toURI().toString()));
-    assertTrue(classpath.contains(new File("libs/compile.jar").toURI().toString()));
-    assertTrue(classpath.contains(new File("runtime.jar").toURI().toString()));
-    assertFalse(classpath.contains(new File("sources.jar").toURI().toString()));
+    assertTrue(classpath.contains(new File("libs/runtime.jar").toURI().toString()));
+    assertFalse(classpath.contains(new File("libs/compileOnly.jar").toURI().toString()));
 
     assertEquals(new File("projectDir").toURI().toString(), item.getWorkingDirectory());
-  }
-
-  private static Set<GradleModuleDependency> getRuntimeModuleDependencies() {
-    GradleModuleDependency moduleDependency = new GradleModuleDependency() {
-      @Override
-      public String getGroup() {
-        return "group";
-      }
-
-      @Override
-      public String getModule() {
-        return "module";
-      }
-
-      @Override
-      public String getVersion() {
-        return "1.0.0";
-      }
-
-      @Override
-      public List<Artifact> getArtifacts() {
-        return Arrays.asList(
-            new Artifact() {
-              @Override
-              public URI getUri() {
-                return new File("runtime.jar").toURI();
-              }
-
-              @Override
-              public String getClassifier() {
-                return null;
-              }
-            },
-            new Artifact() {
-              @Override
-              public URI getUri() {
-                return new File("sources.jar").toURI();
-              }
-
-              @Override
-              public String getClassifier() {
-                return "sources";
-              }
-            });
-      }
-    };
-    Set<GradleModuleDependency> moduleDependencies = new HashSet<>();
-    moduleDependencies.add(moduleDependency);
-    return moduleDependencies;
   }
 
   @Test

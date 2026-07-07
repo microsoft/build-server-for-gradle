@@ -129,6 +129,17 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
     gradleSourceSet.setCompileClasspath(compileClasspath);
 
+    // runtime classpath - the closure Gradle actually uses to run this source set
+    // (includes runtimeOnly deps, excludes compileOnly). For the test source set a
+    // matching Test task below overrides this with the task's own classpath.
+    List<File> runtimeClasspath = new LinkedList<>();
+    try {
+      runtimeClasspath.addAll(sourceSet.getRuntimeClasspath().getFiles());
+    } catch (GradleException e) {
+      // ignore
+    }
+    gradleSourceSet.setRuntimeClasspath(runtimeClasspath);
+
     // resource
     Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
     gradleSourceSet.setResourceDirs(resourceDirs);
@@ -155,6 +166,10 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
             if (files.contains(sourceOutputDir)) {
               gradleSourceSet.setHasTests(true);
               gradleSourceSet.setJvmArgs(getTestJvmArgs(testTask));
+              List<File> testRuntimeClasspath = getTestRuntimeClasspath(testTask);
+              if (!testRuntimeClasspath.isEmpty()) {
+                gradleSourceSet.setRuntimeClasspath(testRuntimeClasspath);
+              }
               break;
             }
           }
@@ -169,6 +184,10 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
               if (sourceOutputDir.equals(testClassesDir)) {
                 gradleSourceSet.setHasTests(true);
                 gradleSourceSet.setJvmArgs(getTestJvmArgs(testTask));
+                List<File> testRuntimeClasspath = getTestRuntimeClasspath(testTask);
+                if (!testRuntimeClasspath.isEmpty()) {
+                  gradleSourceSet.setRuntimeClasspath(testRuntimeClasspath);
+                }
                 break;
               }
             }
@@ -194,6 +213,24 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
   private List<String> getTestJvmArgs(Test testTask) {
     List<String> jvmArgs = testTask.getJvmArgs();
     return jvmArgs == null ? new LinkedList<>() : new LinkedList<>(jvmArgs);
+  }
+
+  /**
+   * Collect the runtime classpath the Gradle {@code Test} task actually launches
+   * with ({@code test.classpath}), so clients reproduce the exact test JVM
+   * classpath instead of re-deriving it from compile/runtime configurations.
+   * Falls back to an empty list when the classpath cannot be resolved.
+   */
+  private List<File> getTestRuntimeClasspath(Test testTask) {
+    try {
+      FileCollection classpath = testTask.getClasspath();
+      if (classpath != null) {
+        return new LinkedList<>(classpath.getFiles());
+      }
+    } catch (GradleException e) {
+      // ignore - fall back to the source set's runtime classpath already set
+    }
+    return new LinkedList<>();
   }
 
   private <T extends Task> Set<T> tasksWithType(Project project, Class<T> clazz) {
