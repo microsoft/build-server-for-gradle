@@ -55,6 +55,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private List<File> compileClasspath;
 
+  private List<String> jvmArgs;
+
   private Set<GradleModuleDependency> moduleDependencies;
 
   private Set<BuildTargetDependency> buildTargetDependencies;
@@ -88,6 +90,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.resourceOutputDirs = gradleSourceSet.getResourceOutputDirs();
     this.archiveOutputFiles = gradleSourceSet.getArchiveOutputFiles();
     this.compileClasspath = gradleSourceSet.getCompileClasspath();
+    this.jvmArgs = gradleSourceSet.getJvmArgs();
     this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
     this.buildTargetDependencies = gradleSourceSet.getBuildTargetDependencies().stream()
@@ -261,6 +264,15 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   }
 
   @Override
+  public List<String> getJvmArgs() {
+    return jvmArgs;
+  }
+
+  public void setJvmArgs(List<String> jvmArgs) {
+    this.jvmArgs = jvmArgs;
+  }
+
+  @Override
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -302,7 +314,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         projectDir, rootDir, sourceSetName, classesTaskName, cleanTaskName, taskNames, sourceDirs,
         generatedSourceDirs, sourceOutputDirs, resourceDirs, resourceOutputDirs, archiveOutputFiles,
         compileClasspath, moduleDependencies, buildTargetDependencies,
-        hasTests, extensions);
+        hasTests, extensions, jvmArgs);
   }
 
   @Override
@@ -337,6 +349,7 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(buildTargetDependencies, other.buildTargetDependencies)
         && hasTests == other.hasTests
-        && Objects.equals(extensions, other.extensions);
+        && Objects.equals(extensions, other.extensions)
+        && Objects.equals(jvmArgs, other.jvmArgs);
   }
 }

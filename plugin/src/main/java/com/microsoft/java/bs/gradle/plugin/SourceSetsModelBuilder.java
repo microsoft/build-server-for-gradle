@@ -154,6 +154,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
           for (File sourceOutputDir : sourceOutputDirs) {
             if (files.contains(sourceOutputDir)) {
               gradleSourceSet.setHasTests(true);
+              gradleSourceSet.setJvmArgs(getTestJvmArgs(testTask));
               break;
             }
           }
@@ -167,6 +168,7 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
             for (File sourceOutputDir : sourceOutputDirs) {
               if (sourceOutputDir.equals(testClassesDir)) {
                 gradleSourceSet.setHasTests(true);
+                gradleSourceSet.setJvmArgs(getTestJvmArgs(testTask));
                 break;
               }
             }
@@ -182,6 +184,16 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
 
     return gradleSourceSet;
+  }
+
+  /**
+   * Collect the JVM arguments configured on a test task (e.g. {@code --add-opens}
+   * or {@code -D} system properties) so clients can reproduce a faithful test JVM.
+   * Returns an empty list when none are configured.
+   */
+  private List<String> getTestJvmArgs(Test testTask) {
+    List<String> jvmArgs = testTask.getJvmArgs();
+    return jvmArgs == null ? new LinkedList<>() : new LinkedList<>(jvmArgs);
   }
 
   private <T extends Task> Set<T> tasksWithType(Project project, Class<T> clazz) {

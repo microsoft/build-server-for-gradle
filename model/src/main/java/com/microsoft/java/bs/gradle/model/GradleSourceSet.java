@@ -101,6 +101,14 @@ public interface GradleSourceSet extends Serializable {
   public List<File> getCompileClasspath();
 
   /**
+   * The JVM arguments configured on this source set's matching test task
+   * (e.g. {@code --add-opens} or {@code -D} system properties). Empty when the
+   * source set has no matching test task or no arguments were configured. This
+   * lets clients reproduce a faithful test JVM without re-deriving it.
+   */
+  public List<String> getJvmArgs();
+
+  /**
    * Module dependencies.
    */
   public Set<GradleModuleDependency> getModuleDependencies();

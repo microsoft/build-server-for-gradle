@@ -29,6 +29,7 @@ import com.microsoft.java.bs.core.internal.reporter.ProgressReporter;
 import com.microsoft.java.bs.core.internal.utils.JsonUtils;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
+import com.microsoft.java.bs.gradle.model.Artifact;
 import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
@@ -483,8 +484,11 @@ public class BuildTargetService {
 
   /**
    * Build a {@link JvmEnvironmentItem} for each resolvable build target. The classpath
-   * is composed of the source set compile classpath plus its own compiled output and
-   * resource directories, so that the target's own classes are runnable/testable.
+   * mirrors the test/run runtime: the source set's own compiled output and resource
+   * directories, its compile classpath, and its module dependency artifacts (which are
+   * resolved from both the compile and runtime configurations, so runtime-only
+   * dependencies are included). JVM options are taken from the matching Gradle test
+   * task where available.
    */
   private List<JvmEnvironmentItem> collectJvmEnvironmentItems(List<BuildTargetIdentifier> targets) {
     List<JvmEnvironmentItem> items = new ArrayList<>();
@@ -497,22 +501,43 @@ public class BuildTargetService {
       }
 
       GradleSourceSet sourceSet = target.getSourceSet();
-      Set<File> classpathEntries = new LinkedHashSet<>();
-      classpathEntries.addAll(sourceSet.getSourceOutputDirs());
-      classpathEntries.addAll(sourceSet.getResourceOutputDirs());
-      classpathEntries.addAll(sourceSet.getCompileClasspath());
-      List<String> classpath = classpathEntries.stream()
-          .map(file -> file.toURI().toString())
-          .collect(Collectors.toList());
+      // Use a LinkedHashSet so the classpath keeps a stable order and duplicates
+      // (e.g. a compile-classpath entry that is also a module artifact) collapse.
+      Set<String> classpath = new LinkedHashSet<>();
+      for (File dir : sourceSet.getSourceOutputDirs()) {
+        classpath.add(dir.toURI().toString());
+      }
+      for (File dir : sourceSet.getResourceOutputDirs()) {
+        classpath.add(dir.toURI().toString());
+      }
+      for (File file : sourceSet.getCompileClasspath()) {
+        classpath.add(file.toURI().toString());
+      }
+      // Add module dependency artifacts to pick up runtime-only dependencies that
+      // are absent from the compile classpath. Skip sources/javadoc classifiers.
+      for (GradleModuleDependency dep : sourceSet.getModuleDependencies()) {
+        for (Artifact artifact : dep.getArtifacts()) {
+          String classifier = artifact.getClassifier();
+          if (!"sources".equals(classifier) && !"javadoc".equals(classifier)) {
+            classpath.add(artifact.getUri().toString());
+          }
+        }
+      }
 
       File projectDir = sourceSet.getProjectDir();
       String workingDirectory = projectDir == null ? "" : projectDir.toURI().toString();
 
+      List<String> jvmArgs = sourceSet.getJvmArgs();
+      List<String> jvmOptions = jvmArgs == null ? new ArrayList<>() : new ArrayList<>(jvmArgs);
+
       items.add(new JvmEnvironmentItem(
           btId,
-          classpath,
-          new ArrayList<>(),
+          new ArrayList<>(classpath),
+          jvmOptions,
           workingDirectory,
+          // Environment variables are intentionally left empty: the Gradle test
+          // task's effective environment inherits the whole machine environment,
+          // which is noisy and host-specific, so we do not surface it here.
           new HashMap<>()
       ));
     }

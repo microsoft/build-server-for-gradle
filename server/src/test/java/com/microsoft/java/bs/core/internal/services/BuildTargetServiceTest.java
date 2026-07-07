@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.core.internal.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,6 +50,9 @@ import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.JvmEnvironmentItem;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentResult;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.OutputPathsParams;
@@ -283,6 +287,97 @@ class BuildTargetServiceTest {
             return "sources";
           }
         });
+      }
+    };
+    Set<GradleModuleDependency> moduleDependencies = new HashSet<>();
+    moduleDependencies.add(moduleDependency);
+    return moduleDependencies;
+  }
+
+  @Test
+  void testGetBuildTargetJvmTestEnvironment() {
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+    when(gradleSourceSet.getProjectDir()).thenReturn(new File("projectDir"));
+    when(gradleSourceSet.getSourceOutputDirs())
+        .thenReturn(new HashSet<>(Arrays.asList(new File("out/classes"))));
+    when(gradleSourceSet.getResourceOutputDirs())
+        .thenReturn(new HashSet<>(Arrays.asList(new File("out/resources"))));
+    when(gradleSourceSet.getCompileClasspath())
+        .thenReturn(Arrays.asList(new File("libs/compile.jar")));
+    when(gradleSourceSet.getModuleDependencies()).thenReturn(getRuntimeModuleDependencies());
+    when(gradleSourceSet.getJvmArgs())
+        .thenReturn(Arrays.asList("--add-opens=java.base/java.lang=ALL-UNNAMED"));
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        connector, preferenceManager);
+    JvmTestEnvironmentResult res = buildTargetService.getBuildTargetJvmTestEnvironment(
+        new JvmTestEnvironmentParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+
+    assertEquals(1, res.getItems().size());
+    JvmEnvironmentItem item = res.getItems().get(0);
+
+    // The test task's JVM args are surfaced as jvmOptions.
+    assertEquals(Arrays.asList("--add-opens=java.base/java.lang=ALL-UNNAMED"),
+        item.getJvmOptions());
+
+    // The classpath includes outputs, the compile classpath and the runtime
+    // (non-sources) module artifact, but not the sources artifact.
+    List<String> classpath = item.getClasspath();
+    assertTrue(classpath.contains(new File("out/classes").toURI().toString()));
+    assertTrue(classpath.contains(new File("out/resources").toURI().toString()));
+    assertTrue(classpath.contains(new File("libs/compile.jar").toURI().toString()));
+    assertTrue(classpath.contains(new File("runtime.jar").toURI().toString()));
+    assertFalse(classpath.contains(new File("sources.jar").toURI().toString()));
+
+    assertEquals(new File("projectDir").toURI().toString(), item.getWorkingDirectory());
+  }
+
+  private static Set<GradleModuleDependency> getRuntimeModuleDependencies() {
+    GradleModuleDependency moduleDependency = new GradleModuleDependency() {
+      @Override
+      public String getGroup() {
+        return "group";
+      }
+
+      @Override
+      public String getModule() {
+        return "module";
+      }
+
+      @Override
+      public String getVersion() {
+        return "1.0.0";
+      }
+
+      @Override
+      public List<Artifact> getArtifacts() {
+        return Arrays.asList(
+            new Artifact() {
+              @Override
+              public URI getUri() {
+                return new File("runtime.jar").toURI();
+              }
+
+              @Override
+              public String getClassifier() {
+                return null;
+              }
+            },
+            new Artifact() {
+              @Override
+              public URI getUri() {
+                return new File("sources.jar").toURI();
+              }
+
+              @Override
+              public String getClassifier() {
+                return "sources";
+              }
+            });
       }
     };
     Set<GradleModuleDependency> moduleDependencies = new HashSet<>();
