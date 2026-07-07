@@ -269,6 +269,12 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   @Override
   public List<File> getRuntimeClasspath() {
+    // Honour the interface contract: never null, even for a no-arg-constructed or
+    // deserialized instance whose field was not populated. Assign back so the same
+    // list instance is returned on every call and mutations are not dropped.
+    if (runtimeClasspath == null) {
+      runtimeClasspath = new ArrayList<>();
+    }
     return runtimeClasspath;
   }
 
@@ -279,8 +285,12 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   @Override
   public List<String> getJvmArgs() {
     // Honour the interface contract: never null, even for a no-arg-constructed or
-    // deserialized instance whose field was not populated.
-    return jvmArgs == null ? new ArrayList<>() : jvmArgs;
+    // deserialized instance whose field was not populated. Assign back so the same
+    // list instance is returned on every call and mutations are not dropped.
+    if (jvmArgs == null) {
+      jvmArgs = new ArrayList<>();
+    }
+    return jvmArgs;
   }
 
   public void setJvmArgs(List<String> jvmArgs) {

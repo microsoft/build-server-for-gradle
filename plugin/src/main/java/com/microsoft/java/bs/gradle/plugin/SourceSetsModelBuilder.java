@@ -135,7 +135,12 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     // matching Test task below overrides this with the task's own classpath.
     List<File> runtimeClasspath = new LinkedList<>();
     try {
-      runtimeClasspath.addAll(sourceSet.getRuntimeClasspath().getFiles());
+      // Iterate the FileCollection directly rather than via getFiles() (which returns
+      // a Set) to preserve Gradle's classpath ordering; order affects which
+      // classes/resources win on the runtime classpath.
+      for (File file : sourceSet.getRuntimeClasspath()) {
+        runtimeClasspath.add(file);
+      }
     } catch (GradleException e) {
       // ignore
     }
@@ -261,15 +266,20 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
    * Falls back to an empty list when the classpath cannot be resolved.
    */
   private List<File> getTestRuntimeClasspath(Test testTask) {
+    List<File> classpathFiles = new LinkedList<>();
     try {
       FileCollection classpath = testTask.getClasspath();
       if (classpath != null) {
-        return new LinkedList<>(classpath.getFiles());
+        // Iterate the FileCollection directly rather than via getFiles() (which
+        // returns a Set) to preserve Gradle's classpath ordering.
+        for (File file : classpath) {
+          classpathFiles.add(file);
+        }
       }
     } catch (GradleException e) {
       // ignore - fall back to the source set's runtime classpath already set
     }
-    return new LinkedList<>();
+    return classpathFiles;
   }
 
   private <T extends Task> Set<T> tasksWithType(Project project, Class<T> clazz) {
