@@ -527,7 +527,12 @@ public class BuildTargetService {
       }
 
       File projectDir = sourceSet.getProjectDir();
-      String workingDirectory = projectDir == null ? "" : projectDir.toURI().toString();
+      // Use a plain filesystem path (not a file:// URI) for the working directory.
+      // Unlike classpath entries, BSP's workingDirectory is consumed as the directory
+      // to launch the process in, and its format is inconsistent across build tools
+      // (e.g. Bloop uses a plain path); a plain path is directly usable as a process
+      // working directory, whereas a file:// URI is not.
+      String workingDirectory = projectDir == null ? "" : projectDir.getAbsolutePath();
 
       // Only a test environment surfaces the Gradle Test task's JVM args; a run
       // environment must not inherit test-specific options such as --add-opens.

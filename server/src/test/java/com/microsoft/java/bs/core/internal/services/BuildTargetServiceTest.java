@@ -335,7 +335,7 @@ class BuildTargetServiceTest {
     assertTrue(classpath.contains(new File("libs/runtime.jar").toURI().toString()));
     assertFalse(classpath.contains(new File("libs/compileOnly.jar").toURI().toString()));
 
-    assertEquals(new File("projectDir").toURI().toString(), item.getWorkingDirectory());
+    assertEquals(new File("projectDir").getAbsolutePath(), item.getWorkingDirectory());
   }
 
   @Test

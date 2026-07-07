@@ -140,6 +140,11 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
     gradleSourceSet.setRuntimeClasspath(runtimeClasspath);
 
+    // Default to an empty list so getJvmArgs() honours its "empty, never null"
+    // contract for source sets without a matching test task; the test loop below
+    // overrides this when a Test task is found.
+    gradleSourceSet.setJvmArgs(new LinkedList<>());
+
     // resource
     Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
     gradleSourceSet.setResourceDirs(resourceDirs);
