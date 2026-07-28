@@ -51,6 +51,7 @@ import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
+import ch.epfl.scala.bsp4j.OutputPathItem;
 import ch.epfl.scala.bsp4j.OutputPathsParams;
 import ch.epfl.scala.bsp4j.OutputPathsResult;
 import ch.epfl.scala.bsp4j.ResourcesParams;
@@ -200,6 +201,19 @@ class BuildTargetServiceTest {
         new OutputPathsParams(Arrays.asList(new BuildTargetIdentifier("test"))));
     assertEquals(1, outputPathsResult.getItems().size());
     assertEquals(2, outputPathsResult.getItems().get(0).getOutputPaths().size());
+
+    Map<String, URI> outputPathUris = new HashMap<>();
+    for (OutputPathItem outputPath : outputPathsResult.getItems().get(0).getOutputPaths()) {
+      URI uri = URI.create(outputPath.getUri());
+      outputPathUris.put(uri.getQuery(), uri);
+    }
+
+    assertTrue(outputPathUris.containsKey("kind=source"));
+    assertTrue(outputPathUris.containsKey("kind=resource"));
+    assertEquals(sourceOutputDir.toURI().getPath(),
+        outputPathUris.get("kind=source").getPath());
+    assertEquals(resourceOutputDir.toURI().getPath(),
+        outputPathUris.get("kind=resource").getPath());
   }
 
   @Test
