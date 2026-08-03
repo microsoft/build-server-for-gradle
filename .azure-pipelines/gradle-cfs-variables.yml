@@ -1,0 +1,20 @@
+# Non-secret half of the Central Feed Service (CFS) wiring for Gradle builds.
+#
+# SFI Network Isolation requires builds to resolve artifacts through CFS instead of
+# reaching a public host. The redirect itself lives in cfs-init.gradle, which is applied
+# to the Gradle tasks below through --init-script; this file only supplies the feed
+# address it reads.
+#
+# The credential is deliberately absent. System.AccessToken is a secret, and Azure
+# Pipelines does not export secret variables to the environment -- not even through a
+# variable that merely references one -- so it has to be mapped in an `env:` block on
+# the step that actually runs Gradle. Keeping it there also limits the token to the one
+# step that needs it instead of the whole job.
+#
+# Nothing here is secret: the value is a feed address, and it is only consumed on the
+# build agents. A developer running ./gradlew locally never applies cfs-init.gradle and
+# keeps resolving from Maven Central.
+
+variables:
+  - name: CFS_MAVEN_URL
+    value: https://pkgs.dev.azure.com/mseng/VSJava/_packaging/vscjava/maven/v1

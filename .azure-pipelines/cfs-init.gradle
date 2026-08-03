@@ -1,0 +1,83 @@
+/*
+ * Gradle settings for the build pipelines in this directory. SFI Network Isolation
+ * requires builds to resolve artifacts through the Central Feed Service (CFS) instead
+ * of reaching a public host, and this file is how that is applied.
+ *
+ * It is an init script rather than an edit to build.gradle on purpose. Gradle has no
+ * mirror concept, so redirecting `mavenCentral()` means replacing the repository list,
+ * and doing that in build.gradle would point every external contributor at a feed they
+ * cannot authenticate against. Passing this file through --init-script keeps the change
+ * confined to the agents: anyone running ./gradlew locally never applies it and keeps
+ * resolving from Maven Central exactly as before.
+ *
+ * repositoriesMode is PREFER_SETTINGS, which makes Gradle ignore the repositories
+ * declared in build.gradle in favour of the ones below. Prepending the feed instead
+ * would leave Maven Central as a fallback, so a single artifact missing from CFS would
+ * quietly reach the public host and reintroduce the violation this file exists to fix.
+ *
+ * Neither of the values read below is a secret in this file. Both arrive from the
+ * environment and are only set on the agents; see gradle-cfs-variables.yml for the
+ * non-secret half and the `env:` block on the Gradle task for the credential.
+ */
+
+def cfsUrl = System.getenv('CFS_MAVEN_URL')
+def cfsToken = System.getenv('SYSTEM_ACCESSTOKEN')
+
+if (!cfsUrl?.trim() || !cfsToken?.trim()) {
+    throw new GradleException(
+        'CFS_MAVEN_URL and SYSTEM_ACCESSTOKEN must both be set when cfs-init.gradle is applied. ' +
+        'Failing here rather than resolving from a public repository, which is the outcome ' +
+        'this script exists to prevent.')
+}
+
+// gradle-tooling-api is published only to repo.gradle.org. It is absent from Maven
+// Central and 404s through the feed, and Azure Artifacts upstreams cannot point at an
+// arbitrary URL, so it has to stay reachable directly. The content filter keeps that
+// exception to the one group that needs it -- everything else must come from CFS.
+def toolingApiUrl = 'https://repo.gradle.org/gradle/libs-releases'
+
+def addCfsRepository = { handler ->
+    handler.maven { repo ->
+        repo.name = 'vscjava'
+        repo.setUrl(cfsUrl)
+        repo.credentials { credentials ->
+            credentials.username = 'AzureDevOps'
+            credentials.password = cfsToken
+        }
+    }
+}
+
+def addToolingApiRepository = { handler ->
+    handler.maven { repo ->
+        repo.name = 'gradleLibsReleases'
+        repo.setUrl(toolingApiUrl)
+        repo.content { content ->
+            content.includeGroup('org.gradle')
+        }
+    }
+}
+
+beforeSettings { settings ->
+    settings.pluginManagement { pluginManagement ->
+        pluginManagement.repositories { handler ->
+            handler.clear()
+            addCfsRepository(handler)
+        }
+    }
+
+    settings.dependencyResolutionManagement { management ->
+        management.repositoriesMode.set(org.gradle.api.initialization.resolve.RepositoriesMode.PREFER_SETTINGS)
+        management.repositories { handler ->
+            handler.clear()
+            addCfsRepository(handler)
+            addToolingApiRepository(handler)
+        }
+    }
+}
+
+allprojects { project ->
+    project.buildscript.repositories { handler ->
+        handler.clear()
+        addCfsRepository(handler)
+    }
+}
