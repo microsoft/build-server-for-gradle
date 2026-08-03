@@ -9,6 +9,8 @@ resources:
       name: 1ESPipelineTemplates/MicroBuildTemplate
 trigger: none
 pr: none
+variables:
+  - template: /.azure-pipelines/gradle-cfs-variables.yml@self
 schedules:
   - cron: '0 1 * * 1-5'
     displayName: 'Weekday 9AM Shanghai (1AM UTC)'
@@ -63,8 +65,14 @@ extends:
               - task: Gradle@3
                 displayName: gradlew build -x test
                 inputs:
-                  options: '-x test'
+                  options: '-x test --init-script $(Build.SourcesDirectory)/.azure-pipelines/cfs-init.gradle'
                   publishJUnitResults: false
+                # System.AccessToken is a secret, and Azure Pipelines does not export secret
+                # variables to the environment -- not even through a variable that merely
+                # references one. It is mapped here, on the step that actually runs Gradle,
+                # rather than in gradle-cfs-variables.yml alongside the rest of the wiring.
+                env:
+                  SYSTEM_ACCESSTOKEN: $(System.AccessToken)
               - task: PowerShell@2
                 displayName: Sign Plugin Jars
                 inputs:
