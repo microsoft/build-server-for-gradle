@@ -4,9 +4,11 @@
 package com.microsoft.java.bs.gradle.model.actions;
 
 import com.microsoft.java.bs.gradle.model.BuildTargetDependency;
+import com.microsoft.java.bs.gradle.model.GradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.GradleSourceSet;
 import com.microsoft.java.bs.gradle.model.GradleSourceSets;
 import com.microsoft.java.bs.gradle.model.impl.DefaultBuildTargetDependency;
+import com.microsoft.java.bs.gradle.model.impl.DefaultGradleModuleDependency;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSet;
 import com.microsoft.java.bs.gradle.model.impl.DefaultGradleSourceSets;
 import org.gradle.tooling.BuildAction;
@@ -15,6 +17,7 @@ import org.gradle.tooling.model.gradle.BasicGradleProject;
 import org.gradle.tooling.model.gradle.GradleBuild;
 
 import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -158,12 +161,14 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
     // replace classpath entries that reference jars with classes dirs.
     for (GradleSourceSet sourceSet : sourceSets) {
       Set<BuildTargetDependency> dependencies = new HashSet<>();
+      Set<URI> dependencyOutputUris = new HashSet<>();
       List<File> classpath = new ArrayList<>();
       for (File file : sourceSet.getCompileClasspath()) {
         // add project dependency
         GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
         if (otherSourceSet != null) {
           dependencies.add(new DefaultBuildTargetDependency(otherSourceSet));
+          dependencyOutputUris.add(file.toURI());
         }
         // replace jar on classpath with source output on classpath
         List<File> sourceOutputDir = archivesToSourceOutput.get(file);
@@ -176,7 +181,25 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
       if (sourceSet instanceof DefaultGradleSourceSet) {
         ((DefaultGradleSourceSet) sourceSet).setBuildTargetDependencies(dependencies);
         ((DefaultGradleSourceSet) sourceSet).setCompileClasspath(classpath);
+        ((DefaultGradleSourceSet) sourceSet).setModuleDependencies(
+            removeBuildTargetArtifacts(sourceSet.getModuleDependencies(), dependencyOutputUris));
       }
     }
+  }
+
+  private Set<GradleModuleDependency> removeBuildTargetArtifacts(
+      Set<GradleModuleDependency> moduleDependencies, Set<URI> dependencyOutputUris) {
+    Set<GradleModuleDependency> filteredDependencies = new HashSet<>();
+    for (GradleModuleDependency moduleDependency : moduleDependencies) {
+      DefaultGradleModuleDependency filteredDependency =
+          new DefaultGradleModuleDependency(moduleDependency);
+      filteredDependency.setArtifacts(filteredDependency.getArtifacts().stream()
+          .filter(artifact -> !dependencyOutputUris.contains(artifact.getUri()))
+          .collect(Collectors.toList()));
+      if (!filteredDependency.getArtifacts().isEmpty()) {
+        filteredDependencies.add(filteredDependency);
+      }
+    }
+    return filteredDependencies;
   }
 }
