@@ -168,7 +168,7 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
         GradleSourceSet otherSourceSet = outputsToSourceSet.get(file);
         if (otherSourceSet != null) {
           dependencies.add(new DefaultBuildTargetDependency(otherSourceSet));
-          dependencyOutputUris.add(file.toURI());
+          addOutputUris(dependencyOutputUris, otherSourceSet);
         }
         // replace jar on classpath with source output on classpath
         List<File> sourceOutputDir = archivesToSourceOutput.get(file);
@@ -187,7 +187,21 @@ public class GetSourceSetsAction implements BuildAction<GradleSourceSets> {
     }
   }
 
-  private Set<GradleModuleDependency> removeBuildTargetArtifacts(
+  private void addOutputUris(Set<URI> outputUris, GradleSourceSet sourceSet) {
+    if (sourceSet.getSourceOutputDirs() != null) {
+      sourceSet.getSourceOutputDirs().stream().map(File::toURI).forEach(outputUris::add);
+    }
+    if (sourceSet.getResourceOutputDirs() != null) {
+      sourceSet.getResourceOutputDirs().stream().map(File::toURI).forEach(outputUris::add);
+    }
+    if (sourceSet.getArchiveOutputFiles() != null) {
+      sourceSet.getArchiveOutputFiles().keySet().stream()
+          .map(File::toURI)
+          .forEach(outputUris::add);
+    }
+  }
+
+  static Set<GradleModuleDependency> removeBuildTargetArtifacts(
       Set<GradleModuleDependency> moduleDependencies, Set<URI> dependencyOutputUris) {
     Set<GradleModuleDependency> filteredDependencies = new HashSet<>();
     for (GradleModuleDependency moduleDependency : moduleDependencies) {
