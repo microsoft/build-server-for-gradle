@@ -217,6 +217,18 @@ class GradleApiConnectorTest {
     });
   }
 
+  private void assertNoModuleDependencyOnBuildTargetOutput(GradleSourceSet sourceSet,
+      GradleSourceSet dependency) {
+    Set<File> outputs = new HashSet<>();
+    outputs.addAll(dependency.getSourceOutputDirs());
+    outputs.addAll(dependency.getResourceOutputDirs());
+    outputs.addAll(dependency.getArchiveOutputFiles().keySet());
+    assertTrue(sourceSet.getModuleDependencies().stream()
+        .flatMap(module -> module.getArtifacts().stream())
+        .noneMatch(artifact -> outputs.contains(new File(artifact.getUri()))),
+        "Build target outputs must not also be exposed as module dependencies");
+  }
+
   @Test
   void testGetGradleDependenciesWithTestFixtures() {
     File projectDir = projectPath.resolve("project-dependency-test-fixtures").toFile();
@@ -277,6 +289,7 @@ class GradleApiConnectorTest {
     GradleSourceSet mainA = findSourceSet(gradleSourceSets, "a [main]");
     GradleSourceSet mainB = findSourceSet(gradleSourceSets, "b [main]");
     assertHasBuildTargetDependency(mainB, mainA);
+    assertNoModuleDependencyOnBuildTargetOutput(mainB, mainA);
   }
 
   @Test
