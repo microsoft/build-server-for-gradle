@@ -14,6 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import com.microsoft.java.bs.gradle.plugin.utils.AndroidUtils;
@@ -129,6 +130,27 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
     gradleSourceSet.setCompileClasspath(compileClasspath);
 
+    // runtime classpath - the closure Gradle actually uses to run this source set
+    // (includes runtimeOnly deps, excludes compileOnly). For the test source set a
+    // matching Test task below overrides this with the task's own classpath.
+    List<File> runtimeClasspath = new LinkedList<>();
+    try {
+      // Iterate the FileCollection directly rather than via getFiles() (which returns
+      // a Set) to preserve Gradle's classpath ordering; order affects which
+      // classes/resources win on the runtime classpath.
+      for (File file : sourceSet.getRuntimeClasspath()) {
+        runtimeClasspath.add(file);
+      }
+    } catch (GradleException e) {
+      // ignore
+    }
+    gradleSourceSet.setRuntimeClasspath(runtimeClasspath);
+
+    // Default to an empty list so getJvmArgs() honours its "empty, never null"
+    // contract for source sets without a matching test task; the test loop below
+    // overrides this when a Test task is found.
+    gradleSourceSet.setJvmArgs(new LinkedList<>());
+
     // resource
     Set<File> resourceDirs = sourceSet.getResources().getSrcDirs();
     gradleSourceSet.setResourceDirs(resourceDirs);
@@ -154,6 +176,11 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
           for (File sourceOutputDir : sourceOutputDirs) {
             if (files.contains(sourceOutputDir)) {
               gradleSourceSet.setHasTests(true);
+              gradleSourceSet.setJvmArgs(getTestJvmArgs(testTask));
+              List<File> testRuntimeClasspath = getTestRuntimeClasspath(testTask);
+              if (!testRuntimeClasspath.isEmpty()) {
+                gradleSourceSet.setRuntimeClasspath(testRuntimeClasspath);
+              }
               break;
             }
           }
@@ -167,6 +194,11 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
             for (File sourceOutputDir : sourceOutputDirs) {
               if (sourceOutputDir.equals(testClassesDir)) {
                 gradleSourceSet.setHasTests(true);
+                gradleSourceSet.setJvmArgs(getTestJvmArgs(testTask));
+                List<File> testRuntimeClasspath = getTestRuntimeClasspath(testTask);
+                if (!testRuntimeClasspath.isEmpty()) {
+                  gradleSourceSet.setRuntimeClasspath(testRuntimeClasspath);
+                }
                 break;
               }
             }
@@ -182,6 +214,72 @@ public class SourceSetsModelBuilder implements ToolingModelBuilder {
     }
 
     return gradleSourceSet;
+  }
+
+  /**
+   * Collect the effective JVM arguments a client needs to reproduce the test JVM.
+   *
+   * <p>{@link Test#getJvmArgs()} only returns arguments set explicitly via
+   * {@code jvmArgs(...)}; it omits {@code systemProperty(...)} values (managed
+   * separately by {@link Test#getSystemProperties()}) and the heap settings
+   * ({@code minHeapSize}/{@code maxHeapSize}). We merge those in as
+   * {@code -Dkey=value}, {@code -Xms} and {@code -Xmx} so a very common
+   * {@code systemProperty(...)} configuration is not silently dropped (which could
+   * change test behaviour or make tests fail under a delegated coverage run). We
+   * avoid {@link Test#getAllJvmArgs()} because it is deprecated since Gradle 8.</p>
+   *
+   * <p>Note: {@code jvmArgumentProviders} are not captured here; that API is newer
+   * than the oldest Gradle versions this plugin still supports.</p>
+   *
+   * <p>Returns an empty list when nothing is configured.</p>
+   */
+  private List<String> getTestJvmArgs(Test testTask) {
+    List<String> args = new LinkedList<>();
+    List<String> jvmArgs = testTask.getJvmArgs();
+    if (jvmArgs != null) {
+      args.addAll(jvmArgs);
+    }
+    Map<String, Object> sysProps = testTask.getSystemProperties();
+    if (sysProps != null) {
+      // Sort by key for a deterministic order (getSystemProperties() may be a
+      // HashMap), so the serialized model and BSP response stay stable across runs.
+      for (Map.Entry<String, Object> e : new TreeMap<>(sysProps).entrySet()) {
+        Object value = e.getValue();
+        args.add("-D" + e.getKey() + "=" + (value == null ? "" : value));
+      }
+    }
+    String min = testTask.getMinHeapSize();
+    if (min != null) {
+      args.add("-Xms" + min);
+    }
+    String max = testTask.getMaxHeapSize();
+    if (max != null) {
+      args.add("-Xmx" + max);
+    }
+    return args;
+  }
+
+  /**
+   * Collect the runtime classpath the Gradle {@code Test} task actually launches
+   * with ({@code test.classpath}), so clients reproduce the exact test JVM
+   * classpath instead of re-deriving it from compile/runtime configurations.
+   * Falls back to an empty list when the classpath cannot be resolved.
+   */
+  private List<File> getTestRuntimeClasspath(Test testTask) {
+    List<File> classpathFiles = new LinkedList<>();
+    try {
+      FileCollection classpath = testTask.getClasspath();
+      if (classpath != null) {
+        // Iterate the FileCollection directly rather than via getFiles() (which
+        // returns a Set) to preserve Gradle's classpath ordering.
+        for (File file : classpath) {
+          classpathFiles.add(file);
+        }
+      }
+    } catch (GradleException e) {
+      // ignore - fall back to the source set's runtime classpath already set
+    }
+    return classpathFiles;
   }
 
   private <T extends Task> Set<T> tasksWithType(Project project, Class<T> clazz) {
