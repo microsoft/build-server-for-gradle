@@ -17,10 +17,15 @@ another wiki.
 Source-user authorization and the destination GitHub App installation and
 permissions are separate requirements. Retrieval needs destination Contents read
 access; maintenance needs destination Contents write access as well as explicit
-source authorization for the task. The source workflow token's `contents: read`
-is separate from destination App permissions and must not be changed to write
-for wiki maintenance. The mapping grants no issue, label, assignment, PR,
-settings, or other repository write authority in either repository.
+source authorization for the task. The underlying App Contents write permission
+is a broader repository-content capability, not a wiki-only permission. Fixed
+wiki tools and separate job authorization confine IssueLens maintenance to the
+validated wiki destination.
+
+The source workflow token's `contents: read` is separate from destination App
+permissions and must not be changed to write for wiki maintenance. The mapping
+grants no issue, label, assignment, PR, settings, or other repository write
+authority in either repository.
 
 Preserve the runtime's source/destination visibility and compatibility checks.
 Never publish private or internal-source information into the public shared wiki.
@@ -107,7 +112,7 @@ instead of treating this snapshot as permanently current.
 For validation knowledge, inspect [the build entry points](https://github.com/microsoft/build-server-for-gradle/blob/f3778d2894fc0b22712858340c665e2f215b9a40/CONTRIBUTING.md),
 root/module Gradle files, `server/src/test/`, `plugin/src/test/`, and
 `testProjects/` at the relevant revision. The documented project build is
-`gradlew clean build` (`.\gradlew.bat clean build` on Windows); distinguish this
+`./gradlew clean build` (`.\gradlew.bat clean build` on Windows); distinguish this
 from extension build commands. [Server packaging](https://github.com/microsoft/build-server-for-gradle/blob/f3778d2894fc0b22712858340c665e2f215b9a40/server/build.gradle)
 copies the plugin/runtime dependencies and generates the init script.
 [BuildTargetServiceTest](https://github.com/microsoft/build-server-for-gradle/blob/f3778d2894fc0b22712858340c665e2f215b9a40/server/src/test/java/com/microsoft/java/bs/core/internal/services/BuildTargetServiceTest.java)
