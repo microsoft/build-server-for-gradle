@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.core.internal.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,6 +50,11 @@ import ch.epfl.scala.bsp4j.DependencyModulesParams;
 import ch.epfl.scala.bsp4j.DependencyModulesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.JvmEnvironmentItem;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentResult;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentResult;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
 import ch.epfl.scala.bsp4j.OutputPathsParams;
@@ -288,6 +294,79 @@ class BuildTargetServiceTest {
     Set<GradleModuleDependency> moduleDependencies = new HashSet<>();
     moduleDependencies.add(moduleDependency);
     return moduleDependencies;
+  }
+
+  @Test
+  void testGetBuildTargetJvmTestEnvironment() {
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+    when(gradleSourceSet.getProjectDir()).thenReturn(new File("projectDir"));
+    when(gradleSourceSet.getSourceOutputDirs())
+        .thenReturn(new HashSet<>(Arrays.asList(new File("out/classes"))));
+    when(gradleSourceSet.getResourceOutputDirs())
+        .thenReturn(new HashSet<>(Arrays.asList(new File("out/resources"))));
+    // Runtime classpath = the Gradle Test task's actual classpath: it carries the
+    // runtime-only artifact but not the compile-only one.
+    when(gradleSourceSet.getRuntimeClasspath())
+        .thenReturn(Arrays.asList(new File("libs/runtime.jar"), new File("out/classes")));
+    when(gradleSourceSet.getJvmArgs())
+        .thenReturn(Arrays.asList("--add-opens=java.base/java.lang=ALL-UNNAMED"));
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        connector, preferenceManager);
+    JvmTestEnvironmentResult res = buildTargetService.getBuildTargetJvmTestEnvironment(
+        new JvmTestEnvironmentParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+
+    assertEquals(1, res.getItems().size());
+    JvmEnvironmentItem item = res.getItems().get(0);
+
+    // The test task's JVM args are surfaced as jvmOptions.
+    assertEquals(Arrays.asList("--add-opens=java.base/java.lang=ALL-UNNAMED"),
+        item.getJvmOptions());
+
+    // The classpath includes the outputs and the runtime classpath entries, but not
+    // a compile-only jar that is absent from the runtime classpath.
+    List<String> classpath = item.getClasspath();
+    assertTrue(classpath.contains(new File("out/classes").toURI().toString()));
+    assertTrue(classpath.contains(new File("out/resources").toURI().toString()));
+    assertTrue(classpath.contains(new File("libs/runtime.jar").toURI().toString()));
+    assertFalse(classpath.contains(new File("libs/compileOnly.jar").toURI().toString()));
+
+    assertEquals(new File("projectDir").getAbsolutePath(), item.getWorkingDirectory());
+  }
+
+  @Test
+  void testGetBuildTargetJvmRunEnvironment() {
+    GradleBuildTarget gradleBuildTarget = mock(GradleBuildTarget.class);
+    when(buildTargetManager.getGradleBuildTarget(any())).thenReturn(gradleBuildTarget);
+
+    GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
+    when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
+    when(gradleSourceSet.getProjectDir()).thenReturn(new File("projectDir"));
+    when(gradleSourceSet.getSourceOutputDirs())
+        .thenReturn(new HashSet<>(Arrays.asList(new File("out/classes"))));
+    when(gradleSourceSet.getRuntimeClasspath())
+        .thenReturn(Arrays.asList(new File("libs/runtime.jar")));
+    // Even when the source set carries test JVM args, the run environment must not
+    // surface them - they are test-specific.
+    when(gradleSourceSet.getJvmArgs())
+        .thenReturn(Arrays.asList("--add-opens=java.base/java.lang=ALL-UNNAMED"));
+
+    BuildTargetService buildTargetService = new BuildTargetService(buildTargetManager,
+        connector, preferenceManager);
+    JvmRunEnvironmentResult res = buildTargetService.getBuildTargetJvmRunEnvironment(
+        new JvmRunEnvironmentParams(Arrays.asList(new BuildTargetIdentifier("test"))));
+
+    assertEquals(1, res.getItems().size());
+    JvmEnvironmentItem item = res.getItems().get(0);
+
+    // No test JVM args leak into the run environment.
+    assertTrue(item.getJvmOptions().isEmpty());
+    // The runtime classpath is still provided.
+    assertTrue(item.getClasspath().contains(new File("libs/runtime.jar").toURI().toString()));
   }
 
   @Test

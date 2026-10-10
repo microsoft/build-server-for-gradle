@@ -4,6 +4,7 @@
 package com.microsoft.java.bs.gradle.model.impl;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,6 +56,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private List<File> compileClasspath;
 
+  private List<File> runtimeClasspath;
+
+  private List<String> jvmArgs;
+
   private Set<GradleModuleDependency> moduleDependencies;
 
   private Set<BuildTargetDependency> buildTargetDependencies;
@@ -88,6 +93,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.resourceOutputDirs = gradleSourceSet.getResourceOutputDirs();
     this.archiveOutputFiles = gradleSourceSet.getArchiveOutputFiles();
     this.compileClasspath = gradleSourceSet.getCompileClasspath();
+    this.runtimeClasspath = gradleSourceSet.getRuntimeClasspath();
+    this.jvmArgs = gradleSourceSet.getJvmArgs();
     this.moduleDependencies = gradleSourceSet.getModuleDependencies().stream()
         .map(DefaultGradleModuleDependency::new).collect(Collectors.toSet());
     this.buildTargetDependencies = gradleSourceSet.getBuildTargetDependencies().stream()
@@ -261,6 +268,36 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   }
 
   @Override
+  public List<File> getRuntimeClasspath() {
+    // Honour the interface contract: never null, even for a no-arg-constructed or
+    // deserialized instance whose field was not populated. Assign back so the same
+    // list instance is returned on every call and mutations are not dropped.
+    if (runtimeClasspath == null) {
+      runtimeClasspath = new ArrayList<>();
+    }
+    return runtimeClasspath;
+  }
+
+  public void setRuntimeClasspath(List<File> runtimeClasspath) {
+    this.runtimeClasspath = runtimeClasspath;
+  }
+
+  @Override
+  public List<String> getJvmArgs() {
+    // Honour the interface contract: never null, even for a no-arg-constructed or
+    // deserialized instance whose field was not populated. Assign back so the same
+    // list instance is returned on every call and mutations are not dropped.
+    if (jvmArgs == null) {
+      jvmArgs = new ArrayList<>();
+    }
+    return jvmArgs;
+  }
+
+  public void setJvmArgs(List<String> jvmArgs) {
+    this.jvmArgs = jvmArgs;
+  }
+
+  @Override
   public Set<GradleModuleDependency> getModuleDependencies() {
     return moduleDependencies;
   }
@@ -301,8 +338,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     return Objects.hash(gradleVersion, displayName, projectName, projectPath,
         projectDir, rootDir, sourceSetName, classesTaskName, cleanTaskName, taskNames, sourceDirs,
         generatedSourceDirs, sourceOutputDirs, resourceDirs, resourceOutputDirs, archiveOutputFiles,
-        compileClasspath, moduleDependencies, buildTargetDependencies,
-        hasTests, extensions);
+        compileClasspath, runtimeClasspath, moduleDependencies, buildTargetDependencies,
+        hasTests, extensions, jvmArgs);
   }
 
   @Override
@@ -334,9 +371,11 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(resourceOutputDirs, other.resourceOutputDirs)
         && Objects.equals(archiveOutputFiles, other.archiveOutputFiles)
         && Objects.equals(compileClasspath, other.compileClasspath)
+        && Objects.equals(runtimeClasspath, other.runtimeClasspath)
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(buildTargetDependencies, other.buildTargetDependencies)
         && hasTests == other.hasTests
-        && Objects.equals(extensions, other.extensions);
+        && Objects.equals(extensions, other.extensions)
+        && Objects.equals(jvmArgs, other.jvmArgs);
   }
 }

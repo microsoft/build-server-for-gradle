@@ -10,6 +10,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +54,11 @@ import ch.epfl.scala.bsp4j.DependencySourcesResult;
 import ch.epfl.scala.bsp4j.JavacOptionsItem;
 import ch.epfl.scala.bsp4j.JavacOptionsParams;
 import ch.epfl.scala.bsp4j.JavacOptionsResult;
+import ch.epfl.scala.bsp4j.JvmEnvironmentItem;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmRunEnvironmentResult;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentParams;
+import ch.epfl.scala.bsp4j.JvmTestEnvironmentResult;
 import ch.epfl.scala.bsp4j.DidChangeBuildTarget;
 import ch.epfl.scala.bsp4j.MavenDependencyModule;
 import ch.epfl.scala.bsp4j.MavenDependencyModuleArtifact;
@@ -449,7 +455,124 @@ public class BuildTargetService {
     }
     return new JavacOptionsResult(items);
   }
-  
+
+  /**
+   * Get the JVM test environment (classpath, JVM options, working directory and
+   * environment variables) for the requested build targets.
+   *
+   * <p>Implements the BSP standard {@code buildTarget/jvmTestEnvironment} request so
+   * clients (e.g. the VS Code Gradle extension) can reproduce a faithful test
+   * runtime - which is required to run tests with the same classpath the Gradle
+   * build uses, and to layer on capabilities such as code coverage.</p>
+   */
+  public JvmTestEnvironmentResult getBuildTargetJvmTestEnvironment(
+      JvmTestEnvironmentParams params) {
+    return new JvmTestEnvironmentResult(collectJvmEnvironmentItems(params.getTargets(), true));
+  }
+
+  /**
+   * Get the JVM run environment for the requested build targets.
+   *
+   * <p>Implements the BSP standard {@code buildTarget/jvmRunEnvironment} request. It
+   * shares the classpath/output/working-directory collection with
+   * {@link #getBuildTargetJvmTestEnvironment} but deliberately does <em>not</em> carry
+   * the matching {@code Test} task's JVM arguments (e.g. {@code --add-opens}): those are
+   * test-specific and have no meaning for a run environment. Run/application JVM args and
+   * {@code mainClasses} are not modelled yet, so {@code jvmOptions} is left empty.</p>
+   */
+  public JvmRunEnvironmentResult getBuildTargetJvmRunEnvironment(JvmRunEnvironmentParams params) {
+    return new JvmRunEnvironmentResult(collectJvmEnvironmentItems(params.getTargets(), false));
+  }
+
+  /**
+   * Build a {@link JvmEnvironmentItem} for each resolvable build target. The classpath
+   * mirrors the test/run runtime: the source set's own compiled output and resource
+   * directories plus its runtime classpath (for the test source set this is the Gradle
+   * {@code Test} task's actual classpath, so {@code runtimeOnly} dependencies are
+   * included and {@code compileOnly} ones are excluded).
+   *
+   * <p><b>Android limitation:</b> Android build variants (produced by
+   * {@code AndroidUtils}) do not populate {@code runtimeClasspath} or {@code jvmArgs} on
+   * the source set. For such targets the returned classpath is therefore limited to the
+   * source set's output directories (runtime dependencies are missing) and
+   * {@code jvmOptions} is empty. This is currently acceptable because the VS Code Gradle
+   * client excludes Android projects from the build-server import path, so this endpoint
+   * is not exercised for them; populating a faithful Android test/run environment would
+   * require {@code AndroidUtils} to model the variant's runtime classpath and JVM args.</p>
+   *
+   * @param isTestEnvironment when {@code true} the matching Gradle {@code Test} task's
+   *     JVM arguments are surfaced as {@code jvmOptions}; for a run environment they are
+   *     omitted because they are test-specific.
+   */
+  private List<JvmEnvironmentItem> collectJvmEnvironmentItems(List<BuildTargetIdentifier> targets,
+      boolean isTestEnvironment) {
+    List<JvmEnvironmentItem> items = new ArrayList<>();
+    for (BuildTargetIdentifier btId : targets) {
+      GradleBuildTarget target = getGradleBuildTarget(btId);
+      if (target == null) {
+        LOGGER.warning("Skip JVM environment collection for the build target: " + btId.getUri()
+            + ". Because it cannot be found in the cache.");
+        continue;
+      }
+
+      GradleSourceSet sourceSet = target.getSourceSet();
+      // Use a LinkedHashSet so the classpath keeps a stable order and duplicates
+      // (e.g. an output dir that is also on the runtime classpath) collapse.
+      Set<String> classpath = new LinkedHashSet<>();
+      Set<File> sourceOutputDirs = sourceSet.getSourceOutputDirs();
+      if (sourceOutputDirs != null) {
+        // Sort for a deterministic classpath order (the model builder stores these
+        // as an unordered HashSet).
+        sourceOutputDirs.stream().sorted()
+            .forEach(dir -> classpath.add(dir.toURI().toString()));
+      }
+      Set<File> resourceOutputDirs = sourceSet.getResourceOutputDirs();
+      if (resourceOutputDirs != null) {
+        resourceOutputDirs.stream().sorted()
+            .forEach(dir -> classpath.add(dir.toURI().toString()));
+      }
+      // Use the runtime classpath Gradle actually launches the test/run JVM with,
+      // rather than the compile classpath: this includes runtime-only dependencies
+      // and excludes compile-only ones.
+      List<File> runtimeClasspath = sourceSet.getRuntimeClasspath();
+      if (runtimeClasspath != null) {
+        for (File file : runtimeClasspath) {
+          classpath.add(file.toURI().toString());
+        }
+      }
+
+      File projectDir = sourceSet.getProjectDir();
+      // Use a plain filesystem path (not a file:// URI) for the working directory.
+      // Unlike classpath entries, BSP's workingDirectory is consumed as the directory
+      // to launch the process in, and its format is inconsistent across build tools
+      // (e.g. Bloop uses a plain path); a plain path is directly usable as a process
+      // working directory, whereas a file:// URI is not.
+      String workingDirectory = projectDir == null ? "" : projectDir.getAbsolutePath();
+
+      // Only a test environment surfaces the Gradle Test task's JVM args; a run
+      // environment must not inherit test-specific options such as --add-opens.
+      List<String> jvmOptions = new ArrayList<>();
+      if (isTestEnvironment) {
+        List<String> jvmArgs = sourceSet.getJvmArgs();
+        if (jvmArgs != null) {
+          jvmOptions.addAll(jvmArgs);
+        }
+      }
+
+      items.add(new JvmEnvironmentItem(
+          btId,
+          new ArrayList<>(classpath),
+          jvmOptions,
+          workingDirectory,
+          // Environment variables are intentionally left empty: the Gradle test
+          // task's effective environment inherits the whole machine environment,
+          // which is noisy and host-specific, so we do not surface it here.
+          new HashMap<>()
+      ));
+    }
+    return items;
+  }
+
   /**
    * Get the Scala compiler options.
    */
