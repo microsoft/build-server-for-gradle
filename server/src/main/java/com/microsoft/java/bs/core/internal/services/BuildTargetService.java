@@ -7,6 +7,7 @@ import static com.microsoft.java.bs.core.Launcher.LOGGER;
 
 import java.io.File;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -82,6 +83,7 @@ import ch.epfl.scala.bsp4j.TestParamsDataKind;
 import ch.epfl.scala.bsp4j.TestResult;
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.core5.net.URIBuilder;
 
 /**
  * Service to handle build target related BSP requests.
@@ -247,7 +249,7 @@ public class BuildTargetService {
       if (sourceOutputDirs != null) {
         for (File sourceOutputDir : sourceOutputDirs) {
           outputPaths.add(new OutputPathItem(
-              sourceOutputDir.toURI() + "?kind=source",
+              toOutputPathUri(sourceOutputDir, "source"),
               OutputPathItemKind.DIRECTORY
           ));
         }
@@ -257,7 +259,7 @@ public class BuildTargetService {
       if (resourceOutputDirs != null) {
         for (File resourceOutputDir : resourceOutputDirs) {
           outputPaths.add(new OutputPathItem(
-              resourceOutputDir.toURI() + "?kind=resource",
+              toOutputPathUri(resourceOutputDir, "resource"),
               OutputPathItemKind.DIRECTORY
           ));
         }
@@ -267,6 +269,17 @@ public class BuildTargetService {
       items.add(item);
     }
     return new OutputPathsResult(items);
+  }
+
+  private String toOutputPathUri(File outputDir, String kind) {
+    try {
+      return new URIBuilder(outputDir.toURI())
+          .setParameter("kind", kind)
+          .build()
+          .toString();
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException("Failed to build output path URI for " + outputDir, e);
+    }
   }
 
   /**
