@@ -119,4 +119,18 @@ public interface GradleSourceSet extends Serializable {
    * Extensions of the source set.
    */
   public Map<String, LanguageExtension> getExtensions();
+
+  /**
+   * The application ID of an Android application variant, if this target can run on a device.
+   */
+  default String getAndroidApplicationId() {
+    return null;
+  }
+
+  /**
+   * The output directory of an Android project.
+   */
+  default File getAndroidBuildDir() {
+    return null;
+  }
 }

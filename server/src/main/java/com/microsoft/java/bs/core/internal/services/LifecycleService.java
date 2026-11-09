@@ -11,6 +11,8 @@ import java.lang.Runtime.Version;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 
@@ -25,6 +27,9 @@ import com.microsoft.java.bs.core.internal.utils.JavaUtils;
 import com.microsoft.java.bs.core.internal.utils.TelemetryUtils;
 import com.microsoft.java.bs.core.internal.utils.UriUtils;
 import com.microsoft.java.bs.gradle.model.SupportedLanguages;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import ch.epfl.scala.bsp4j.BuildClient;
 import ch.epfl.scala.bsp4j.BuildServerCapabilities;
@@ -32,6 +37,9 @@ import ch.epfl.scala.bsp4j.CompileProvider;
 import ch.epfl.scala.bsp4j.InitializeBuildParams;
 import ch.epfl.scala.bsp4j.InitializeBuildResult;
 import ch.epfl.scala.bsp4j.MessageType;
+import ch.epfl.scala.bsp4j.DebugProvider;
+import ch.epfl.scala.bsp4j.RunProvider;
+import ch.epfl.scala.bsp4j.TestProvider;
 import ch.epfl.scala.bsp4j.ShowMessageParams;
 import org.gradle.tooling.model.build.BuildEnvironment;
 
@@ -48,6 +56,8 @@ public class LifecycleService {
 
   private BuildClient client;
 
+  private boolean buildContextEnabled;
+
   /**
    * Constructor for {@link LifecycleService}.
    */
@@ -63,12 +73,43 @@ public class LifecycleService {
     initializePreferenceManager(params);
 
     BuildServerCapabilities capabilities = initializeServerCapabilities();
-    return new InitializeBuildResult(
+    InitializeBuildResult result = new InitializeBuildResult(
         Constants.SERVER_NAME,
         Constants.SERVER_VERSION,
         Constants.BSP_VERSION,
         capabilities
     );
+    buildContextEnabled = supportsBuildContext(params.getData());
+    if (buildContextEnabled) {
+      Map<String, Object> extension = new LinkedHashMap<>();
+      extension.put("version", "0.1");
+      extension.put("required", true);
+      extension.put("operations", List.of("compile", "test", "run", "debug"));
+      extension.put("buildPolicies", List.of("build", "reuse"));
+      result.setData(Map.of("bspExtensions", Map.of("vscode-bsp.build-context", extension)));
+    }
+    return result;
+  }
+
+  public boolean isBuildContextEnabled() {
+    return buildContextEnabled;
+  }
+
+  private boolean supportsBuildContext(Object data) {
+    if (data == null) {
+      return false;
+    }
+    JsonElement element = new Gson().toJsonTree(data);
+    if (!element.isJsonObject()) {
+      return false;
+    }
+    JsonObject extensions = element.getAsJsonObject().getAsJsonObject("bspExtensions");
+    if (extensions == null) {
+      return false;
+    }
+    JsonObject context = extensions.getAsJsonObject("vscode-bsp.build-context");
+    return context != null && context.has("version")
+        && "0.1".equals(context.get("version").getAsString());
   }
 
   public void setClient(BuildClient client) {
@@ -101,6 +142,9 @@ public class LifecycleService {
     capabilities.setCanReload(true);
     capabilities.setBuildTargetChangedProvider(true);
     capabilities.setCompileProvider(new CompileProvider(SupportedLanguages.allBspNames));
+    capabilities.setTestProvider(new TestProvider(SupportedLanguages.allBspNames));
+    capabilities.setRunProvider(new RunProvider(SupportedLanguages.allBspNames));
+    capabilities.setDebugProvider(new DebugProvider(SupportedLanguages.allBspNames));
     return capabilities;
   }
 

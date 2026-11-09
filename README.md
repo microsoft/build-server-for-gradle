@@ -24,8 +24,12 @@ Following BSP requests are supported in the current implementation:
 - `buildTarget/javacOptions`
 - `buildTarget/scalacOptions`
 - `buildTarget/test`
+- `buildTarget/run` (Android application variants)
+- `debugSession/start` (Android application variants)
 - `workspace/buildTargets`
 - `workspace/reload`
+- `workspace/contextOptions` (optional build context extension)
+- `workspace/resolveContext` (optional build context extension)
 
 ## Architecture
 
@@ -78,6 +82,21 @@ A [Preferences](./server/src/main/java/com/microsoft/java/bs/core/internal/model
 The Gradle Build Server supports two types of transport methods: standard input/output and named pipe (unix socket). By default, the server uses the standard input/output transport if no arguments are specified.
 
 To use the named pipe (unix socket) transport, start the server with the argument `--pipe=<pipeName>`. If the `--pipe=` option is provided but `pipeName` left empty, the server defaults to using the standard input/output transport.
+
+### Android Run and Debug
+
+Android build variants remain separate BSP targets. A client that supports
+`vscode-bsp.build-context` can select a connected device for Run or Debug.
+The same context methods work with ordinary Gradle targets, which need no
+Android device. A standard BSP client can run or debug an Android application
+when exactly one device is connected.
+
+The server finds `adb` through `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or
+`PATH`. Run and Debug use the APK recorded in Gradle's output metadata.
+The `build` policy assembles the selected variant first. The `reuse` policy
+uses its existing APK. Debug starts a DAP server backed by Android JDWP.
+Java source breakpoints, stepping, stack frames, and variables are supported.
+See [Android support](./docs/android/README.md) for setup and limits.
 
 ## Contributing
 

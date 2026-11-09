@@ -22,6 +22,10 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import com.microsoft.java.bs.core.internal.log.BspTraceEntity;
 import com.microsoft.java.bs.core.internal.services.BuildTargetService;
 import com.microsoft.java.bs.core.internal.services.LifecycleService;
+import com.microsoft.java.bs.core.internal.context.BuildContextService;
+import com.microsoft.java.bs.core.internal.android.AndroidExecutionService;
+import com.microsoft.java.bs.core.internal.android.AndroidDebugServer;
+import com.microsoft.java.bs.core.internal.model.GradleBuildTarget;
 
 import ch.epfl.scala.bsp4j.BuildServer;
 import ch.epfl.scala.bsp4j.CleanCacheParams;
@@ -63,21 +67,31 @@ import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult;
 /**
  * The implementation of the Build Server Protocol.
  */
-public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBuildServer {
+public class GradleBuildServer implements ContextBuildServer, JavaBuildServer, ScalaBuildServer {
 
   private LifecycleService lifecycleService;
 
   private BuildTargetService buildTargetService;
 
+  private final BuildContextService contexts;
+
+  private final AndroidExecutionService android = new AndroidExecutionService();
+
+  /** Create a build server with Gradle and context services. */
   public GradleBuildServer(LifecycleService lifecycleService,
       BuildTargetService buildTargetService) {
     this.lifecycleService = lifecycleService;
     this.buildTargetService = buildTargetService;
+    this.contexts = new BuildContextService(buildTargetService);
   }
 
   @Override
   public CompletableFuture<InitializeBuildResult> buildInitialize(InitializeBuildParams params) {
-    return handleRequest("build/initialize", cc -> lifecycleService.initializeServer(params));
+    return handleRequest("build/initialize", cc -> {
+      InitializeBuildResult result = lifecycleService.initializeServer(params);
+      contexts.configure(lifecycleService.isBuildContextEnabled(), params.getRootUri());
+      return result;
+    });
   }
 
   @Override
@@ -106,8 +120,21 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBui
   public CompletableFuture<Object> workspaceReload() {
     return handleRequest("workspace/reload", cc -> {
       buildTargetService.reloadWorkspace();
+      contexts.invalidate();
       return null;
     });
+  }
+
+  @Override
+  public CompletableFuture<BuildContextService.Options> workspaceContextOptions(
+      BuildContextService.OptionsParams params) {
+    return handleRequest("workspace/contextOptions", cc -> contexts.options(params));
+  }
+
+  @Override
+  public CompletableFuture<BuildContextService.Resolution> workspaceResolveContext(
+      BuildContextService.ResolveParams params) {
+    return handleRequest("workspace/resolveContext", cc -> contexts.resolve(params));
   }
 
   @Override
@@ -142,26 +169,104 @@ public class GradleBuildServer implements BuildServer, JavaBuildServer, ScalaBui
         buildTargetService.getBuildTargetOutputPaths(params));
   }
 
-  @Override
   public CompletableFuture<CompileResult> buildTargetCompile(CompileParams params) {
     return handleRequest("buildTarget/compile", cc -> buildTargetService.compile(params));
   }
 
   @Override
+  public CompletableFuture<CompileResult> buildTargetCompile(ContextCompileParams params) {
+    return handleRequest("buildTarget/compile", cc -> {
+      contexts.execution(params.getExecutionContext(), "compile", params.getTargets());
+      return buildTargetService.compile(params);
+    });
+  }
+
   public CompletableFuture<TestResult> buildTargetTest(TestParams params) {
     return handleRequest("buildTarget/test", cc -> buildTargetService.buildTargetTest(params));
   }
 
   @Override
-  public CompletableFuture<RunResult> buildTargetRun(RunParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'buildTargetRun'");
+  public CompletableFuture<TestResult> buildTargetTest(ContextTestParams params) {
+    return handleRequest("buildTarget/test", cc -> {
+      contexts.execution(params.getExecutionContext(), "test", params.getTargets());
+      return buildTargetService.buildTargetTest(params);
+    });
   }
 
   @Override
-  public CompletableFuture<DebugSessionAddress> debugSessionStart(DebugSessionParams params) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'debugSessionStart'");
+  public CompletableFuture<RunResult> buildTargetRun(ContextRunParams params) {
+    return handleRequest("buildTarget/run", cc -> {
+      BuildContextService.Resolution context = contexts.execution(params.getExecutionContext(),
+          "run", java.util.List.of(params.getTarget()));
+      GradleBuildTarget target = buildTargetService.findBuildTarget(params.getTarget());
+      if (target == null || target.getSourceSet().getAndroidApplicationId() == null) {
+        throw new IllegalArgumentException("Run requires an Android application variant");
+      }
+      if (context == null || "build".equals(context.buildPolicy)) {
+        CompileParams compile = new CompileParams(java.util.List.of(params.getTarget()));
+        compile.setOriginId(params.getOriginId());
+        if (buildTargetService.compile(compile).getStatusCode()
+            != ch.epfl.scala.bsp4j.StatusCode.OK) {
+          RunResult failure = new RunResult(ch.epfl.scala.bsp4j.StatusCode.ERROR);
+          failure.setOriginId(params.getOriginId());
+          return failure;
+        }
+      }
+      try {
+        android.run(target.getSourceSet(), context == null
+            ? soleAndroidDevice() : context.selection.get("device"));
+        RunResult success = new RunResult(ch.epfl.scala.bsp4j.StatusCode.OK);
+        success.setOriginId(params.getOriginId());
+        return success;
+      } catch (java.io.IOException e) {
+        throw new IllegalArgumentException("Failed to run Android app: " + e.getMessage(), e);
+      }
+    });
+  }
+
+  @Override
+  public CompletableFuture<DebugSessionAddress> debugSessionStart(ContextDebugParams params) {
+    return handleRequest("debugSession/start", cc -> {
+      if (params.getTargets() == null || params.getTargets().size() != 1) {
+        throw new IllegalArgumentException("Android Debug requires one target");
+      }
+      BuildContextService.Resolution context = contexts.execution(params.getExecutionContext(),
+          "debug", params.getTargets());
+      GradleBuildTarget target = buildTargetService.findBuildTarget(params.getTargets().get(0));
+      if (target == null || target.getSourceSet().getAndroidApplicationId() == null) {
+        throw new IllegalArgumentException("Debug requires an Android application variant");
+      }
+      if (context == null || "build".equals(context.buildPolicy)) {
+        CompileParams compile = new CompileParams(params.getTargets());
+        if (buildTargetService.compile(compile).getStatusCode()
+            != ch.epfl.scala.bsp4j.StatusCode.OK) {
+          throw new IllegalStateException("The Android Debug build failed");
+        }
+      }
+      String device = context == null ? soleAndroidDevice() : context.selection.get("device");
+      try {
+        int forwardedPort = android.launchForDebug(target.getSourceSet(), device);
+        try {
+          String address = new AndroidDebugServer(forwardedPort, target.getSourceSet(),
+              device, android).start();
+          return new AndroidDebugAddress(address);
+        } catch (java.io.IOException e) {
+          android.removeForward(device, forwardedPort);
+          throw e;
+        }
+      } catch (java.io.IOException e) {
+        throw new IllegalArgumentException("Failed to debug Android app: " + e.getMessage(), e);
+      }
+    });
+  }
+
+  private String soleAndroidDevice() {
+    java.util.List<BuildContextService.Option> devices = AndroidExecutionService.devices();
+    if (devices.size() != 1) {
+      throw new IllegalArgumentException(
+          "Select one Android device with build contexts or connect exactly one device");
+    }
+    return devices.get(0).id;
   }
 
   @Override

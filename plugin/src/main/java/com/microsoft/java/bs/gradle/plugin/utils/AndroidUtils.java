@@ -157,9 +157,17 @@ public class AndroidUtils {
       gradleSourceSet.setProjectPath(projectPath);
       gradleSourceSet.setProjectDir(project.getProjectDir());
       gradleSourceSet.setRootDir(project.getRootDir());
+      gradleSourceSet.setAndroidBuildDir(project.getBuildDir());
 
       String variantName = (String) invokeMethod(variant, "getName");
       gradleSourceSet.setSourceSetName(variantName);
+      if (getProjectType(project) == AndroidProjectType.APPLICATION && !isUnitTest
+          && !Boolean.TRUE.equals(hasProperty(variant, "testedVariant"))) {
+        Object applicationId = invokeMethod(variant, "getApplicationId");
+        if (applicationId instanceof String) {
+          gradleSourceSet.setAndroidApplicationId((String) applicationId);
+        }
+      }
 
       // classes task equivalent in android (assembleRelease)
       gradleSourceSet.setClassesTaskName(

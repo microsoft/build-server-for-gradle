@@ -56,12 +56,16 @@ public class BuildTargetManager {
     for (GradleSourceSet sourceSet : gradleSourceSets.getGradleSourceSets()) {
       String sourceSetName = sourceSet.getSourceSetName();
       URI uri = getBuildTargetUri(sourceSet.getProjectDir().toURI(), sourceSetName);
-      List<String> tags = getBuildTargetTags(sourceSet.hasTests());
-      BuildTargetIdentifier btId = new BuildTargetIdentifier(uri.toString());
-      List<String> languages = new LinkedList<>(sourceSet.getExtensions().keySet());
+      final List<String> tags = getBuildTargetTags(sourceSet.hasTests());
+      final BuildTargetIdentifier btId = new BuildTargetIdentifier(uri.toString());
+      final List<String> languages = new LinkedList<>(sourceSet.getExtensions().keySet());
       BuildTargetCapabilities buildTargetCapabilities = new BuildTargetCapabilities();
       buildTargetCapabilities.setCanCompile(true);
-      buildTargetCapabilities.setCanTest(true);
+      buildTargetCapabilities.setCanTest(sourceSet.hasTests());
+      if (sourceSet.getAndroidApplicationId() != null) {
+        buildTargetCapabilities.setCanRun(true);
+        buildTargetCapabilities.setCanDebug(true);
+      }
       BuildTarget bt = new BuildTarget(
           btId,
           tags,
