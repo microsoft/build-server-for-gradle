@@ -33,9 +33,41 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ## Launch the Build Server for Gradle
 
+Build the distribution and run its command:
+
+```sh
+./gradlew :server:installDist
+server/build/install/gradle-bsp/bin/gradle-bsp --version
+server/build/install/gradle-bsp/bin/gradle-bsp
+```
+
+The command starts the BSP server on standard input and output. The distribution
+contains the Gradle plugin and its init script, so the command finds them without
+extra JVM options. `--help` prints the available command options. The `distZip`
+and `distTar` tasks create archives with the same layout.
+
+This repository includes `.bsp/gradle-bsp.json`. After `installDist`, BSP clients
+that use this repository as the workspace root can start the server from that
+file. To connect another Gradle project, copy the file to its `.bsp` directory
+and replace the command with the absolute path to your distribution:
+
+```json
+{
+  "name": "gradle-build-server",
+  "version": "0.4.0",
+  "bspVersion": "2.1.0-M4",
+  "languages": ["java", "scala"],
+  "argv": ["/absolute/path/to/server/build/install/gradle-bsp/bin/gradle-bsp"]
+}
+```
+
 ### Specify the Plugin Location
 
-The main class of the build server is `com.microsoft.java.bs.core.Launcher`. When you launch the server, you need to specify the location of the Gradle plugin via the system property `plugin.dir`. By default, you will find the plugin jar at `server/build/libs/plugins/plugin-${version}.jar` after building the project.
+The main class of the build server is `com.microsoft.java.bs.core.Launcher`.
+When you start that class directly, set the `plugin.dir` system property to the
+directory with `init.gradle` and `plugin-${version}.jar`. The build puts these
+files in `server/build/libs/plugins`. The distribution command sets this property
+from its own location.
 
 ### Preferences
 

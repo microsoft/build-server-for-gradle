@@ -21,6 +21,29 @@ java {
 
 application {
     mainClass = 'com.microsoft.java.bs.core.Launcher'
+    applicationName = 'gradle-bsp'
+}
+
+distributions {
+  main {
+    contents {
+      from("$buildDir/libs/plugins") {
+        into 'plugins'
+      }
+    }
+  }
+}
+
+tasks.named('installDist') {
+  dependsOn ':plugin:copyJar', 'generateInitScript'
+}
+
+tasks.named('distZip') {
+  dependsOn ':plugin:copyJar', 'generateInitScript'
+}
+
+tasks.named('distTar') {
+  dependsOn ':plugin:copyJar', 'generateInitScript'
 }
 
 jar {
