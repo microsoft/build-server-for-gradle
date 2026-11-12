@@ -63,6 +63,10 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
 
   private Map<String, LanguageExtension> extensions;
 
+  private String androidApplicationId;
+
+  private File androidBuildDir;
+
   public DefaultGradleSourceSet() {}
 
   /**
@@ -96,6 +100,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
     this.extensions = gradleSourceSet.getExtensions().entrySet().stream()
       .collect(Collectors.toMap(Map.Entry::getKey,
         e -> convertLanguageExtension(e.getValue())));
+    this.androidApplicationId = gradleSourceSet.getAndroidApplicationId();
+    this.androidBuildDir = gradleSourceSet.getAndroidBuildDir();
   }
 
   private LanguageExtension convertLanguageExtension(LanguageExtension object) {
@@ -297,12 +303,30 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
   }
 
   @Override
+  public String getAndroidApplicationId() {
+    return androidApplicationId;
+  }
+
+  public void setAndroidApplicationId(String androidApplicationId) {
+    this.androidApplicationId = androidApplicationId;
+  }
+
+  @Override
+  public File getAndroidBuildDir() {
+    return androidBuildDir;
+  }
+
+  public void setAndroidBuildDir(File androidBuildDir) {
+    this.androidBuildDir = androidBuildDir;
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(gradleVersion, displayName, projectName, projectPath,
         projectDir, rootDir, sourceSetName, classesTaskName, cleanTaskName, taskNames, sourceDirs,
         generatedSourceDirs, sourceOutputDirs, resourceDirs, resourceOutputDirs, archiveOutputFiles,
         compileClasspath, moduleDependencies, buildTargetDependencies,
-        hasTests, extensions);
+        hasTests, extensions, androidApplicationId, androidBuildDir);
   }
 
   @Override
@@ -337,6 +361,8 @@ public class DefaultGradleSourceSet implements GradleSourceSet {
         && Objects.equals(moduleDependencies, other.moduleDependencies)
         && Objects.equals(buildTargetDependencies, other.buildTargetDependencies)
         && hasTests == other.hasTests
-        && Objects.equals(extensions, other.extensions);
+        && Objects.equals(extensions, other.extensions)
+        && Objects.equals(androidApplicationId, other.androidApplicationId)
+        && Objects.equals(androidBuildDir, other.androidBuildDir);
   }
 }

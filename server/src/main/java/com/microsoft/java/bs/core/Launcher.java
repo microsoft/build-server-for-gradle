@@ -11,6 +11,10 @@ import java.util.logging.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import com.microsoft.java.bs.core.internal.gradle.GradleApiConnector;
 import com.microsoft.java.bs.core.internal.log.LogHandler;
@@ -41,6 +45,15 @@ public class Launcher {
    * Main entry point.
    */
   public static void main(String[] args) {
+    if (args != null && args.length == 1 && "--version".equals(args[0])) {
+      System.out.println(Constants.SERVER_VERSION);
+      return;
+    }
+    if (args != null && args.length == 1 && "--help".equals(args[0])) {
+      System.out.println("Usage: gradle-bsp [--help|--version|--pipe=PATH]");
+      System.out.println("Start the BSP server on standard input and output by default.");
+      return;
+    }
     checkRequiredProperties();
 
     org.eclipse.lsp4j.jsonrpc.Launcher<BuildClient> launcher;
@@ -96,8 +109,32 @@ public class Launcher {
 
   private static void checkRequiredProperties() {
     if (System.getProperty(PROP_PLUGIN_DIR) == null) {
-      throw new IllegalStateException("The property '" + PROP_PLUGIN_DIR + "' is not set");
+      Path bundled = bundledPluginDirectory();
+      if (bundled != null) {
+        System.setProperty(PROP_PLUGIN_DIR, bundled.toString());
+      } else {
+        throw new IllegalStateException("The property '" + PROP_PLUGIN_DIR + "' is not set");
+      }
     }
+  }
+
+  private static Path bundledPluginDirectory() {
+    try {
+      Path codeSource = Paths.get(Launcher.class.getProtectionDomain()
+          .getCodeSource().getLocation().toURI());
+      return pluginDirectoryBesideJar(codeSource);
+    } catch (URISyntaxException | IllegalArgumentException | SecurityException error) {
+      return null;
+    }
+  }
+
+  static Path pluginDirectoryBesideJar(Path jar) {
+    Path lib = jar.toAbsolutePath().normalize().getParent();
+    if (lib == null || !"lib".equals(lib.getFileName().toString()) || lib.getParent() == null) {
+      return null;
+    }
+    Path plugins = lib.getParent().resolve("plugins");
+    return Files.isRegularFile(plugins.resolve("init.gradle")) ? plugins : null;
   }
 
   private static void setupLoggers(BuildClient client) {

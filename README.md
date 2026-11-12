@@ -24,8 +24,12 @@ Following BSP requests are supported in the current implementation:
 - `buildTarget/javacOptions`
 - `buildTarget/scalacOptions`
 - `buildTarget/test`
+- `buildTarget/run` (Android application variants)
+- `debugSession/start` (Android application variants)
 - `workspace/buildTargets`
 - `workspace/reload`
+- `workspace/contextOptions` (optional build context extension)
+- `workspace/resolveContext` (optional build context extension)
 
 ## Architecture
 
@@ -33,9 +37,41 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ## Launch the Build Server for Gradle
 
+Build the distribution and run its command:
+
+```sh
+./gradlew :server:installDist
+server/build/install/gradle-bsp/bin/gradle-bsp --version
+server/build/install/gradle-bsp/bin/gradle-bsp
+```
+
+The command starts the BSP server on standard input and output. The distribution
+contains the Gradle plugin and its init script, so the command finds them without
+extra JVM options. `--help` prints the available command options. The `distZip`
+and `distTar` tasks create archives with the same layout.
+
+This repository includes `.bsp/gradle-bsp.json`. After `installDist`, BSP clients
+that use this repository as the workspace root can start the server from that
+file. To connect another Gradle project, copy the file to its `.bsp` directory
+and replace the command with the absolute path to your distribution:
+
+```json
+{
+  "name": "gradle-build-server",
+  "version": "0.4.0",
+  "bspVersion": "2.1.0-M4",
+  "languages": ["java", "scala"],
+  "argv": ["/absolute/path/to/server/build/install/gradle-bsp/bin/gradle-bsp"]
+}
+```
+
 ### Specify the Plugin Location
 
-The main class of the build server is `com.microsoft.java.bs.core.Launcher`. When you launch the server, you need to specify the location of the Gradle plugin via the system property `plugin.dir`. By default, you will find the plugin jar at `server/build/libs/plugins/plugin-${version}.jar` after building the project.
+The main class of the build server is `com.microsoft.java.bs.core.Launcher`.
+When you start that class directly, set the `plugin.dir` system property to the
+directory with `init.gradle` and `plugin-${version}.jar`. The build puts these
+files in `server/build/libs/plugins`. The distribution command sets this property
+from its own location.
 
 ### Preferences
 
@@ -46,6 +82,21 @@ A [Preferences](./server/src/main/java/com/microsoft/java/bs/core/internal/model
 The Gradle Build Server supports two types of transport methods: standard input/output and named pipe (unix socket). By default, the server uses the standard input/output transport if no arguments are specified.
 
 To use the named pipe (unix socket) transport, start the server with the argument `--pipe=<pipeName>`. If the `--pipe=` option is provided but `pipeName` left empty, the server defaults to using the standard input/output transport.
+
+### Android Run and Debug
+
+Android build variants remain separate BSP targets. A client that supports
+`vscode-bsp.build-context` can select a connected device for Run or Debug.
+The same context methods work with ordinary Gradle targets, which need no
+Android device. A standard BSP client can run or debug an Android application
+when exactly one device is connected.
+
+The server finds `adb` through `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or
+`PATH`. Run and Debug use the APK recorded in Gradle's output metadata.
+The `build` policy assembles the selected variant first. The `reuse` policy
+uses its existing APK. Debug starts a DAP server backed by Android JDWP.
+Java source breakpoints, stepping, stack frames, and variables are supported.
+See [Android support](./docs/android/README.md) for setup and limits.
 
 ## Contributing
 

@@ -109,8 +109,10 @@ class GradleApiConnectorTest {
     GradleApiConnector connector = new GradleApiConnector(preferenceManager);
     GradleSourceSets gradleSourceSets = connector.getGradleSourceSets(projectDir.toURI(), null);
     assertEquals(10, gradleSourceSets.getGradleSourceSets().size());
-    findSourceSet(gradleSourceSets, "app [debug]");
-    findSourceSet(gradleSourceSets, "app [debugUnitTest]");
+    assertEquals("com.example.androidtest",
+        findSourceSet(gradleSourceSets, "app [debug]").getAndroidApplicationId());
+    assertNull(findSourceSet(gradleSourceSets, "app [debugUnitTest]")
+        .getAndroidApplicationId());
     findSourceSet(gradleSourceSets, "app [debugAndroidTest]");
     findSourceSet(gradleSourceSets, "app [release]");
     findSourceSet(gradleSourceSets, "app [releaseUnitTest]");

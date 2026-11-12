@@ -155,6 +155,14 @@ public class BuildTargetService {
     return getBuildTargetManager().getGradleBuildTarget(btId);
   }
 
+  public GradleBuildTarget findBuildTarget(BuildTargetIdentifier id) {
+    return getGradleBuildTarget(id);
+  }
+
+  public List<GradleBuildTarget> allBuildTargets() {
+    return getBuildTargetManager().getAllGradleBuildTargets();
+  }
+
   public void setClient(BuildClient client) {
     this.client = client;
   }
@@ -509,6 +517,8 @@ public class BuildTargetService {
         statusCode = runScalaTests(entry, params, compileProgressReporter);
       } else if ("scala-test-suites-selection".equals(params.getDataKind())) {
         statusCode = runScalaTestSuitesSelection(entry, params, compileProgressReporter);
+      } else if (params.getDataKind() == null) {
+        statusCode = runDefaultTests(entry, params);
       } else {
         LOGGER.warning("Test Data Kind " + params.getDataKind() + " not supported");
         statusCode = StatusCode.ERROR;
@@ -520,6 +530,28 @@ public class BuildTargetService {
     }
 
     return testResult;
+  }
+
+  private StatusCode runDefaultTests(Map.Entry<URI, Set<BuildTargetIdentifier>> entry,
+      TestParams params) {
+    List<String> tasks = new ArrayList<>();
+    for (BuildTargetIdentifier id : entry.getValue()) {
+      GradleSourceSet sourceSet = getGradleBuildTarget(id).getSourceSet();
+      if (!sourceSet.hasTests()) {
+        LOGGER.warning("Target does not contain tests: " + id.getUri());
+        return StatusCode.ERROR;
+      }
+      String name = sourceSet.getSourceSetName();
+      if (sourceSet.getAndroidBuildDir() != null && name.endsWith("AndroidTest")) {
+        name = "connected" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+      } else if (sourceSet.getAndroidBuildDir() != null && name.endsWith("UnitTest")) {
+        name = "test" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+      }
+      String projectPath = sourceSet.getProjectPath();
+      tasks.add((":".equals(projectPath) ? "" : projectPath) + ":" + name);
+    }
+    return connector.runTasks(entry.getKey(), new DefaultProgressReporter(client),
+        tasks.stream().distinct().toArray(String[]::new));
   }
 
   private StatusCode runScalaTests(
