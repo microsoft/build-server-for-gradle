@@ -186,11 +186,11 @@ class BuildTargetServiceTest {
     GradleSourceSet gradleSourceSet = mock(GradleSourceSet.class);
     when(gradleBuildTarget.getSourceSet()).thenReturn(gradleSourceSet);
 
-    File sourceOutputDir = new File(("sourceOutputDir"));
+    File sourceOutputDir = new File("source output % #");
     Set<File> sourceOutputDirs = new HashSet<>();
     sourceOutputDirs.add(sourceOutputDir);
     when(gradleSourceSet.getSourceOutputDirs()).thenReturn(sourceOutputDirs);
-    File resourceOutputDir = new File(("resourceOutputDir"));
+    File resourceOutputDir = new File("resource output % #");
     Set<File> resourceOutputDirs = new HashSet<>();
     resourceOutputDirs.add(resourceOutputDir);
     when(gradleSourceSet.getResourceOutputDirs()).thenReturn(resourceOutputDirs);
@@ -214,6 +214,18 @@ class BuildTargetServiceTest {
         outputPathUris.get("kind=source").getPath());
     assertEquals(resourceOutputDir.toURI().getPath(),
         outputPathUris.get("kind=resource").getPath());
+  }
+
+  @Test
+  void testOutputPathUriEncodesQueryParameter() {
+    BuildTargetService service = new BuildTargetService(buildTargetManager,
+        connector, preferenceManager);
+    File outputDir = new File("output path % #");
+    URI uri = URI.create(service.toOutputPathUri(outputDir, "source & resource=100%#+"));
+
+    assertEquals(outputDir.toURI().getRawPath(), uri.getRawPath());
+    assertEquals("kind=source%20%26%20resource%3D100%25%23%2B", uri.getRawQuery());
+    assertEquals(null, uri.getFragment());
   }
 
   @Test

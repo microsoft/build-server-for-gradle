@@ -271,7 +271,7 @@ public class BuildTargetService {
     return new OutputPathsResult(items);
   }
 
-  private String toOutputPathUri(File outputDir, String kind) {
+  String toOutputPathUri(File outputDir, String kind) {
     try {
       return new URIBuilder(outputDir.toURI())
           .setParameter("kind", kind)
