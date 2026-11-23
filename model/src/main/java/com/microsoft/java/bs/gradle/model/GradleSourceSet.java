@@ -101,6 +101,25 @@ public interface GradleSourceSet extends Serializable {
   public List<File> getCompileClasspath();
 
   /**
+   * The runtime classpath actually used to run this source set (for the test
+   * source set this mirrors the Gradle {@code Test} task's classpath: the source
+   * set's own output plus its runtime dependency closure). Unlike
+   * {@link #getCompileClasspath()} this includes {@code runtimeOnly} dependencies
+   * and excludes {@code compileOnly} ones, so clients can launch a faithful test
+   * or run JVM.
+   */
+  public List<File> getRuntimeClasspath();
+
+  /**
+   * The effective JVM arguments needed to reproduce this source set's matching test
+   * task: its explicit {@code jvmArgs}, its {@code systemProperty} values (as
+   * {@code -Dkey=value}) and its heap settings ({@code -Xms}/{@code -Xmx}). Empty when
+   * the source set has no matching test task or nothing was configured. This lets
+   * clients launch a faithful test JVM without re-deriving it.
+   */
+  public List<String> getJvmArgs();
+
+  /**
    * Module dependencies.
    */
   public Set<GradleModuleDependency> getModuleDependencies();
